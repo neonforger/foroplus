@@ -1,0 +1,12 @@
+{
+  "name": "fc-oracle",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Tests golden/oracle de regresion para el filtrado de content.js (jsdom). Carga los fixtures congelados, ejecuta el content.js real y comprueba que oculta exactamente lo esperado.",
+  "scripts": {
+    "test": "node --test"
+  },
+  "devDependencies": {
+    "jsdom": "^24.1.3"
+  }
+}

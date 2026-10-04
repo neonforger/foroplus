@@ -1,0 +1,4 @@
+<!-- Círculo del color del fondo detrás de una marca pequeña (candado): la separa del sobre. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
+    <solid android:color="@color/fc_fondo" />
+</shape>

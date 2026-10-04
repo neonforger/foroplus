@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Mismo recuadro que bg_post_op, pero con el relleno del resaltado breve (1,2 s) del
+     mensaje recién publicado. Hace falta como drawable aparte porque el fondo del item es
+     uno solo: si se pintara el color encima, el recuadro del autor desaparecería. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/fc_resaltado" />
+    <stroke
+        android:width="1.5dp"
+        android:color="@color/fc_borde_autor" />
+    <corners android:radius="10dp" />
+</shape>

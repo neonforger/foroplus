@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Rutas que el FileProvider puede ceder a otras apps. SOLO la subcarpeta de compartir
+     dentro de la caché: nada de exponer ficheros internos por accidente. -->
+<paths>
+    <cache-path name="compartir" path="compartir/" />
+</paths>

@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Diálogo NATIVO de reporte. Replica el formulario real de FC (report.php): motivo + comentario.
+     El comentario aparece SOLO al elegir "Otros" (detalle del reporte). El envío pasa el Cloudflare
+     por un WebView tapado con capa nativa (ver MainActivity). -->
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="22dp"
+        android:paddingEnd="22dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="4dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Motivo"
+            android:textStyle="bold"
+            android:textSize="13sp"
+            android:textColor="@color/fc_rojo"
+            android:letterSpacing="0.03" />
+
+        <RadioGroup
+            android:id="@+id/report_reasons"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:orientation="vertical">
+
+            <RadioButton android:id="@+id/reason_18" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="?android:attr/textColorPrimary" android:paddingStart="4dp" android:text="+18 · contenido +18/NSFW no indicado en el título" />
+            <RadioButton android:id="@+id/reason_spam" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="?android:attr/textColorPrimary" android:paddingStart="4dp" android:text="Spam · anuncios, cadenas de referidos o similares" />
+            <RadioButton android:id="@+id/reason_troll" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="?android:attr/textColorPrimary" android:paddingStart="4dp" android:text="Troll · cuenta para trollear" />
+            <RadioButton android:id="@+id/reason_flood" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="?android:attr/textColorPrimary" android:paddingStart="4dp" android:text="Flood · contenido repetitivo" />
+            <RadioButton android:id="@+id/reason_content" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="?android:attr/textColorPrimary" android:paddingStart="4dp" android:text="Contenido · contenido inadecuado" />
+            <RadioButton android:id="@+id/reason_other" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="?android:attr/textColorPrimary" android:paddingStart="4dp" android:text="Otros · detalle en el comentario" />
+        </RadioGroup>
+
+        <!-- Comentario: OCULTO por defecto; aparece al marcar "Otros". -->
+        <LinearLayout
+            android:id="@+id/report_comment_box"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginTop="10dp"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="¿Por qué lo reportas?"
+                android:textStyle="bold"
+                android:textSize="13sp"
+                android:textColor="@color/fc_rojo"
+                android:letterSpacing="0.03" />
+
+            <EditText
+                android:id="@+id/report_comment"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:hint="Detalle del reporte…"
+                android:textColor="?android:attr/textColorPrimary"
+                android:textColorHint="?android:attr/textColorSecondary"
+                android:gravity="top"
+                android:minLines="2"
+                android:maxLines="5"
+                android:inputType="textMultiLine|textCapSentences"
+                android:importantForAutofill="no" />
+        </LinearLayout>
+    </LinearLayout>
+</ScrollView>

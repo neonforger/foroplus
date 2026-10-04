@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Pastilla, no óvalo. Con una cifra sale redonda igual (la vista es cuadrada por su
+     minWidth), pero con dos o con "99+" un óvalo se estiraba en una elipse rara. El radio
+     es deliberadamente enorme: así el alto manda y siempre sale con los lados semicirculares. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/fc_rojo" />
+    <corners android:radius="99dp" />
+</shape>

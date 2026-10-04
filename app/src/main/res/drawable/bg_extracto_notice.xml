@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- El trozo del mensaje por el que te citaron. Misma gramática que una cita dentro de un
+     mensaje —fondo suave y raya a la izquierda—, para que signifique lo mismo en toda la app.
+     La raya va en la divisoria y no en el rojo de la cita: aquí el rojo ya lo está usando la
+     barra de "sin leer", y dos rojos en la misma fila compiten. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@color/fc_cita_fondo" />
+        </shape>
+    </item>
+    <item android:width="2dp" android:gravity="start|fill_vertical">
+        <shape android:shape="rectangle">
+            <solid android:color="@color/fc_divisoria" />
+        </shape>
+    </item>
+</layer-list>

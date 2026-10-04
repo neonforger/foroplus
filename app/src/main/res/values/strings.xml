@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Nombre que se ve bajo el icono. Es el de TODOS los builds salvo debug, que lo
+         sobreescribe en app/src/debug/res/values/strings.xml para poder convivir con este
+         en el mismo móvil. Ojo: la rama v2-shell es la que se publica, así que aquí NUNCA
+         puede quedarse un nombre de desarrollo. -->
+    <string name="app_name">ForoPlus</string>
+</resources>

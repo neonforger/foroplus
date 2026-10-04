@@ -1,0 +1,6 @@
+<!-- Punto de "has escrito en este hilo". Es el thread-notification-bullet de FC, en su mismo
+     turquesa, con un aro del color del fondo para que no se funda con el sobre. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
+    <solid android:color="@color/fc_participado" />
+    <stroke android:width="2dp" android:color="@color/fc_fondo" />
+</shape>

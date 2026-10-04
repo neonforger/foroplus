@@ -1,0 +1,36 @@
+name: Oraculo (filtrado content.js)
+
+# Corre el golden/oraculo del filtrado cuando se toca content.js, la config de
+# selectores o el propio harness. Asi, si alguien rompe el filtrado, falla en el PR.
+on:
+  push:
+    paths:
+      - 'app/src/main/assets/content.js'
+      - 'app/src/main/assets/fc_config.json'
+      - 'tools/oracle/**'
+      - '.github/workflows/oracle.yml'
+  pull_request:
+    paths:
+      - 'app/src/main/assets/content.js'
+      - 'app/src/main/assets/fc_config.json'
+      - 'tools/oracle/**'
+      - '.github/workflows/oracle.yml'
+  workflow_dispatch: {}
+
+jobs:
+  oracle:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tools/oracle
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: tools/oracle/package-lock.json
+      - name: Instalar dependencias
+        run: npm ci
+      - name: Correr oraculo
+        run: npm test

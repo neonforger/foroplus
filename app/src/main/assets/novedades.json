@@ -1,0 +1,197 @@
+{
+  "versiones": [
+    {
+      "code": 46,
+      "nombre": "1.11.0",
+      "fecha": "2026-10-02",
+      "notas": [
+        "Barra de abajo nueva: solo cuatro botones (Inicio, Avisos, Privados y Suscripciones). Todo lo demás está en tu avatar, arriba a la derecha, y en Opciones puedes elegir qué va abajo",
+        "Citas y Menciones, juntas en «Avisos»",
+        "En la lista de hilos, debajo de la hora, quién escribió el último mensaje (se puede apagar en Opciones → Apariencia)",
+        "Perfiles más completos: título, fecha de alta entera, firma y «Sobre mí» (coche, ubicación…)",
+        "Nuevo «Mis mensajes», y en los mensajes de un usuario ya puedes bajar hasta el final, no solo los 25 primeros"
+      ]
+    },
+    {
+      "code": 45,
+      "nombre": "1.10.0",
+      "fecha": "2026-09-27",
+      "notas": [
+        "Nueva cabecera en los hilos: el título se lee entero y arriba ves en qué subforo estás (tócalo para ir a él). Descargar y compartir pasan al menú ⋮",
+        "En la lista de hilos, un sobre como el de la web del foro: rojo si hay mensajes nuevos, gris si no, con un punto si has participado y un candado si está cerrado",
+        "«Ver solo sus mensajes» funciona también en los hilos largos de preguntas: salen todos sus mensajes completos, no solo los 25 últimos",
+        "Arreglado: el botón atrás entre páginas de un hilo a veces no hacía nada o saltaba a la primera, y al volver desde los hilos del momento acababas en General",
+        "Arreglado: tras abrir un hilo y volver, al refrescar podían salir hilos de otro subforo"
+      ]
+    },
+    {
+      "code": 44,
+      "nombre": "1.9.0",
+      "fecha": "2026-09-25",
+      "notas": [
+        "Opciones renovadas: ahora van por categorías, y en cada una ves de un vistazo cómo lo tienes",
+        "Nuevo «Acerca de» con las novedades de cada versión, y el tamaño de los títulos se ajusta aparte del de los mensajes",
+        "En Citas y Menciones, el nombre de quien te cita sale en rojo para verlo de un vistazo",
+        "Arreglado: al cambiar rápido de subforo podían salir los hilos de otro, o mezclados con los del anterior"
+      ]
+    },
+    {
+      "code": 43,
+      "nombre": "1.8.0",
+      "fecha": "2026-09-24",
+      "notas": [
+        "Ya puedes crear ENCUESTAS al abrir un hilo, y al escribir un emoticono como :roto2: se convierte en el dibujo al momento",
+        "Las citas se pueden pasar a TEXTO para recortarlas, ponerlas en negrita o colocarlas donde quieras dentro de tu respuesta",
+        "\"Ver solo sus mensajes\" enseña sus mensajes completos del hilo, con lo que citaban. En los privados hay carpeta de Enviados y se ve la conversación anterior",
+        "Las citas y menciones dicen el día de verdad (ya no sale \"hace 1 h\" en una de ayer) y al volver a la lista sigues donde estabas",
+        "Arreglados el emoticono que parpadeaba, las encuestas que no salían en tus propios hilos y el cuelgue al compartir hilos con GIFs enormes"
+      ]
+    },
+    {
+      "code": 42,
+      "nombre": "1.7.0",
+      "fecha": "2026-09-21",
+      "notas": [
+        "Ya puedes DESCARGAR un hilo entero y leerlo aunque lo borren del foro. Lo tienes en Descargados, con lo que ocupa y un botón para borrarlo",
+        "Citas y menciones se ven de otra manera: ahora cada aviso dice quién, en qué hilo y qué dijo, y solo se marca como leído el que tocas",
+        "Buscar en los mensajes ya devuelve MENSAJES, del más reciente al más antiguo, en vez de los hilos que los contienen",
+        "Al responder ya se ve con qué cuenta vas a publicar, y la barra de abajo es más grande",
+        "Se van las notificaciones con la app cerrada: daban problemas y hacían que la app se cerrase sola. Los avisos siguen saliendo al abrirla"
+      ]
+    },
+    {
+      "code": 41,
+      "nombre": "1.6.1",
+      "fecha": "2026-09-17",
+      "notas": [
+        "Icono nuevo",
+        "Arreglado: había hilos que no salían por ninguna parte. El filtro de palabras escondía sin querer todo lo que llevara app, apps, Apple o WhatsApp en el título",
+        "La estrella del hilo ya dice de verdad si estás suscrito",
+        "Añadir una segunda cuenta ya funciona",
+        "Los correos dentro de mensajes y privados ya se leen: antes salía [email protected]"
+      ]
+    },
+    {
+      "code": 40,
+      "nombre": "1.6.0",
+      "fecha": "2026-09-16",
+      "notas": [
+        "Varias cuentas en la app: cambia de una a otra sin volver a escribir la contraseña",
+        "Tu avatar en la barra de abajo, y al responder ves con qué cuenta vas a publicar",
+        "Para añadirlas: Perfil, Añadir otra cuenta (hasta 5)",
+        "Cada cuenta guarda lo suyo: sus hilos leídos, sus citas y sus búsquedas",
+        "Arreglado: cerrar sesión ya funciona siempre, aunque el foro no responda"
+      ]
+    },
+    {
+      "code": 39,
+      "nombre": "1.5.9",
+      "fecha": "2026-09-12",
+      "notas": [
+        "Ya puedes subir fotos desde la propia app, sin salir a la web",
+        "Los enlaces de Instagram, X, TikTok y YouTube se publican como tarjeta, sin hacer nada",
+        "Ver solo los mensajes de una persona dentro de un hilo, desde el menú de un mensaje",
+        "Los privados tienen su botón en la barra de abajo, y puedes ignorar un hilo concreto",
+        "Arreglado: entrar con VPN, el parpadeo de las fotos, el audio que seguía sonando al salir y el atrás que te sacaba de la app"
+      ]
+    },
+    {
+      "code": 38,
+      "nombre": "1.5.8",
+      "fecha": "2026-08-28",
+      "notas": [
+        "Al citar un mensaje se conservan sus fotos, los emoticonos y el formato (antes se perdían y salían recuadros raros)",
+        "Los enlaces de ForoCoches pueden abrirse aquí en vez de en el navegador: la app te explica cómo activarlo",
+        "Puedes ordenar y esconder los subforos de arriba y los botones de abajo a tu gusto",
+        "Desde el perfil de cualquiera puedes ver sus hilos y sus mensajes",
+        "Arreglado: citar y arrepentirte ya no deja la cita pegada al siguiente mensaje"
+      ]
+    },
+    {
+      "code": 37,
+      "nombre": "1.5.7",
+      "fecha": "2026-08-27",
+      "notas": [
+        "Los vídeos ya no se cortan: el que estés viendo sigue sonando en una ventanita mientras sigues leyendo el hilo",
+        "Nuevo botón TOP con los hilos del momento de cada subforo, y pestaña Popurrí para mezclar en una sola lista los subforos que tú elijas",
+        "Los spoilers vuelven a estar tapados (tócalos para verlos) y los GIFs se mueven, emoticonos animados incluidos",
+        "Mensajes privados: ya se ve a quién estás respondiendo, se puede escribir en toda la pantalla y el remitente es el correcto",
+        "Arreglado: las citas ya se distinguen en modo oscuro, la barra de desplazamiento del hilo se puede arrastrar y tirando hacia abajo se recarga"
+      ]
+    },
+    {
+      "code": 36,
+      "nombre": "1.5.6",
+      "fecha": "2026-08-21",
+      "notas": [
+        "Las citas muy largas se pliegan: tócalas en “Ver cita completa” para leerlas enteras",
+        "Los títulos ya no se cortan: tres líneas en el listado y, en la cabecera del hilo, tócalo y se despliega entero",
+        "En el listado sale la foto de perfil de cada usuario; quien no tenga, el avatar del foro",
+        "Los emoticonos del foro y los audios de Vocaroo se ven como deben, ya no diminutos ni ocupando media pantalla",
+        "En modo oscuro se vuelven a ver el reloj y la batería de la barra de arriba"
+      ]
+    },
+    {
+      "code": 35,
+      "nombre": "1.5.5",
+      "fecha": "2026-08-21",
+      "notas": [
+        "Modo oscuro. Elígelo en Opciones → Tema: claro, oscuro o el del sistema",
+        "Los tuits y los vídeos de YouTube también se ven en oscuro (Instagram y TikTok siguen en claro: no tienen modo oscuro)",
+        "Una línea separa cada hilo del listado, para leerlo más cómodo"
+      ]
+    },
+    {
+      "code": 34,
+      "nombre": "1.5.4",
+      "fecha": "2026-08-21",
+      "notas": [
+        "Ya puedes ignorar a alguien desde su mensaje o su perfil, y queda guardado en tu cuenta de ForoCoches",
+        "Los ignorados se aplican nada más entrar: antes había que reiniciar la app",
+        "El botón de compartir del hilo crea una tarjeta con el título y el primer mensaje",
+        "La firma «Enviado desde ForoPlus» ahora viene apagada; puedes encenderla en Opciones",
+        "«Favoritos» pasa a llamarse «Suscripciones», y la app vuelve a llamarse solo ForoPlus"
+      ]
+    },
+    {
+      "code": 33,
+      "nombre": "1.5.3",
+      "fecha": "2026-08-19",
+      "notas": [
+        "Toca una foto de un mensaje para verla a pantalla completa, con zoom",
+        "Comparte cualquier mensaje como una tarjeta, con su enlace incluido",
+        "El botón de la cabecera del hilo ahora comparte en vez de abrir el navegador"
+      ]
+    },
+    {
+      "code": 32,
+      "nombre": "1.5.2",
+      "fecha": "2026-08-18",
+      "notas": [
+        "Si hay algún problema conocido con el foro, ahora te avisamos dentro de la app",
+        "Los avisos se cierran con un toque y no vuelven a salir"
+      ]
+    },
+    {
+      "code": 31,
+      "nombre": "1.5.1",
+      "fecha": "2026-08-15",
+      "notas": [
+        "Arreglada la barra de páginas: ya no aparece en blanco al abrir un hilo",
+        "Si el foro no te deja publicar, ahora te dice el motivo y los segundos que faltan",
+        "Los avisos al crear hilo, editar o borrar también explican qué ha pasado"
+      ]
+    },
+    {
+      "code": 30,
+      "nombre": "1.5.0",
+      "fecha": "2026-08-14",
+      "notas": [
+        "Toca la hora de un hilo para ir directo al último mensaje",
+        "Toca una cita y saltas al mensaje original",
+        "Ahora puedes recortar una cita antes de responder",
+        "Los mensajes ocupan menos espacio y se lee más de golpe"
+      ]
+    }
+  ]
+}

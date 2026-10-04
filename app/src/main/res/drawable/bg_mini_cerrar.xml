@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fondo del botón de cerrar del reproductor flotante: un círculo oscuro translúcido. Va
+     ENCIMA del vídeo, así que no puede seguir la paleta de la app — tiene que leerse sobre
+     cualquier fotograma, sea claro u oscuro, igual que los controles de cualquier reproductor. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <solid android:color="@color/fc_capa_boton" />
+</shape>

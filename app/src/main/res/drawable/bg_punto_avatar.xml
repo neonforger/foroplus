@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Punto rojo sobre el avatar de la cabecera: hay algo nuevo en una sección que vive en el
+     panel (por ejemplo, Privados, si alguien lo ha sacado de la barra). Borde del color del
+     fondo para que se despegue del avatar en los dos temas. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
+    <solid android:color="@color/fc_rojo" />
+    <stroke android:width="2dp" android:color="@color/fc_fondo" />
+</shape>

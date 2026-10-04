@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Pastilla de Citas / Menciones en Avisos. El color lo pone el código (rojo = la elegida,
+     gris = la otra), igual que las de Recibidos/Enviados de los privados. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <corners android:radius="18dp" />
+    <solid android:color="@color/fc_chip" />
+</shape>

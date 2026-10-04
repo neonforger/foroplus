@@ -1,0 +1,43 @@
+/* Redes de publicidad */
+iframe[src*="doubleclick"],
+iframe[src*="googlesyndication"],
+iframe[src*="adnxs"],
+iframe[src*="criteo"],
+iframe[src*="taboola"],
+iframe[src*="outbrain"],
+iframe[src*="exoclick"],
+iframe[src*="trafficjunky"],
+/* Clases e IDs genéricos de ads */
+[id*="google_ads"],
+[id*="div-gpt-ad"],
+[class*="taboola"],
+[class*="outbrain"],
+[id*="taboola"],
+[id*="outbrain"],
+/* Banners específicos de FC */
+[id*="banner"],
+[class*="banner_pub"],
+div[style*="width:728px"],
+div[style*="width: 728px"],
+/* OptiDigital (red de ads actual de FC): slot + wrapper + brand para colapsar el hueco.
+   OJO: NO usar [class*="optidigital"] a secas: la lista de hilos lleva la clase
+   'optidigital-autoinread' (inserta ads entre hilos) y ocultaría TODOS los hilos. */
+[data-optidigital-slot],
+[id^="optidigital-adslot-"],
+[class*="optidigital-ad"],
+[class*="optidigital-wrapper"],
+[class*="optidigital-brand"],
+/* Google Ad Manager / GPT y barra fija inferior */
+[id*="google_ads_iframe"],
+#google_ads_top_frame,
+[id*="fixed_adslot"],
+.fixed_adslot {
+    display: none !important;
+}
+
+/* Avisos-anuncio de FC (banners de afiliado tipo Amazon en la barra de notices).
+   Solo los que llevan enlace de afiliado; NO tocamos los avisos normales del foro. */
+.navbar_notice:has(a[href*="amazon"]),
+.navbar_notice:has(a[href*="amzn"]) {
+    display: none !important;
+}

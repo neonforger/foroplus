@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Recuadro de los mensajes del AUTOR DEL HILO: el rojo de la app (#C8102E) al 40 %, para
+     que distinga sin gritar. Sin relleno a propósito: el rosa claro ya significa otra cosa
+     (el resaltado del mensaje que acabas de publicar). -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@android:color/transparent" />
+    <stroke
+        android:width="1.5dp"
+        android:color="@color/fc_borde_autor" />
+    <corners android:radius="10dp" />
+</shape>

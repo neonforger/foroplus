@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- PANEL DEL AVATAR (2026-10-02, maqueta aprobada por el dueño): lo que no va en la barra de
+     abajo. Se añade ENCIMA de toda la actividad con addContentView, porque la barra de abajo
+     está fuera del contenedor de pantallas y el velo tiene que taparla también.
+
+     Se abre SOLO tocando el avatar: deslizar desde el borde se pelearía con el gesto de
+     cambiar de subforo en la lista. Atrás o tocar el velo lo cierran. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/panel_cuenta"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:visibility="gone">
+
+    <View
+        android:id="@+id/cuenta_velo"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/fc_velo"
+        android:contentDescription="Cerrar el panel" />
+
+    <LinearLayout
+        android:id="@+id/cuenta_cajon"
+        android:layout_width="316dp"
+        android:layout_height="match_parent"
+        android:layout_gravity="end"
+        android:orientation="vertical"
+        android:background="@color/fc_fondo"
+        android:elevation="16dp"
+        android:clickable="true"
+        android:focusable="true">
+
+        <!-- Tu ficha, resumida. "Ver mi ficha" abre la entera (firma, Sobre mí…). -->
+        <LinearLayout
+            android:id="@+id/cuenta_cabecera"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"
+            android:paddingTop="16dp"
+            android:paddingBottom="10dp"
+            android:background="@color/fc_chip">
+
+            <ImageView
+                android:id="@+id/cuenta_avatar"
+                android:layout_width="52dp"
+                android:layout_height="52dp"
+                android:src="@drawable/ic_nav_person"
+                android:contentDescription="@null" />
+
+            <TextView
+                android:id="@+id/cuenta_nombre"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:textColor="@color/fc_texto"
+                android:maxLines="1"
+                android:ellipsize="end" />
+
+            <TextView
+                android:id="@+id/cuenta_stats"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="3dp"
+                android:textSize="12.5sp"
+                android:textColor="@color/fc_texto_2"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/cuenta_ficha"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:paddingTop="6dp"
+                android:paddingBottom="6dp"
+                android:text="Ver mi ficha  ›"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:textColor="@color/fc_rojo"
+                android:background="?attr/selectableItemBackground" />
+        </LinearLayout>
+
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1">
+
+            <LinearLayout
+                android:id="@+id/cuenta_filas"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingTop="6dp"
+                android:paddingBottom="6dp" />
+        </ScrollView>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/fc_divisoria" />
+
+        <LinearLayout
+            android:id="@+id/cuenta_salir"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="50dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"
+            android:background="?attr/selectableItemBackground">
+
+            <ImageView
+                android:id="@+id/cuenta_salir_icono"
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:src="@drawable/ic_salir"
+                android:contentDescription="@null" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="18dp"
+                android:text="Cerrar sesión"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:textColor="@color/fc_rojo" />
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>

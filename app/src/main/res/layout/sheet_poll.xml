@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Encuesta del hilo. Se abre tocando la barra "Encuesta · N votos" de la cabecera.
+     Va en hoja y no incrustada en la lista de posts a propósito: así es accesible desde
+     CUALQUIER página del hilo y no toca la aritmética de posiciones del RecyclerView. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@color/fc_fondo"
+    android:paddingStart="20dp"
+    android:paddingEnd="20dp"
+    android:paddingTop="18dp"
+    android:paddingBottom="24dp">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        android:textColor="@color/fc_rojo"
+        android:letterSpacing="0.03"
+        android:text="ENCUESTA" />
+
+    <TextView
+        android:id="@+id/poll_question"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:textColor="@color/fc_texto" />
+
+    <!-- Aviso de "puedes marcar varias" en las multirrespuesta. -->
+    <TextView
+        android:id="@+id/poll_hint"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:textSize="12sp"
+        android:textColor="@color/fc_texto_3"
+        android:visibility="gone" />
+
+    <!-- Con muchas opciones la hoja llega al alto de la pantalla y hay que poder scrollear
+         dentro. NestedScrollView (no ScrollView): BottomSheetBehavior necesita un hijo con
+         nested scrolling para distinguir "scrollear la lista" de "arrastrar la hoja". -->
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:layout_marginTop="8dp"
+        android:scrollbars="none">
+
+        <LinearLayout
+            android:id="@+id/poll_options"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+    </androidx.core.widget.NestedScrollView>
+
+    <TextView
+        android:id="@+id/poll_error"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:textSize="13sp"
+        android:textColor="@color/fc_rojo"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/poll_footer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:textSize="12sp"
+        android:textColor="@color/fc_texto_3" />
+
+    <TextView
+        android:id="@+id/poll_vote"
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:layout_marginTop="14dp"
+        android:gravity="center"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:textColor="@color/fc_sobre_rojo"
+        android:background="@drawable/bg_poll_vote"
+        android:text="Votar"
+        android:visibility="gone" />
+
+</LinearLayout>

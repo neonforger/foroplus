@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Buscador. OJO con los colores fijos del EditText: el tema es DayNight y el panel tiene
+     fondo blanco, así que sin textColor/textColorHint explícitos el campo es invisible en
+     modo oscuro (mismo patrón que login_user y sheet_thread_pages). -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@color/fc_fondo"
+    android:paddingStart="20dp"
+    android:paddingEnd="20dp"
+    android:paddingTop="18dp"
+    android:paddingBottom="24dp">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        android:textColor="@color/fc_rojo"
+        android:letterSpacing="0.03"
+        android:text="BUSCAR EN FOROCOCHES" />
+
+    <EditText
+        android:id="@+id/search_input"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:inputType="text"
+        android:imeOptions="actionSearch"
+        android:maxLines="1"
+        android:textSize="16sp"
+        android:hint="Palabras a buscar"
+        android:textColor="@color/fc_texto"
+        android:textColorHint="@color/fc_texto_3"
+        android:importantForAutofill="no" />
+
+    <!-- Últimas búsquedas (Green Floyd, Márquez). Va justo DEBAJO del campo: es un atajo para
+         no reescribir, así que tiene que estar donde ya estás mirando. Se esconde entero
+         cuando no hay ninguna, para no dejar un hueco muerto la primera vez. -->
+    <LinearLayout
+        android:id="@+id/search_recientes"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginTop="4dp"
+        android:visibility="gone" />
+
+<!-- Antes era un interruptor "Buscar solo en los títulos". El problema no era la etiqueta,
+         era que apagarlo buscaba dentro de los mensajes y seguía devolviendo HILOS. Ahora son
+         dos búsquedas distintas y cada una dice lo que te va a dar, porque lo que cambia no es
+         dónde busca: es QUÉ te devuelve. -->
+    <RadioGroup
+        android:id="@+id/search_scope"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:orientation="vertical">
+
+        <androidx.appcompat.widget.AppCompatRadioButton
+            android:id="@+id/search_scope_titles"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="44dp"
+            android:text="Títulos de los hilos"
+            android:textSize="15sp"
+            android:textColor="@color/fc_texto" />
+
+        <androidx.appcompat.widget.AppCompatRadioButton
+            android:id="@+id/search_scope_posts"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="44dp"
+            android:text="Texto de los mensajes"
+            android:textSize="15sp"
+            android:textColor="@color/fc_texto" />
+    </RadioGroup>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:textSize="12sp"
+        android:textColor="@color/fc_texto_3"
+        android:text="Por títulos salen hilos; por mensajes salen los mensajes, del más reciente al más antiguo." />
+
+    <TextView
+        android:id="@+id/search_go"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:paddingTop="14dp"
+        android:paddingBottom="14dp"
+        android:gravity="center"
+        android:text="Buscar"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:textColor="@color/fc_sobre_rojo"
+        android:background="@color/fc_rojo" />
+
+</LinearLayout>

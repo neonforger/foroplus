@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Descargar un hilo: flecha hacia abajo sobre una bandeja. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="@color/fc_rojo">
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M11,3h2v7.2l2.9,-2.9 1.4,1.4 -5.3,5.3 -5.3,-5.3 1.4,-1.4 2.9,2.9z" />
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M4,17h2v2h12v-2h2v4H4z" />
+</vector>

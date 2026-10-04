@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Aviso de error del login: caja roja suave, legible sobre el fondo blanco. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/fc_error_fondo" />
+    <stroke android:width="1dp" android:color="@color/fc_error_linea" />
+    <corners android:radius="10dp" />
+</shape>

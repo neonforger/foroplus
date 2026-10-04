@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Mis hilos: icono de lista con lápiz. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="@color/fc_texto_2"
+        android:pathData="M3,5h18v2H3z M3,11h12v2H3z M3,17h8v2H3z M20.7,10.3c0.4,0.4 0.4,1 0,1.4l-6.6,6.6L11,19l0.7,-3.1 6.6,-6.6c0.4,-0.4 1,-0.4 1.4,0z" />
+</vector>

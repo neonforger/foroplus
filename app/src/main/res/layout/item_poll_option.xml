@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Una opción de la encuesta. Se usa en los dos estados:
+     · votable  → se enseña el radio (una respuesta) o la casilla (multirrespuesta)
+     · resultados → barra proporcional + porcentaje + nº de votos
+     Ambos pueden coexistir: FC a veces deja votar Y ya enseña resultados. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="?attr/selectableItemBackground"
+    android:paddingTop="10dp"
+    android:paddingBottom="10dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <RadioButton
+            android:id="@+id/poll_opt_radio"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="6dp"
+            android:clickable="false"
+            android:focusable="false"
+            android:buttonTint="@color/fc_rojo"
+            android:visibility="gone" />
+
+        <CheckBox
+            android:id="@+id/poll_opt_check"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="6dp"
+            android:clickable="false"
+            android:focusable="false"
+            android:buttonTint="@color/fc_rojo"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/poll_opt_text"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textSize="15sp"
+            android:textColor="@color/fc_texto" />
+
+        <TextView
+            android:id="@+id/poll_opt_pct"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:textColor="@color/fc_rojo" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/poll_opt_result"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginTop="6dp">
+
+        <!-- Carril de ancho fijo con dos hijos por peso: relleno y hueco. Así el ancho
+             sale del layout, sin medir la pantalla a mano. -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="8dp"
+            android:layout_weight="1"
+            android:orientation="horizontal"
+            android:weightSum="1"
+            android:background="@drawable/bg_poll_track">
+
+            <View
+                android:id="@+id/poll_opt_bar_fill"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:background="@drawable/bg_poll_fill" />
+
+            <View
+                android:id="@+id/poll_opt_bar_rest"
+                android:layout_width="0dp"
+                android:layout_height="match_parent" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/poll_opt_votes"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:minWidth="64dp"
+            android:gravity="end"
+            android:textSize="12sp"
+            android:textColor="@color/fc_texto_3" />
+    </LinearLayout>
+
+</LinearLayout>

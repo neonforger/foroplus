@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Paleta de la app. Los nombres dicen el PAPEL, no el color: `fc_texto_2` sigue siendo el
+     texto secundario tanto si es gris oscuro como si es gris claro. Los valores de aquí son el
+     modo claro; los del modo oscuro están en values-night/colors.xml, con los mismos nombres.
+
+     REGLA: en layouts, drawables y Kotlin no puede quedar ni un color escrito a mano. Hay un
+     test que lo comprueba (ColoresFijosTest), porque el día que alguien meta un `#FFFFFF` en un
+     layout nuevo no se entera nadie hasta que un usuario en modo oscuro ve texto invisible.
+
+     EXCEPCIONES a esa regla, deliberadas y con motivo:
+       · card_share_post.xml / card_share_thread.xml → son IMÁGENES que salen de la app. Se
+         quedan claras siempre: si dependieran del tema, la misma tarjeta se vería distinta
+         según quién la comparte.
+       · Los colores de las iniciales de avatar (PostAdapter/TarjetaCompartir) → son identidad
+         de cada persona, no decoración del tema.
+       · Las capas oscuras del visor de imágenes y de la vista previa → ya son oscuras a
+         propósito, en los dos modos. -->
+<resources>
+
+    <!-- Fondo de pantallas y paneles. -->
+    <color name="fc_fondo">#FFFFFF</color>
+    <!-- Superficie que debe distinguirse del fondo (hojas, tarjetas elevadas). -->
+    <color name="fc_superficie">#FFFFFF</color>
+
+    <!-- Texto principal (títulos, cuerpo de los mensajes). -->
+    <color name="fc_texto">#1A1A1A</color>
+    <!-- Texto secundario (autores, etiquetas, botones de texto). -->
+    <color name="fc_texto_2">#616161</color>
+    <!-- Texto terciario y pistas de los campos (fechas, contadores, hints). -->
+    <color name="fc_texto_3">#9E9E9E</color>
+    <!-- Texto de algo desactivado (flechas de página que no llevan a ninguna parte). -->
+    <color name="fc_texto_off">#BDBDBD</color>
+    <!-- "Has escrito en este hilo" en el listado: el turquesa del thread-notification-bullet de FC. -->
+    <color name="fc_participado">#3FAFBC</color>
+
+    <!-- Líneas divisorias y separadores. -->
+    <color name="fc_divisoria">#EEEEEE</color>
+    <!-- Fondo de los chips y cajas suaves. -->
+    <color name="fc_chip">#F0F0F0</color>
+
+    <!-- Rojo de marca. En oscuro se ACLARA: el #C8102E sobre negro se lee mal y cansa. -->
+    <color name="fc_rojo">#C8102E</color>
+    <!-- Texto que va ENCIMA del rojo. Blanco en los dos modos, por eso no es fc_fondo: si
+         fuera el mismo token, en oscuro el texto del botón rojo se volvería negro. -->
+    <color name="fc_sobre_rojo">#FFFFFF</color>
+
+    <!-- Cita dentro de un mensaje: barra lateral y fondo. Existen porque el QuoteSpan de
+         Android pinta una raya AZUL FIJA que no sigue el tema y en oscuro no se veía (ver
+         CitaSpan). La barra es el rojo de marca: los testers pidieron que se notara. -->
+    <color name="fc_cita_barra">#C8102E</color>
+    <color name="fc_cita_fondo">#F4F4F6</color>
+
+    <!-- Fondo del mensaje recién publicado (el resaltado de 1,2 s). -->
+    <color name="fc_resaltado">#FFF3F4</color>
+
+    <!-- Raya de 1dp bajo la barra de avisos. Va sobre el rosa del aviso, así que
+         no puede ser la divisoria normal o desaparece. -->
+    <color name="fc_aviso_linea">#E8D0D3</color>
+
+    <!-- Caja de error del login: fondo y borde. -->
+    <color name="fc_error_fondo">#FDECEA</color>
+    <color name="fc_error_linea">#F1B0A8</color>
+    <!-- Borde del recuadro del autor del hilo (rojo al 40 %) y pulgar de la barra de scroll. -->
+    <color name="fc_borde_autor">#66C8102E</color>
+    <color name="fc_scroll_pulgar">#99757575</color>
+
+    <!-- Onda al pulsar sobre superficie clara/oscura. -->
+    <color name="fc_ripple">#1A000000</color>
+
+    <!-- Avatar de relleno del propio ForoCoches (image/new_icons/avatar.svg): circulo
+         turquesa con la silueta blanca. Es identidad del foro, NO decoracion nuestra, asi
+         que vale igual en claro y en oscuro — el turquesa es de medio tono y no ciega sobre
+         fondo negro ni se pierde sobre blanco. -->
+    <!-- Fondo de los botones que van ENCIMA de un vídeo (el ✕ del reproductor flotante).
+         Igual en claro y en oscuro a propósito: se pinta sobre el fotograma, no sobre la app. -->
+    <!-- Velo detrás del panel del avatar: oscurece la pantalla para que el panel se lea como
+         una capa encima. En oscuro va más denso, o sobre fondo negro ni se notaría. -->
+    <color name="fc_velo">#6B000000</color>
+
+    <color name="fc_capa_boton">#99000000</color>
+
+    <color name="fc_avatar_fondo">#3FAFBC</color>
+    <color name="fc_avatar_figura">#FFFFFF</color>
+
+</resources>

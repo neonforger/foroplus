@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <application
+        android:name=".ForocochesApp"
+        android:allowBackup="false"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:usesCleartextTraffic="false"
+        android:theme="@style/Theme.FCForocoches">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:windowSoftInputMode="adjustResize"
+            android:configChanges="orientation|screenSize|keyboardHidden">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!--
+                Enlaces de hilo de ForoCoches → se abren en la app.
+
+                SOLO `showthread.php` (y `private.php`, los MPs) a propósito: son los únicos que
+                IntentRouter sabe llevar a una pantalla nativa. Reclamar TODO forocoches.com
+                dejaría a la gente aterrizando en la portada de la app cada vez que tocara un
+                enlace que no sabemos pintar — peor que dejarlo en el navegador, donde al menos
+                ve lo que pidió.
+
+                OJO: `autoVerify` NO va a verificar. Los App Links de Android exigen un
+                `assetlinks.json` servido desde `https://forocoches.com/.well-known/`, y ese
+                dominio no es nuestro. Consecuencia real: en Android 12+ el sistema NO abre la
+                app sola hasta que el usuario lo autorice una vez en
+                Ajustes → Aplicaciones → ForoPlus → Abrir de forma predeterminada.
+                Se deja declarado igualmente porque es lo que hace que el dominio APAREZCA en
+                esa pantalla para poder autorizarlo.
+            -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data android:scheme="https" />
+                <data android:scheme="http" />
+                <data android:host="forocoches.com" />
+                <data android:host="www.forocoches.com" />
+                <data android:host="m.forocoches.com" />
+                <data android:pathPrefix="/foro/showthread.php" />
+                <data android:pathPrefix="/foro/private.php" />
+            </intent-filter>
+        </activity>
+        <!-- Para pasarle la tarjeta (un PNG de la caché) a WhatsApp, Telegram, etc. Android no
+             deja compartir un fichero a pelo: hay que cederlo por un proveedor con permiso
+             temporal. exported=false + grantUriPermissions: solo lo ve quien reciba el intent. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+    </application>
+
+</manifest>

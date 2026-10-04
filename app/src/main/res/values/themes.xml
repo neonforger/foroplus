@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- DayNight: el modo lo decide AppCompatDelegate según el ajuste de Opciones (ver
+         TemaApp). El windowBackground es imprescindible: sin él, cualquier hueco entre paneles
+         enseña el gris del sistema en vez del fondo de la app. -->
+    <style name="Theme.FCForocoches" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="android:windowBackground">@color/fc_fondo</item>
+        <item name="android:colorBackground">@color/fc_fondo</item>
+        <item name="colorPrimary">@color/fc_rojo</item>
+        <item name="colorAccent">@color/fc_rojo</item>
+        <item name="android:textColorPrimary">@color/fc_texto</item>
+        <item name="android:textColorSecondary">@color/fc_texto_2</item>
+        <!-- Las barras del sistema se declaran EXPLICITAMENTE con el fondo de la app. Sin
+             esto heredaban el color que le diera al tema de Material, que no tiene por que
+             seguir nuestra paleta, y la barra de estado quedaba de un color ajeno pegado a la
+             cabecera. El color de los iconos (reloj, bateria) NO se pone aqui: va en
+             applyWindowInsets, que es lo unico que sabe si estamos en claro o en oscuro. -->
+        <item name="android:statusBarColor">@color/fc_fondo</item>
+        <item name="android:navigationBarColor">@color/fc_fondo</item>
+    </style>
+
+    <!-- Estilos del panel de Opciones. -->
+    <style name="OptSection">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">24dp</item>
+        <item name="android:textColor">@color/fc_rojo</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:letterSpacing">0.03</item>
+    </style>
+
+    <style name="OptChip">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginEnd">8dp</item>
+        <item name="android:paddingStart">16dp</item>
+        <item name="android:paddingEnd">16dp</item>
+        <item name="android:paddingTop">8dp</item>
+        <item name="android:paddingBottom">8dp</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:textColor">@color/fc_texto_2</item>
+        <item name="android:background">@color/fc_chip</item>
+    </style>
+
+    <style name="OptRow">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:paddingTop">14dp</item>
+        <item name="android:paddingBottom">14dp</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:textColor">@color/fc_texto</item>
+        <item name="android:background">?attr/selectableItemBackground</item>
+    </style>
+
+    <style name="OptAddBtn">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginStart">8dp</item>
+        <item name="android:paddingStart">16dp</item>
+        <item name="android:paddingEnd">16dp</item>
+        <item name="android:paddingTop">10dp</item>
+        <item name="android:paddingBottom">10dp</item>
+        <item name="android:text">Añadir</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textColor">@color/fc_rojo</item>
+        <item name="android:background">?attr/selectableItemBackground</item>
+    </style>
+
+    <!-- Botón de la barra de formato BBCode del editor (Bloque A). -->
+    <!-- Fila que pliega una lista larga de Opciones (ignorados, palabras, subforos).
+         Se pliega en vez de darle scroll propio: un cajon con scroll dentro del ScrollView
+         del panel es la misma trampa de gestos que se descarto con las citas largas. -->
+    <style name="OptToggle">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">4dp</item>
+        <item name="android:paddingTop">12dp</item>
+        <item name="android:paddingBottom">12dp</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textColor">@color/fc_rojo</item>
+        <item name="android:background">?attr/selectableItemBackground</item>
+    </style>
+
+    <style name="FmtButton">
+        <item name="android:layout_width">44dp</item>
+        <item name="android:layout_height">44dp</item>
+        <item name="android:gravity">center</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:textColor">@color/fc_texto_2</item>
+        <item name="android:background">?attr/selectableItemBackgroundBorderless</item>
+    </style>
+</resources>

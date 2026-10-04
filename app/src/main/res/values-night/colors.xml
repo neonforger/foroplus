@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Modo oscuro. MISMOS nombres que values/colors.xml: si aquí falta uno, Android usa el claro
+     y ese elemento se queda blanco en medio de una pantalla negra sin que falle nada.
+
+     No es un negro puro: el #000 con texto blanco produce halos y cansa en pantallas OLED con
+     texto largo, que es exactamente lo que es un hilo del foro. -->
+<resources>
+
+    <color name="fc_fondo">#121214</color>
+    <color name="fc_superficie">#1C1C20</color>
+
+    <color name="fc_texto">#ECECEE</color>
+    <color name="fc_texto_2">#B4B4BA</color>
+    <color name="fc_texto_3">#8A8A90</color>
+    <color name="fc_texto_off">#55555C</color>
+    <color name="fc_participado">#4FC3CF</color>
+
+    <color name="fc_divisoria">#2E2E34</color>
+    <color name="fc_chip">#2A2A30</color>
+
+    <!-- El rojo de marca aclarado. El #C8102E original sobre este fondo se queda por debajo de
+         un contraste legible; este mantiene la identidad y se lee. -->
+    <color name="fc_rojo">#FF6070</color>
+    <color name="fc_sobre_rojo">#FFFFFF</color>
+
+    <!-- La cita en oscuro: el rojo aclarado y un fondo un punto por encima del de la app,
+         suficiente para delimitar la cita sin convertirla en un bloque que grita. -->
+    <color name="fc_cita_barra">#FF6070</color>
+    <color name="fc_cita_fondo">#232329</color>
+
+    <!-- El resaltado del mensaje publicado, en versión oscura: el #FFF3F4 claro sobre fondo
+         negro sería un fogonazo blanco. -->
+    <color name="fc_resaltado">#3A2126</color>
+
+    <color name="fc_aviso_linea">#55323C</color>
+
+    <color name="fc_error_fondo">#3A1F1D</color>
+    <color name="fc_error_linea">#7A3A34</color>
+    <color name="fc_borde_autor">#80FF6070</color>
+    <color name="fc_scroll_pulgar">#99B4B4BA</color>
+
+    <color name="fc_ripple">#33FFFFFF</color>
+
+    <!-- Igual que en claro a proposito: es el avatar de relleno del foro (ver values/colors). -->
+    <!-- Igual que en claro a propósito: va sobre el vídeo (ver values/colors). -->
+    <!-- Velo detrás del panel del avatar: oscurece la pantalla para que el panel se lea como
+         una capa encima. En oscuro va más denso, o sobre fondo negro ni se notaría. -->
+    <color name="fc_velo">#99000000</color>
+
+    <color name="fc_capa_boton">#99000000</color>
+
+    <color name="fc_avatar_fondo">#3FAFBC</color>
+    <color name="fc_avatar_figura">#FFFFFF</color>
+
+</resources>

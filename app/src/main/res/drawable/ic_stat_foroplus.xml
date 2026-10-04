@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Icono de la barra de estado. Antes se usaba `android.R.drawable.ic_dialog_info`, la "i"
+  genérica de Android: los avisos de la app no se distinguían de los del sistema, y Green Floyd
+  pidió uno propio.
+
+  Es un bocadillo de foro con el "+" RECORTADO (fillType evenOdd), que es la marca: Foro + Plus.
+  Tiene que ser una SILUETA blanca sobre transparente — Android la tiñe él, así que cualquier
+  color o degradado se pierde y sale un borrón. Por eso no vale el icono de la app, que es PNG
+  a color.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M20,2H4C2.9,2 2,2.9 2,4v12c0,1.1 0.9,2 2,2h4v4l5,-4h7c1.1,0 2,-0.9 2,-2V4C22,2.9 21.1,2 20,2zM10.75,5.25h2.5v3.5h3.5v2.5h-3.5v3.5h-2.5v-3.5h-3.5v-2.5h3.5z" />
+
+</vector>

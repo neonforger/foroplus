@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Una fila de la pantalla de organizar barras: se ve / no se ve, el nombre, y el asa de
+  arrastrar. El asa es una zona propia a propósito: si el arrastre se agarrara desde toda la
+  fila, no se podría tocar la casilla sin que la lista creyera que la estás moviendo.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@color/fc_fondo">
+
+    <!-- Encabezado de sección ("BARRA DE ABAJO · 4 HUECOS" / "EN EL PANEL DEL AVATAR"): solo en
+         la barra de abajo, encima de la primera fila de cada parte. -->
+    <TextView
+        android:id="@+id/org_seccion"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingStart="18dp"
+        android:paddingEnd="18dp"
+        android:paddingTop="16dp"
+        android:paddingBottom="4dp"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        android:letterSpacing="0.04"
+        android:textColor="@color/fc_rojo"
+        android:visibility="gone" />
+
+<LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:background="@color/fc_fondo"
+    android:paddingStart="18dp"
+    android:paddingEnd="8dp">
+
+    <TextView
+        android:id="@+id/org_check"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:paddingTop="14dp"
+        android:paddingBottom="14dp"
+        android:paddingEnd="12dp"
+        android:textSize="17sp"
+        android:textColor="@color/fc_rojo"
+        android:text="☑" />
+
+    <TextView
+        android:id="@+id/org_label"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:paddingTop="14dp"
+        android:paddingBottom="14dp"
+        android:textSize="15sp"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:textColor="@color/fc_texto" />
+
+    <TextView
+        android:id="@+id/org_fijo"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="8dp"
+        android:textSize="11sp"
+        android:textColor="@color/fc_texto_3"
+        android:text="siempre"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/org_drag"
+        android:layout_width="52dp"
+        android:layout_height="52dp"
+        android:gravity="center"
+        android:textSize="18sp"
+        android:textColor="@color/fc_texto_3"
+        android:text="☰" />
+</LinearLayout>
+</LinearLayout>

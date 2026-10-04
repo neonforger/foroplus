@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Solo el build de desarrollo (applicationId com.foroplus.app.v2). El sufijo del
+         nombre es lo único que distingue los dos iconos en el móvil del dueño. -->
+    <string name="app_name">ForoPlus v2</string>
+</resources>

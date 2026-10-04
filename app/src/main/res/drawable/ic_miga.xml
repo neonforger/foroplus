@@ -1,0 +1,8 @@
+<!-- La flecha de la miga de la cabecera del hilo ("General ›"): el mismo chevron que las
+     filas de Opciones, en el rojo del enlace y a 16dp para ir con un texto de 12sp. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="16dp" android:height="16dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <path android:fillColor="@color/fc_rojo"
+        android:pathData="M10,6L8.59,7.41 13.17,12l-4.58,4.59L10,18l6,-6z"/>
+</vector>

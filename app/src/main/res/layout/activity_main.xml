@@ -1,0 +1,2663 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- v2-shell: capa nativa (lista de hilos + barra inferior) sobre el WebView clásico.
+     El WebView sigue siendo el motor de datos y la vista de hilo; se alternan por
+     visibilidad. Los ids swipe_refresh/webview se conservan del layout original. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/root_container"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <!-- Capa nativa -->
+        <LinearLayout
+            android:id="@+id/native_panel"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:background="@color/fc_fondo">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@color/fc_fondo">
+
+                <TextView
+                    android:id="@+id/native_header"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="8dp"
+                    android:paddingTop="12dp"
+                    android:paddingBottom="8dp"
+                    android:text="ForoPlus"
+                    android:textColor="@color/fc_rojo"
+                    android:textSize="20sp"
+                    android:textStyle="bold" />
+
+                <!-- Lo más movido del subforo. Es una etiqueta y no un emoji a propósito:
+                     los emoji ignoran el textColor y este tiene que ponerse rojo al activarse. -->
+                <TextView
+                    android:id="@+id/native_top"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:paddingStart="10dp"
+                    android:paddingEnd="10dp"
+                    android:paddingTop="14dp"
+                    android:paddingBottom="14dp"
+                    android:text="TOP"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/fc_texto_2"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Lo más movido" />
+
+                <ImageView
+                    android:id="@+id/native_search"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:padding="10dp"
+                    android:src="@drawable/ic_search"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Buscar" />
+
+                <!-- Tu avatar, donde antes estaba la rueda de Opciones (rediseño del 2026-10-02):
+                     abre el panel con todo lo que no va en la barra de abajo, Opciones incluidas.
+                     Sin sesión es el muñeco y abre el login. El punto rojo avisa de algo nuevo
+                     en una sección que vive en el panel. -->
+                <FrameLayout
+                    android:id="@+id/native_cuenta"
+                    android:layout_width="52dp"
+                    android:layout_height="48dp"
+                    android:layout_marginEnd="6dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Tu cuenta y más opciones">
+
+                    <ImageView
+                        android:id="@+id/native_avatar"
+                        android:layout_width="32dp"
+                        android:layout_height="32dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/ic_nav_person"
+                        android:contentDescription="@null" />
+
+                    <View
+                        android:id="@+id/native_avatar_punto"
+                        android:layout_width="11dp"
+                        android:layout_height="11dp"
+                        android:layout_gravity="top|end"
+                        android:layout_marginTop="7dp"
+                        android:layout_marginEnd="8dp"
+                        android:background="@drawable/bg_punto_avatar"
+                        android:visibility="gone" />
+                </FrameLayout>
+            </LinearLayout>
+
+            <com.google.android.material.tabs.TabLayout
+                android:id="@+id/forum_tabs"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@color/fc_fondo"
+                android:elevation="2dp"
+                app:tabMode="scrollable"
+                app:tabIndicatorColor="@color/fc_rojo"
+                app:tabSelectedTextColor="@color/fc_rojo"
+                app:tabTextColor="@color/fc_texto_2" />
+
+            <!-- Aviso del autor de la app, servido por fc_config.json. Oculto salvo que la
+                 config traiga uno. Es el único canal para hablarle a la gente sin publicar una
+                 versión en Play (ver Avisos.kt). La barra y su raya se encienden y se apagan
+                 SIEMPRE juntas, desde pintarAviso(): una raya de 1dp huérfana delimitando un
+                 hueco vacío ya nos pasó con la barra de páginas. -->
+            <LinearLayout
+                android:id="@+id/notice_bar"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:visibility="gone"
+                android:background="@color/fc_resaltado"
+                android:paddingStart="14dp"
+                android:paddingEnd="4dp"
+                android:paddingTop="10dp"
+                android:paddingBottom="10dp">
+
+                <TextView
+                    android:id="@+id/notice_text"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:textSize="13sp"
+                    android:textColor="@color/fc_texto"
+                    android:lineSpacingExtra="2dp" />
+
+                <TextView
+                    android:id="@+id/notice_close"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:paddingTop="6dp"
+                    android:paddingBottom="6dp"
+                    android:text="✕"
+                    android:textSize="15sp"
+                    android:textColor="@color/fc_texto_2"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Cerrar aviso" />
+            </LinearLayout>
+
+            <View
+                android:id="@+id/notice_divider"
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:visibility="gone"
+                android:background="@color/fc_aviso_linea" />
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+
+                <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+                    android:id="@+id/list_refresh"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent">
+
+                    <androidx.recyclerview.widget.RecyclerView
+                        android:id="@+id/thread_list"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:clipToPadding="false" />
+                </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+
+                <ProgressBar
+                    android:id="@+id/list_loading"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:id="@+id/list_empty"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:padding="24dp"
+                    android:gravity="center"
+                    android:textColor="@color/fc_texto_2"
+                    android:textSize="14sp"
+                    android:visibility="gone" />
+
+                <!-- Crear hilo nuevo en el subforo actual (Bloque crear/editar/borrar). -->
+                <com.google.android.material.floatingactionbutton.FloatingActionButton
+                    android:id="@+id/fab_new_thread"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="bottom|end"
+                    android:layout_margin="18dp"
+                    android:src="@drawable/ic_add"
+                    android:contentDescription="Crear hilo nuevo"
+                    app:backgroundTint="@color/fc_rojo"
+                    app:tint="@color/fc_sobre_rojo"
+                    android:visibility="gone" />
+            </FrameLayout>
+        </LinearLayout>
+
+        <!-- Capa hilo nativo (Fase 2) -->
+        <LinearLayout
+            android:id="@+id/thread_panel"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:background="@color/fc_fondo"
+            android:visibility="gone">
+
+            <!-- Cabecera del hilo (rehecha el 2026-09-27 con el dueño). Antes eran el título y
+                 CUATRO iconos en la misma fila (suscribir, responder, descargar, compartir), y el
+                 título se quedaba en media pantalla cortado con "…". Ahora, lo estándar en una
+                 pantalla de detalle: arriba la miga del subforo con los iconos, y el título
+                 debajo a todo lo ancho.
+                 · Responder se quitó: la barra de respuesta rápida está siempre que hay sesión,
+                   y su ⤢ abre el mismo editor completo con las citas.
+                 · Descargar y compartir van al ⋮: son de vez en cuando.
+                 · La estrella se queda a la vista porque ENSEÑA un estado (suscrito o no). -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@color/fc_fondo"
+                android:elevation="2dp"
+                android:paddingStart="14dp"
+                android:paddingEnd="4dp"
+                android:paddingBottom="8dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <!-- La miga: en qué subforo está el hilo. Tocarla lleva a ese subforo en
+                         Inicio. La pidió Juan: desde los hilos de un usuario no había forma de
+                         saber dónde ibas a responder. La pinta pintarMigaHilo(). -->
+                    <TextView
+                        android:id="@+id/thread_forum"
+                        android:layout_width="0dp"
+                        android:layout_height="44dp"
+                        android:layout_weight="1"
+                        android:gravity="center_vertical"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/fc_rojo"
+                        android:singleLine="true"
+                        android:ellipsize="end"
+                        android:drawablePadding="1dp" />
+
+                    <ImageButton
+                        android:id="@+id/thread_fav"
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:src="@drawable/ic_fav"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="Favorito" />
+
+                    <ImageButton
+                        android:id="@+id/thread_more"
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:src="@drawable/ic_more"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="Más opciones del hilo" />
+                </LinearLayout>
+
+                <!-- Dos lineas y "..." de partida; tocarlo lo despliega entero
+                     (pintarTituloHilo). No se deja siempre desplegado a proposito: la
+                     cabecera se pinta en TODOS los hilos y crecer de fijo come alto de
+                     lectura para arreglar solo los titulos largos. -->
+                <TextView
+                    android:id="@+id/thread_title"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:paddingEnd="10dp"
+                    android:textSize="17sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/fc_texto"
+                    android:maxLines="2"
+                    android:ellipsize="end"
+                    android:background="?attr/selectableItemBackground" />
+
+                <!-- Con más de una página es el botón de salto (abre sheet_thread_pages). -->
+                <TextView
+                    android:id="@+id/thread_page_info"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textSize="12sp"
+                    android:textColor="@color/fc_texto_3"
+                    android:paddingTop="4dp"
+                    android:paddingBottom="2dp"
+                    android:paddingEnd="8dp"
+                    android:background="?attr/selectableItemBackground" />
+            </LinearLayout>
+
+            <!-- Qué estás viendo exactamente, cuando NO es el hilo vivo: una copia guardada
+                 o los mensajes de una sola persona. Si no se dice, la gente cree que está
+                 viendo el hilo y no entiende por qué falta la mitad. -->
+            <TextView
+                android:id="@+id/contexto_bar"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@color/fc_cita_fondo"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:paddingTop="9dp"
+                android:paddingBottom="9dp"
+                android:textSize="12sp"
+                android:textColor="@color/fc_texto_2"
+                android:visibility="gone" />
+
+            <!-- Progreso de la descarga. Va AQUÍ, debajo de la cabecera y no en un diálogo,
+                 para poder seguir leyendo mientras baja. La franja, su texto y su barra se
+                 encienden y apagan SOLO desde pintarDescarga() — misma regla que la barra de
+                 avisos: media señal se lee como adorno y no como estado. -->
+            <LinearLayout
+                android:id="@+id/descarga_bar"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@color/fc_resaltado"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:paddingTop="10dp"
+                android:paddingBottom="12dp"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:id="@+id/descarga_texto"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:textSize="13sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/fc_texto" />
+
+                    <TextView
+                        android:id="@+id/descarga_cancelar"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:paddingStart="12dp"
+                        android:paddingTop="4dp"
+                        android:paddingBottom="4dp"
+                        android:text="Cancelar"
+                        android:textSize="13sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/fc_rojo"
+                        android:background="?attr/selectableItemBackground" />
+                </LinearLayout>
+
+                <ProgressBar
+                    android:id="@+id/descarga_progreso"
+                    style="?android:attr/progressBarStyleHorizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="4dp"
+                    android:layout_marginTop="9dp"
+                    android:max="100"
+                    android:progressTint="@color/fc_rojo"
+                    android:progressBackgroundTint="@color/fc_divisoria" />
+            </LinearLayout>
+
+            <!-- Barra de encuesta: solo visible en hilos que la tienen. Abre sheet_poll.
+                 Va aquí, fuera del RecyclerView, para que se vea desde cualquier página del
+                 hilo y para no desplazar la aritmética de posiciones de PostAdapter. -->
+            <LinearLayout
+                android:id="@+id/poll_bar"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="?attr/selectableItemBackground"
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp"
+                android:paddingTop="10dp"
+                android:paddingBottom="10dp"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="8dp"
+                    android:textSize="14sp"
+                    android:text="📊" />
+
+                <TextView
+                    android:id="@+id/poll_bar_text"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/fc_rojo"
+                    android:maxLines="1"
+                    android:ellipsize="end" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textSize="16sp"
+                    android:textColor="@color/fc_rojo"
+                    android:text="›" />
+            </LinearLayout>
+
+            <View
+                android:id="@+id/poll_bar_divider"
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="@color/fc_divisoria"
+                android:visibility="gone" />
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1">
+
+                <!-- Deslizar hacia abajo recarga la página que se está leyendo. Sin esto la
+                     única forma de ver si te han contestado era SALIR del hilo y volver a
+                     entrar (reportado por un tester el 2026-08-22). El gesto solo se dispara
+                     cuando la lista ya está arriba del todo, así que recargar y quedarse en lo
+                     alto es justo donde estaba el usuario: no le mueve la lectura. -->
+                <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+                    android:id="@+id/thread_refresh"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent">
+
+                    <!-- Sin `android:scrollbars`: esa barra es SOLO un indicador y no se puede
+                         arrastrar (un tester se quejó de justo eso). La sustituye
+                         BarraDesplazamiento, aquí abajo, que sí se agarra. -->
+                    <androidx.recyclerview.widget.RecyclerView
+                        android:id="@+id/post_list"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:clipToPadding="false" />
+                </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+
+                <!-- Barra de desplazamiento arrastrable. Va DESPUÉS del SwipeRefreshLayout para
+                     quedar por encima, y solo se queda los toques que empiezan sobre el pulgar:
+                     el resto pasan al mensaje de debajo. El pulgar es de tamaño FIJO, como
+                     antes (ver FixedThumbLayoutManager). -->
+                <com.fcplus.forocoches.BarraDesplazamiento
+                    android:id="@+id/post_scrollbar"
+                    android:layout_width="20dp"
+                    android:layout_height="match_parent"
+                    android:layout_gravity="end" />
+
+                <!-- Reproductor flotante: el vídeo que estabas viendo sigue sonando aquí
+                     mientras lees el resto del hilo. Va DESPUÉS de todo lo demás para dibujarse
+                     encima, y abajo a la derecha para no tapar el sitio donde se escribe.
+                     Lo importante es que sigue ENGANCHADO a la ventana: un WebView desenganchado
+                     lo pausa Chromium, que era justo el problema (ver MiniReproductor). -->
+                <FrameLayout
+                    android:id="@+id/mini_reproductor"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="bottom|end"
+                    android:layout_marginEnd="12dp"
+                    android:layout_marginBottom="12dp"
+                    android:elevation="8dp"
+                    android:visibility="gone">
+
+                    <!-- Solo el rectángulo del vídeo: ni marco, ni fondo, ni tira de botones.
+                         La primera versión tenía el ✕ en una franja propia encima y se veía un
+                         borde blanco feo, que es lo único que se nota cuando el vídeo flota. -->
+                    <FrameLayout
+                        android:id="@+id/mini_hueco"
+                        android:layout_width="200dp"
+                        android:layout_height="113dp" />
+
+                    <!-- El ✕ va ENCIMA del vídeo, como en cualquier reproductor. -->
+                    <TextView
+                        android:id="@+id/mini_cerrar"
+                        android:layout_width="30dp"
+                        android:layout_height="30dp"
+                        android:layout_gravity="top|end"
+                        android:layout_margin="5dp"
+                        android:gravity="center"
+                        android:text="✕"
+                        android:textSize="13sp"
+                        android:textColor="@color/fc_sobre_rojo"
+                        android:background="@drawable/bg_mini_cerrar" />
+                </FrameLayout>
+
+                <ProgressBar
+                    android:id="@+id/thread_loading"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:visibility="gone" />
+
+                <!-- Hilo restringido (+HD): misma info que da FC, con nuestros estilos. -->
+                <LinearLayout
+                    android:id="@+id/thread_restricted"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:paddingStart="32dp"
+                    android:paddingEnd="32dp"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="🔒"
+                        android:textSize="34sp" />
+
+                    <TextView
+                        android:id="@+id/restricted_msg"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="14dp"
+                        android:gravity="center"
+                        android:textSize="15sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/fc_texto" />
+
+                    <TextView
+                        android:id="@+id/restricted_meta"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:gravity="center"
+                        android:textSize="12sp"
+                        android:textColor="@color/fc_texto_3" />
+
+                    <TextView
+                        android:id="@+id/restricted_login"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="22dp"
+                        android:paddingTop="12dp"
+                        android:paddingBottom="12dp"
+                        android:gravity="center"
+                        android:text="Iniciar sesión"
+                        android:textSize="15sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/fc_sobre_rojo"
+                        android:background="@color/fc_rojo" />
+
+                    <TextView
+                        android:id="@+id/restricted_invite"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="14dp"
+                        android:paddingTop="8dp"
+                        android:paddingBottom="8dp"
+                        android:paddingStart="12dp"
+                        android:paddingEnd="12dp"
+                        android:text="Cómo conseguir una invitación"
+                        android:textSize="13sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/fc_rojo"
+                        android:background="?attr/selectableItemBackground" />
+                </LinearLayout>
+            </FrameLayout>
+
+            <!-- Barra de páginas, SIEMPRE visible en hilos de más de una página y ABAJO,
+                 pegada a la respuesta rápida: una página se termina de leer ABAJO, así que con
+                 los botones arriba cada cambio obligaba a subir treinta mensajes y volver.
+                 Ocupa lo mismo en un sitio que en otro (es la misma franja movida), así que solo
+                 cambia el alcance del pulgar. NO es un ítem del RecyclerView a propósito: la
+                 aritmética de posiciones de PostAdapter es 1:1 con el LayoutManager y un pie la
+                 desplazaría. Los números los mete el código. -->
+            <View
+                android:id="@+id/page_bar_divider"
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="@color/fc_divisoria"
+                android:visibility="gone" />
+
+            <HorizontalScrollView
+                android:id="@+id/page_bar"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@color/fc_superficie"
+                android:scrollbars="none"
+                android:fillViewport="true"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:id="@+id/page_bar_row"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center"
+                    android:paddingStart="8dp"
+                    android:paddingEnd="8dp"
+                    android:paddingTop="3dp"
+                    android:paddingBottom="3dp" />
+            </HorizontalScrollView>
+
+            <!-- RESPUESTA RÁPIDA: caja sin BBCode al fondo del hilo. Envía por el MISMO
+                 camino que el composer completo (fcSubmitReply). ⤢ abre el composer grande
+                 llevándose el texto y el cursor. FIJA: no se oculta al hacer scroll (2026-08-05).
+                 Se intentó apartarla al bajar y no compensaba: al ser un hijo normal de este
+                 LinearLayout vertical, translationY mueve solo el DIBUJO y el hueco medido
+                 sigue reservado → no devolvía ni un píxel de pantalla, y encima el animador
+                 se reiniciaba en cada evento de scroll, así que salía a trompicones. -->
+            <LinearLayout
+                android:id="@+id/quick_reply_bar"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="bottom"
+                android:background="@color/fc_fondo"
+                android:elevation="6dp"
+                android:paddingStart="10dp"
+                android:paddingEnd="6dp"
+                android:paddingTop="6dp"
+                android:paddingBottom="6dp"
+                android:visibility="gone">
+
+                <!-- Con qué cuenta se va a publicar: la única señal cuando cabecera y barra
+                     de abajo no se ven (estás dentro del hilo). Solo se pinta con más de una
+                     cuenta guardada; ver MainActivity.pintarAvatarComposer(). -->
+                <ImageView
+                    android:id="@+id/quick_avatar"
+                    android:layout_width="28dp"
+                    android:layout_height="28dp"
+                    android:layout_marginEnd="8dp"
+                    android:layout_gravity="bottom"
+                    android:layout_marginBottom="6dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Cuenta con la que publicas"
+                    android:visibility="gone" />
+
+                <EditText
+                    android:id="@+id/quick_input"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:background="@drawable/bg_quick_input"
+                    android:paddingStart="14dp"
+                    android:paddingEnd="14dp"
+                    android:paddingTop="10dp"
+                    android:paddingBottom="10dp"
+                    android:textSize="15sp"
+                    android:textColor="@color/fc_texto"
+                    android:hint="Responder…"
+                    android:textColorHint="@color/fc_texto_3"
+                    android:inputType="textMultiLine|textCapSentences"
+                    android:maxLines="4"
+                    android:importantForAutofill="no" />
+
+                <TextView
+                    android:id="@+id/quick_expand"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="8dp"
+                    android:paddingTop="10dp"
+                    android:paddingBottom="10dp"
+                    android:text="⤢"
+                    android:textSize="19sp"
+                    android:textColor="@color/fc_texto_2"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Abrir el editor completo" />
+
+                <TextView
+                    android:id="@+id/quick_send"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:paddingStart="8dp"
+                    android:paddingEnd="12dp"
+                    android:paddingTop="10dp"
+                    android:paddingBottom="10dp"
+                    android:text="➤"
+                    android:textSize="19sp"
+                    android:textColor="@color/fc_rojo"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Enviar respuesta" />
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- Capa RESPUESTA nativa (Fase 3): pantalla completa propia, tipo "pestaña de
+             respuesta". Citas arriba como tarjetas quitables + caja grande. El envío usa
+             fcSubmitReply, que reutiliza el securitytoken del form real de FC. -->
+        <LinearLayout
+            android:id="@+id/reply_panel"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:background="@color/fc_fondo"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@color/fc_fondo"
+                android:elevation="2dp"
+                android:paddingStart="6dp"
+                android:paddingEnd="10dp"
+                android:paddingTop="6dp"
+                android:paddingBottom="6dp">
+
+                <TextView
+                    android:id="@+id/reply_cancel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:paddingTop="10dp"
+                    android:paddingBottom="10dp"
+                    android:text="✕"
+                    android:textSize="18sp"
+                    android:textColor="@color/fc_texto_2"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Cancelar" />
+
+                <!-- Con qué cuenta se va a publicar. Aquí, y no en una franja aparte, porque
+                     así no cuesta alto con el teclado abierto. Lo pintan juntos avatar y
+                     nombre desde MainActivity.pintarCuentaComposer(): o salen los dos o no
+                     sale ninguno (misma lección que la barra de avisos y la de páginas). -->
+                <ImageView
+                    android:id="@+id/reply_avatar"
+                    android:layout_width="26dp"
+                    android:layout_height="26dp"
+                    android:layout_marginStart="4dp"
+                    android:layout_marginEnd="8dp"
+                    android:contentDescription="Cuenta con la que publicas"
+                    android:visibility="gone" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="4dp"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/reply_header_title"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Responder"
+                        android:textSize="17sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/fc_texto" />
+
+                    <TextView
+                        android:id="@+id/reply_header_account"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textSize="12sp"
+                        android:textColor="@color/fc_texto_2"
+                        android:maxLines="1"
+                        android:ellipsize="end"
+                        android:visibility="gone" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/reply_send"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:paddingStart="18dp"
+                    android:paddingEnd="18dp"
+                    android:paddingTop="10dp"
+                    android:paddingBottom="10dp"
+                    android:text="Enviar"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/fc_rojo"
+                    android:background="?attr/selectableItemBackground" />
+            </LinearLayout>
+
+            <ScrollView
+                android:id="@+id/reply_scroll"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:fillViewport="true">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="12dp">
+
+                    <!-- Asunto: solo visible al crear hilo nuevo. -->
+                    <EditText
+                        android:id="@+id/reply_subject"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="6dp"
+                        android:background="@color/fc_chip"
+                        android:padding="12dp"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/fc_texto"
+                        android:hint="Título del hilo"
+                        android:textColorHint="@color/fc_texto_3"
+                        android:inputType="text|textCapSentences"
+                        android:maxLines="2"
+                        android:importantForAutofill="no"
+                        android:visibility="gone" />
+
+                    <!-- Encuesta: solo al crear hilo nuevo. Ver EncuestaNueva. -->
+                    <LinearLayout
+                        android:id="@+id/reply_poll_box"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:layout_marginBottom="6dp"
+                        android:visibility="gone">
+
+                        <TextView
+                            android:id="@+id/reply_poll_toggle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:paddingTop="8dp"
+                            android:paddingBottom="8dp"
+                            android:paddingEnd="12dp"
+                            android:text="＋ Añadir encuesta"
+                            android:textSize="15sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/fc_rojo"
+                            android:background="?attr/selectableItemBackground" />
+
+                        <LinearLayout
+                            android:id="@+id/reply_poll_form"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:background="@color/fc_chip"
+                            android:padding="12dp"
+                            android:visibility="gone">
+
+                            <EditText
+                                android:id="@+id/reply_poll_question"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:hint="Pregunta de la encuesta"
+                                android:textColorHint="@color/fc_texto_3"
+                                android:textColor="@color/fc_texto"
+                                android:textSize="15sp"
+                                android:textStyle="bold"
+                                android:inputType="text|textCapSentences"
+                                android:importantForAutofill="no" />
+
+                            <!-- Las opciones se añaden por código (mínimo 2). -->
+                            <LinearLayout
+                                android:id="@+id/reply_poll_options"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="vertical" />
+
+                            <TextView
+                                android:id="@+id/reply_poll_add"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:paddingTop="8dp"
+                                android:paddingBottom="8dp"
+                                android:text="＋ Otra opción"
+                                android:textSize="14sp"
+                                android:textColor="@color/fc_rojo"
+                                android:background="?attr/selectableItemBackground" />
+
+                            <CheckBox
+                                android:id="@+id/reply_poll_multiple"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Se pueden elegir varias opciones"
+                                android:textColor="@color/fc_texto"
+                                android:textSize="14sp" />
+
+                            <CheckBox
+                                android:id="@+id/reply_poll_public"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Votos públicos (se ve quién vota qué)"
+                                android:textColor="@color/fc_texto"
+                                android:textSize="14sp" />
+
+                            <EditText
+                                android:id="@+id/reply_poll_days"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:hint="Días que dura (vacío = no se cierra)"
+                                android:textColorHint="@color/fc_texto_3"
+                                android:textColor="@color/fc_texto"
+                                android:textSize="14sp"
+                                android:inputType="number"
+                                android:importantForAutofill="no" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <!-- Tarjetas de cita (una por post citado), añadidas por código. -->
+                    <LinearLayout
+                        android:id="@+id/reply_quotes"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical" />
+
+                    <EditText
+                        android:id="@+id/reply_input"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:minHeight="140dp"
+                        android:background="@null"
+                        android:gravity="top"
+                        android:textSize="15sp"
+                        android:textColor="@color/fc_texto"
+                        android:hint="Escribe tu respuesta…"
+                        android:textColorHint="@color/fc_texto_3"
+                        android:inputType="textMultiLine|textCapSentences"
+                        android:importantForAutofill="no" />
+                </LinearLayout>
+            </ScrollView>
+
+            <!-- Barra de formato BBCode (Bloque A): siempre visible encima del teclado. -->
+            <HorizontalScrollView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@color/fc_chip"
+                android:elevation="4dp"
+                android:scrollbars="none">
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:paddingStart="4dp"
+                    android:paddingEnd="4dp">
+
+                    <TextView
+                        android:id="@+id/fmt_bold"
+                        style="@style/FmtButton"
+                        android:text="B"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/fmt_italic"
+                        style="@style/FmtButton"
+                        android:text="I"
+                        android:textStyle="italic" />
+
+                    <TextView
+                        android:id="@+id/fmt_under"
+                        style="@style/FmtButton"
+                        android:text="U" />
+
+                    <TextView
+                        android:id="@+id/fmt_color"
+                        style="@style/FmtButton"
+                        android:text="A"
+                        android:textColor="@color/fc_rojo"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/fmt_size"
+                        style="@style/FmtButton"
+                        android:text="Tt" />
+
+                    <TextView
+                        android:id="@+id/fmt_align"
+                        style="@style/FmtButton"
+                        android:text="≡" />
+
+                    <TextView
+                        android:id="@+id/fmt_list"
+                        style="@style/FmtButton"
+                        android:text="•‒" />
+
+                    <!-- Subir una foto del móvil. Va ANTES del 🖼 (pegar una URL) porque es lo
+                         que quiere hacer casi todo el mundo: sin esto había que salir a la web,
+                         y los enlaces del foro traen de vuelta a la app (el círculo vicioso que
+                         reportó V el 2026-09-08). -->
+                    <TextView
+                        android:id="@+id/fmt_subir"
+                        style="@style/FmtButton"
+                        android:text="📷" />
+
+                    <TextView
+                        android:id="@+id/fmt_img"
+                        style="@style/FmtButton"
+                        android:text="🖼" />
+
+                    <TextView
+                        android:id="@+id/fmt_url"
+                        style="@style/FmtButton"
+                        android:text="🔗" />
+
+                    <TextView
+                        android:id="@+id/fmt_embed"
+                        style="@style/FmtButton"
+                        android:text="▶" />
+
+                    <TextView
+                        android:id="@+id/fmt_quote"
+                        style="@style/FmtButton"
+                        android:text="❝" />
+
+                    <TextView
+                        android:id="@+id/fmt_spoiler"
+                        style="@style/FmtButton"
+                        android:text="▓" />
+
+                    <TextView
+                        android:id="@+id/fmt_smiley"
+                        style="@style/FmtButton"
+                        android:text="🙂" />
+                </LinearLayout>
+            </HorizontalScrollView>
+        </LinearLayout>
+
+        <!-- Capa CITAS/MENCIONES nativa (Bloque B): aisladas, no el batiburrillo de FC. -->
+        <LinearLayout
+            android:id="@+id/notices_panel"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:background="@color/fc_fondo"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:elevation="2dp"
+                android:background="@color/fc_fondo">
+
+                <TextView
+                    android:id="@+id/notices_header"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="8dp"
+                    android:paddingTop="12dp"
+                    android:paddingBottom="10dp"
+                    android:textColor="@color/fc_rojo"
+                    android:textSize="20sp"
+                    android:textStyle="bold" />
+
+                <!-- Desde que cada fila se marca al tocarla, hace falta una forma de vaciarlo
+                     de golpe: esto es lo que antes hacía sola la pantalla al abrirse. Solo
+                     aparece en Citas y Menciones (ver pintarNoticias). -->
+                <TextView
+                    android:id="@+id/notices_mark_all"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:paddingStart="10dp"
+                    android:paddingEnd="16dp"
+                    android:paddingTop="12dp"
+                    android:paddingBottom="12dp"
+                    android:text="Marcar todo leído"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/fc_rojo"
+                    android:background="?attr/selectableItemBackground"
+                    android:visibility="gone" />
+            </LinearLayout>
+
+            <!-- Citas y Menciones comparten pantalla desde el 2026-10-02 (botón Avisos): dos
+                 pastillas como las de Recibidos/Enviados de los privados. Solo se ven en esas
+                 dos; "sus mensajes" y la búsqueda usan este mismo panel sin ellas. -->
+            <LinearLayout
+                android:id="@+id/notices_pastillas"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="10dp"
+                android:visibility="gone">
+
+                <TextView
+                    android:id="@+id/notices_pill_citas"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:gravity="center"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    android:background="@drawable/bg_pastilla"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/notices_pill_menciones"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:layout_marginStart="8dp"
+                    android:gravity="center"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    android:background="@drawable/bg_pastilla"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1">
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/notices_list"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:clipToPadding="false" />
+
+                <ProgressBar
+                    android:id="@+id/notices_loading"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:id="@+id/notices_empty"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:padding="24dp"
+                    android:gravity="center"
+                    android:textColor="@color/fc_texto_2"
+                    android:textSize="14sp"
+                    android:visibility="gone" />
+            </FrameLayout>
+        </LinearLayout>
+
+        <!-- Capa PERFIL nativa (Bloque B): datos básicos + cerrar sesión. CON SCROLL desde que
+             enseña firma y "Sobre mí" (2026-09-27): es la misma lección que la ficha ajena, que
+             sin scroll cortaba lo de abajo en pantallas pequeñas o con la letra grande. -->
+        <ScrollView
+            android:id="@+id/profile_panel"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@color/fc_fondo"
+            android:fillViewport="true"
+            android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center_horizontal"
+            android:paddingStart="32dp"
+            android:paddingEnd="32dp"
+            android:paddingBottom="24dp">
+
+            <ImageView
+                android:id="@+id/profile_avatar"
+                android:layout_width="84dp"
+                android:layout_height="84dp"
+                android:layout_marginTop="56dp"
+                android:contentDescription="@null" />
+
+            <TextView
+                android:id="@+id/profile_name"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:textSize="22sp"
+                android:textStyle="bold"
+                android:textColor="@color/fc_texto" />
+
+            <TextView
+                android:id="@+id/profile_sub"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:paddingStart="24dp"
+                android:paddingEnd="24dp"
+                android:gravity="center_horizontal"
+                android:text="Cuenta de ForoCoches"
+                android:textSize="13sp"
+                android:textColor="@color/fc_texto_3" />
+
+            <!-- Lo mismo que ven los demás en tu ficha: firma y "Sobre mí". -->
+            <TextView
+                android:id="@+id/profile_firma"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:gravity="center_horizontal"
+                android:textSize="13sp"
+                android:textStyle="italic"
+                android:textColor="@color/fc_texto_2"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/profile_sobre_mi"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:gravity="center_horizontal"
+                android:lineSpacingExtra="4dp"
+                android:textSize="14sp"
+                android:textColor="@color/fc_texto"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/profile_pms"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="36dp"
+                android:paddingTop="14dp"
+                android:paddingBottom="14dp"
+                android:gravity="center"
+                android:text="Mensajes privados"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:textColor="@color/fc_sobre_rojo"
+                android:background="@color/fc_rojo" />
+
+            <!-- Tus mensajes uno a uno, la misma búsqueda que "Sus mensajes" de una ficha ajena.
+                 "Mis hilos" y "Participados" ya están en la barra de abajo; esto era lo que
+                 faltaba (Green Floyd, Telegram 2237). Fila secundaria, como la de cuentas. -->
+            <TextView
+                android:id="@+id/profile_mis_mensajes"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:paddingTop="12dp"
+                android:paddingBottom="12dp"
+                android:gravity="center"
+                android:text="Mis mensajes"
+                android:textSize="14sp"
+                android:textColor="@color/fc_texto"
+                android:background="?attr/selectableItemBackground" />
+
+            <!-- Aquí estaba "Ver perfil completo (navegador)". Quitado el 2026-09-25 por la
+                 misma decisión del dueño que lo quitó del perfil ajeno en la 1.8.0: nada de
+                 salidas al foro. -->
+
+            <!-- Fila secundaria: NO es un botón rojo como profile_logout a propósito, para no
+                 competirle la atención a "Cerrar sesión". El texto real ("Añadir otra cuenta" /
+                 "Cambiar de cuenta") se pone en showProfile()/onProfileJson() según cuántas
+                 cuentas haya guardadas; este es solo el texto por defecto antes de pintar. -->
+            <TextView
+                android:id="@+id/profile_cuentas"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:paddingTop="12dp"
+                android:paddingBottom="12dp"
+                android:gravity="center"
+                android:text="Añadir otra cuenta"
+                android:textSize="14sp"
+                android:textColor="@color/fc_texto"
+                android:background="?attr/selectableItemBackground" />
+
+            <TextView
+                android:id="@+id/profile_logout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:paddingTop="13dp"
+                android:paddingBottom="13dp"
+                android:gravity="center"
+                android:text="Cerrar sesión"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:textColor="@color/fc_sobre_rojo"
+                android:background="@color/fc_rojo" />
+        </LinearLayout>
+        </ScrollView>
+
+        <!-- Capa OPCIONES nativa: fuente, avatar, filtros de palabras y usuarios ignorados. -->
+        <LinearLayout
+            android:id="@+id/options_panel"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:background="@color/fc_fondo"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@color/fc_fondo"
+                android:elevation="2dp"
+                android:paddingStart="6dp"
+                android:paddingEnd="10dp"
+                android:paddingTop="6dp"
+                android:paddingBottom="6dp">
+
+                <TextView
+                    android:id="@+id/options_back"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:paddingTop="10dp"
+                    android:paddingBottom="10dp"
+                    android:text="←"
+                    android:textSize="20sp"
+                    android:textColor="@color/fc_texto_2"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Volver" />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:id="@+id/options_title"
+                    android:layout_marginStart="4dp"
+                    android:text="Opciones"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/fc_texto" />
+            </LinearLayout>
+
+            <ScrollView
+                android:id="@+id/options_scroll"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:paddingStart="18dp"
+                    android:paddingEnd="18dp"
+                    android:paddingBottom="24dp">
+
+                    <!-- Opciones en dos niveles (2026-09-25): esta es la pantalla de CATEGORÍAS, con
+                         el resumen de cómo lo tienes bajo cada una, y cada categoría abre su
+                         subpantalla (los LinearLayout opt_sec_* de debajo). Es el patrón de los
+                         Ajustes de Android; antes era una sola lista de doce secciones.
+                         La navegación entre niveles vive en OptionsController. -->
+                    <LinearLayout
+                        android:id="@+id/opt_home"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:paddingTop="8dp">
+
+                        <include android:id="@+id/opt_cat_apariencia" layout="@layout/item_opt_categoria" />
+                        <include android:id="@+id/opt_cat_filtros" layout="@layout/item_opt_categoria" />
+                        <include android:id="@+id/opt_cat_personalizar" layout="@layout/item_opt_categoria" />
+                        <include android:id="@+id/opt_cat_publicar" layout="@layout/item_opt_categoria" />
+                        <include android:id="@+id/opt_enlaces" layout="@layout/item_opt_categoria" />
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:layout_marginTop="8dp"
+                            android:layout_marginBottom="8dp"
+                            android:background="@color/fc_divisoria" />
+
+                        <include android:id="@+id/opt_telegram" layout="@layout/item_opt_categoria" />
+                        <include android:id="@+id/opt_coffee" layout="@layout/item_opt_categoria" />
+                        <include android:id="@+id/opt_novedades" layout="@layout/item_opt_categoria" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/opt_sec_apariencia"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:visibility="gone">
+
+                        <!-- Tema: lo primero de Apariencia, que es lo que más se busca aquí. -->
+                        <TextView style="@style/OptSection" android:text="Tema" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:layout_marginTop="6dp">
+
+                            <TextView android:id="@+id/opt_tema_claro" style="@style/OptChip" android:text="Claro" />
+                            <TextView android:id="@+id/opt_tema_oscuro" style="@style/OptChip" android:text="Oscuro" />
+                            <TextView android:id="@+id/opt_tema_sistema" style="@style/OptChip" android:text="Sistema" />
+                        </LinearLayout>
+
+                        <!-- Fuente -->
+                        <TextView style="@style/OptSection" android:text="Tamaño de los mensajes" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:layout_marginTop="6dp">
+
+                            <TextView android:id="@+id/opt_font_small" style="@style/OptChip" android:text="Pequeña" />
+                            <TextView android:id="@+id/opt_font_normal" style="@style/OptChip" android:text="Normal" />
+                            <TextView android:id="@+id/opt_font_large" style="@style/OptChip" android:text="Grande" />
+                        </LinearLayout>
+
+                        <!-- Títulos del listado: ajuste APARTE del de los mensajes (Márquez). -->
+                        <TextView style="@style/OptSection" android:text="Tamaño de los títulos" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:layout_marginTop="6dp">
+
+                            <TextView android:id="@+id/opt_title_small" style="@style/OptChip" android:text="Pequeña" />
+                            <TextView android:id="@+id/opt_title_normal" style="@style/OptChip" android:text="Normal" />
+                            <TextView android:id="@+id/opt_title_large" style="@style/OptChip" android:text="Grande" />
+                        </LinearLayout>
+
+                        <!-- Quién escribió el último mensaje, bajo la hora de cada fila (Juan). Se
+                             puede apagar porque cuesta una petición por hilo (~33 KB): ver
+                             UltimosPosteadores. Encendido por defecto, que es lo que pidieron. -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:layout_marginTop="22dp">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="Último que escribe"
+                                android:textSize="13sp"
+                                android:textStyle="bold"
+                                android:textColor="@color/fc_rojo"
+                                android:letterSpacing="0.03" />
+
+                            <androidx.appcompat.widget.SwitchCompat
+                                android:id="@+id/opt_ultimo_switch"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content" />
+                        </LinearLayout>
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="En la lista de hilos, debajo de la hora, quién escribió el último mensaje. ForoCoches no lo da en la lista: hay que preguntarlo hilo a hilo, y gasta algo más de datos."
+                            android:textSize="12sp"
+                            android:textColor="@color/fc_texto_3" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/opt_sec_filtros"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:visibility="gone">
+
+                        <!-- Usuarios ignorados -->
+                        <TextView style="@style/OptSection" android:text="Usuarios ignorados" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Oculta los mensajes e hilos de estos usuarios."
+                            android:textSize="12sp"
+                            android:textColor="@color/fc_texto_3" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:layout_marginTop="8dp">
+
+                            <EditText
+                                android:id="@+id/opt_ig_input"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:hint="Nombre de usuario"
+                                android:textColorHint="@color/fc_texto_3"
+                                android:textSize="14sp"
+                                android:textColor="@color/fc_texto"
+                                android:inputType="text"
+                                android:maxLines="1"
+                                android:importantForAutofill="no" />
+
+                            <TextView
+                                android:id="@+id/opt_ig_add"
+                                style="@style/OptAddBtn"
+                                android:text="Añadir" />
+                        </LinearLayout>
+
+                        <TextView
+                            android:id="@+id/opt_ig_toggle"
+                            style="@style/OptToggle" />
+
+                        <LinearLayout
+                            android:id="@+id/opt_ig_chips"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:layout_marginTop="6dp" />
+
+                        <!-- Filtro de palabras -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:layout_marginTop="22dp">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="Filtro de palabras"
+                                android:textSize="13sp"
+                                android:textStyle="bold"
+                                android:textColor="@color/fc_rojo"
+                                android:letterSpacing="0.03" />
+
+                            <androidx.appcompat.widget.SwitchCompat
+                                android:id="@+id/opt_kw_switch"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content" />
+                        </LinearLayout>
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="Oculta hilos cuyo título contenga estas palabras."
+                            android:textSize="12sp"
+                            android:textColor="@color/fc_texto_3" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:layout_marginTop="8dp">
+
+                            <EditText
+                                android:id="@+id/opt_kw_input"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:hint="Añadir palabra"
+                                android:textColorHint="@color/fc_texto_3"
+                                android:textSize="14sp"
+                                android:textColor="@color/fc_texto"
+                                android:inputType="text"
+                                android:maxLines="1"
+                                android:importantForAutofill="no" />
+
+                            <TextView
+                                android:id="@+id/opt_kw_add"
+                                style="@style/OptAddBtn"
+                                android:text="Añadir" />
+                        </LinearLayout>
+
+                        <TextView
+                            android:id="@+id/opt_kw_toggle"
+                            style="@style/OptToggle" />
+
+                        <LinearLayout
+                            android:id="@+id/opt_kw_chips"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:layout_marginTop="6dp" />
+
+                        <!-- Hilos ignorados. Va DESPUÉS de los otros dos filtros porque es el
+                             menos usado de los tres, y sobre todo porque es la única forma de
+                             deshacer un "ignorar este hilo" dado por error desde la lista. -->
+                        <TextView style="@style/OptSection" android:text="Hilos ignorados" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Hilos que has mandado callar con una pulsación larga en la lista."
+                            android:textSize="12sp"
+                            android:textColor="@color/fc_texto_3"
+                            android:layout_marginTop="2dp" />
+
+                        <TextView
+                            android:id="@+id/opt_hilos_toggle"
+                            style="@style/OptToggle" />
+
+                        <LinearLayout
+                            android:id="@+id/opt_hilos_chips"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:layout_marginTop="6dp" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/opt_sec_personalizar"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:visibility="gone">
+
+                        <!-- Barras: qué se ve en cada una y en qué orden. -->
+                        <TextView style="@style/OptSection" android:text="Barras" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Elige qué pestañas y qué botones quieres ver, y en qué orden."
+                            android:textSize="12sp"
+                            android:textColor="@color/fc_texto_3" />
+
+                        <TextView
+                            android:id="@+id/opt_org_tabs"
+                            style="@style/OptRow"
+                            android:text="Subforos de arriba  ›" />
+
+                        <TextView
+                            android:id="@+id/opt_org_nav"
+                            style="@style/OptRow"
+                            android:text="Barra de abajo  ›" />
+
+                        <!-- Popurrí: los subforos que se mezclan en la pestaña propia. -->
+                        <TextView style="@style/OptSection" android:text="Popurrí" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Una pestaña con los hilos de los subforos que elijas, mezclados y ordenados por lo último que se ha escrito. Hasta 5."
+                            android:textSize="12sp"
+                            android:textColor="@color/fc_texto_3" />
+
+                        <TextView
+                            android:id="@+id/opt_popurri_toggle"
+                            style="@style/OptToggle" />
+
+                        <LinearLayout
+                            android:id="@+id/opt_popurri_chips"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:layout_marginTop="6dp" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/opt_sec_publicar"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:visibility="gone">
+
+                        <!-- Firma "Enviado desde ForoPlus" al publicar (opcional; apagada por defecto) -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:layout_marginTop="22dp">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="Firma de ForoPlus"
+                                android:textSize="13sp"
+                                android:textStyle="bold"
+                                android:textColor="@color/fc_rojo"
+                                android:letterSpacing="0.03" />
+
+                            <androidx.appcompat.widget.SwitchCompat
+                                android:id="@+id/opt_sign_switch"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content" />
+                        </LinearLayout>
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="Añade en pequeñito «Enviado desde ForoPlus» al final de lo que publicas. Apágalo y tus mensajes salen sin nada."
+                            android:textSize="12sp"
+                            android:textColor="@color/fc_texto_3" />
+                    </LinearLayout>
+                </LinearLayout>
+            </ScrollView>
+        </LinearLayout>
+
+        <!-- Capa ORGANIZAR BARRAS: qué se ve en cada barra y en qué orden.
+             Pantalla propia y no una sección de Opciones porque para arrastrar hace falta un
+             RecyclerView, y meterlo dentro del ScrollView del panel es pelear dos scrolls
+             verticales. La misma pantalla sirve para las dos barras. -->
+        <LinearLayout
+            android:id="@+id/organizar_panel"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:background="@color/fc_fondo"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingStart="8dp"
+                android:paddingEnd="16dp"
+                android:paddingTop="10dp"
+                android:paddingBottom="10dp">
+
+                <TextView
+                    android:id="@+id/org_back"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:paddingTop="10dp"
+                    android:paddingBottom="10dp"
+                    android:text="←"
+                    android:textSize="20sp"
+                    android:textColor="@color/fc_texto_2"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Volver" />
+
+                <TextView
+                    android:id="@+id/org_title"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="4dp"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/fc_texto" />
+
+                <TextView
+                    android:id="@+id/org_reset"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:paddingTop="10dp"
+                    android:paddingBottom="10dp"
+                    android:text="Restablecer"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/fc_rojo"
+                    android:background="?attr/selectableItemBackground" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/org_hint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingStart="18dp"
+                android:paddingEnd="18dp"
+                android:paddingBottom="10dp"
+                android:textSize="12sp"
+                android:textColor="@color/fc_texto_3" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="@color/fc_divisoria" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/org_list"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+        </LinearLayout>
+
+        <!-- Capa NOVEDADES: el historial de versiones, desde Opciones → Acerca de. Pantalla
+             propia (como Organizar) para que el atrás vuelva a Opciones. Las versiones se
+             pintan desde código (ver Novedades.kt): el fichero crece con cada publicación. -->
+        <LinearLayout
+            android:id="@+id/novedades_panel"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:background="@color/fc_fondo"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingStart="8dp"
+                android:paddingEnd="16dp"
+                android:paddingTop="10dp"
+                android:paddingBottom="10dp">
+
+                <TextView
+                    android:id="@+id/novedades_back"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:paddingTop="10dp"
+                    android:paddingBottom="10dp"
+                    android:text="←"
+                    android:textSize="20sp"
+                    android:textColor="@color/fc_texto_2"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Volver" />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="4dp"
+                    android:text="Novedades"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/fc_texto" />
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="@color/fc_divisoria" />
+
+            <ScrollView
+                android:id="@+id/novedades_scroll"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1">
+
+                <LinearLayout
+                    android:id="@+id/novedades_lista"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:paddingStart="18dp"
+                    android:paddingEnd="18dp"
+                    android:paddingBottom="24dp" />
+            </ScrollView>
+        </LinearLayout>
+
+        <!-- Capa MENSAJES PRIVADOS: bandeja nativa (la regla de oro prohíbe la web). -->
+        <LinearLayout
+            android:id="@+id/pm_panel"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:background="@color/fc_fondo"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@color/fc_fondo"
+                android:elevation="2dp"
+                android:paddingStart="6dp"
+                android:paddingEnd="10dp"
+                android:paddingTop="6dp"
+                android:paddingBottom="6dp">
+
+                <TextView
+                    android:id="@+id/pm_back"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:paddingTop="10dp"
+                    android:paddingBottom="10dp"
+                    android:text="←"
+                    android:textSize="20sp"
+                    android:textColor="@color/fc_texto_2"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Volver" />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="4dp"
+                    android:text="Mensajes privados"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/fc_texto" />
+
+                <ImageButton
+                    android:id="@+id/pm_new"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:src="@drawable/ic_pm_new"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Nuevo mensaje" />
+            </LinearLayout>
+
+            <!-- Carpeta: Recibidos / Enviados. Lo pidieron Juan y Miguel (2026-09-21/22). -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:paddingTop="4dp"
+                android:paddingBottom="8dp">
+
+                <TextView
+                    android:id="@+id/pm_carpeta_recibidos"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    android:paddingTop="7dp"
+                    android:paddingBottom="7dp"
+                    android:text="Recibidos"
+                    android:textSize="14sp" />
+
+                <TextView
+                    android:id="@+id/pm_carpeta_enviados"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    android:paddingTop="7dp"
+                    android:paddingBottom="7dp"
+                    android:text="Enviados"
+                    android:textSize="14sp" />
+            </LinearLayout>
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1">
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/pm_list"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:clipToPadding="false" />
+
+                <ProgressBar
+                    android:id="@+id/pm_loading"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:id="@+id/pm_empty"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:padding="24dp"
+                    android:gravity="center"
+                    android:textColor="@color/fc_texto_2"
+                    android:textSize="14sp"
+                    android:visibility="gone" />
+            </FrameLayout>
+        </LinearLayout>
+
+        <!-- Capa DETALLE de un MP: asunto, remitente, cuerpo + botón responder. -->
+        <LinearLayout
+            android:id="@+id/pm_detail_panel"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:background="@color/fc_fondo"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@color/fc_fondo"
+                android:elevation="2dp"
+                android:paddingStart="6dp"
+                android:paddingEnd="10dp"
+                android:paddingTop="6dp"
+                android:paddingBottom="6dp">
+
+                <TextView
+                    android:id="@+id/pm_detail_back"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:paddingTop="10dp"
+                    android:paddingBottom="10dp"
+                    android:text="←"
+                    android:textSize="20sp"
+                    android:textColor="@color/fc_texto_2"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Volver" />
+
+                <TextView
+                    android:id="@+id/pm_detail_subject"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="4dp"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/fc_texto"
+                    android:maxLines="2"
+                    android:ellipsize="end" />
+            </LinearLayout>
+
+            <ScrollView
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:padding="16dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/pm_detail_sender"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/fc_rojo" />
+
+                    <TextView
+                        android:id="@+id/pm_detail_body"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:textSize="15sp"
+                        android:textColor="@color/fc_texto"
+                        android:lineSpacingExtra="2dp" />
+                </LinearLayout>
+            </ScrollView>
+
+            <TextView
+                android:id="@+id/pm_detail_reply"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingTop="14dp"
+                android:paddingBottom="14dp"
+                android:gravity="center"
+                android:text="Responder"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:textColor="@color/fc_sobre_rojo"
+                android:background="@color/fc_rojo" />
+        </LinearLayout>
+
+        <!-- Hilos descargados: la lista de copias guardadas en este móvil. -->
+        <LinearLayout
+            android:id="@+id/descargados_panel"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:background="@color/fc_fondo"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:elevation="2dp"
+                android:background="@color/fc_fondo"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:paddingTop="12dp"
+                android:paddingBottom="10dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Descargados"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/fc_rojo" />
+
+                <TextView
+                    android:id="@+id/descargados_total"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="3dp"
+                    android:textSize="12sp"
+                    android:textColor="@color/fc_texto_2" />
+            </LinearLayout>
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1">
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/descargados_list"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" />
+
+                <TextView
+                    android:id="@+id/descargados_empty"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:gravity="center"
+                    android:paddingStart="32dp"
+                    android:paddingEnd="32dp"
+                    android:text="Todavía no has descargado ningún hilo.\n\nAbre uno y toca la flecha de descargar: se guarda en el móvil y podrás leerlo aunque lo borren."
+                    android:textSize="14sp"
+                    android:lineSpacingExtra="3dp"
+                    android:textColor="@color/fc_texto_3"
+                    android:visibility="gone" />
+            </FrameLayout>
+        </LinearLayout>
+
+        <!-- Capa COMPOSITOR de MP: nuevo mensaje o respuesta. -->
+        <LinearLayout
+            android:id="@+id/pm_compose_panel"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:background="@color/fc_fondo"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@color/fc_fondo"
+                android:elevation="2dp"
+                android:paddingStart="6dp"
+                android:paddingEnd="10dp"
+                android:paddingTop="6dp"
+                android:paddingBottom="6dp">
+
+                <TextView
+                    android:id="@+id/pm_compose_cancel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:paddingTop="10dp"
+                    android:paddingBottom="10dp"
+                    android:text="✕"
+                    android:textSize="18sp"
+                    android:textColor="@color/fc_texto_2"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Cancelar" />
+
+                <TextView
+                    android:id="@+id/pm_compose_title"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="4dp"
+                    android:text="Nuevo mensaje"
+                    android:textSize="17sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/fc_texto" />
+
+                <TextView
+                    android:id="@+id/pm_compose_send"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:paddingStart="18dp"
+                    android:paddingEnd="18dp"
+                    android:paddingTop="10dp"
+                    android:paddingBottom="10dp"
+                    android:text="Enviar"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/fc_rojo"
+                    android:background="?attr/selectableItemBackground" />
+            </LinearLayout>
+
+            <!-- fillViewport + el campo de mensaje con weight: sin esto el campo se quedaba en
+                 sus 6 líneas de alto y los DOS TERCIOS de pantalla de debajo parecían la zona
+                 de escribir pero estaban muertos — tocabas ahí y no pasaba nada. Reportado el
+                 2026-08-27 ("no me deja escribir el cuerpo del mensaje"). -->
+            <ScrollView
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:fillViewport="true">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <EditText
+                        android:id="@+id/pm_compose_to"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="text"
+                        android:maxLines="1"
+                        android:textSize="15sp"
+                        android:hint="Para (usuario de ForoCoches)"
+                        android:textColor="@color/fc_texto"
+                        android:textColorHint="@color/fc_texto_3"
+                        android:importantForAutofill="no" />
+
+                    <EditText
+                        android:id="@+id/pm_compose_subject"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:inputType="text"
+                        android:maxLines="1"
+                        android:textSize="15sp"
+                        android:hint="Asunto"
+                        android:textColor="@color/fc_texto"
+                        android:textColorHint="@color/fc_texto_3"
+                        android:importantForAutofill="no" />
+
+                    <!-- Tarjeta con el mensaje al que respondes, la misma que al citar en
+                         un hilo. Va ENCIMA del campo, como en el composer de los hilos. -->
+                    <LinearLayout
+                        android:id="@+id/pm_compose_quotes"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:layout_marginTop="8dp" />
+
+                    <EditText
+                        android:id="@+id/pm_compose_message"
+                        android:layout_width="match_parent"
+                        android:layout_height="0dp"
+                        android:layout_weight="1"
+                        android:layout_marginTop="8dp"
+                        android:minLines="6"
+                        android:gravity="top"
+                        android:inputType="textMultiLine|textCapSentences"
+                        android:textSize="16sp"
+                        android:hint="Mensaje"
+                        android:textColor="@color/fc_texto"
+                        android:textColorHint="@color/fc_texto_3"
+                        android:importantForAutofill="no" />
+                </LinearLayout>
+            </ScrollView>
+        </LinearLayout>
+
+        <!-- Capa PERFIL DE OTRO USUARIO (mención tocada): nativa, no la web de FC. -->
+        <LinearLayout
+            android:id="@+id/member_panel"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:background="@color/fc_fondo"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@color/fc_fondo"
+                android:elevation="2dp"
+                android:paddingStart="6dp"
+                android:paddingEnd="10dp"
+                android:paddingTop="6dp"
+                android:paddingBottom="6dp">
+
+                <TextView
+                    android:id="@+id/member_back"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:paddingTop="10dp"
+                    android:paddingBottom="10dp"
+                    android:text="←"
+                    android:textSize="20sp"
+                    android:textColor="@color/fc_texto_2"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Volver" />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="4dp"
+                    android:text="Perfil"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/fc_texto" />
+            </LinearLayout>
+
+            <!-- CON SCROLL, y no es un adorno: la ficha mide lo que mide (avatar, datos, MP,
+                 tres enlaces e ignorar) y en pantallas más pequeñas o
+                 con la letra grande NO CABE. Sin scroll, lo que sobraba se perdía: Alfa mandó
+                 una captura con "Sus mensajes" cortado por la mitad y sin manera de llegar a
+                 las opciones de abajo. `fillViewport` mantiene el aspecto cuando sí cabe. -->
+            <ScrollView
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:fillViewport="true">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center_horizontal"
+                android:paddingStart="32dp"
+                android:paddingEnd="32dp"
+                android:paddingBottom="24dp">
+
+                <ImageView
+                    android:id="@+id/member_avatar"
+                    android:layout_width="96dp"
+                    android:layout_height="96dp"
+                    android:layout_marginTop="48dp"
+                    android:contentDescription="@null" />
+
+                <TextView
+                    android:id="@+id/member_name"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:textSize="22sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/fc_texto" />
+
+                <!-- Antigüedad y actividad. Empieza diciendo "Usuario de ForoCoches" y se
+                     sustituye por los datos reales cuando llega la ficha; si FC no los diera,
+                     se queda el texto de siempre en vez de un hueco. -->
+                <TextView
+                    android:id="@+id/member_stats"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:paddingStart="24dp"
+                    android:paddingEnd="24dp"
+                    android:gravity="center_horizontal"
+                    android:text="Usuario de ForoCoches"
+                    android:textSize="13sp"
+                    android:textColor="@color/fc_texto_3" />
+
+                <!-- Firma y "Sobre mí" (coche, ubicación, intereses, ocupación). Escondidos
+                     hasta que la ficha los traiga: quien no tiene ninguno no deja hueco. -->
+                <TextView
+                    android:id="@+id/member_firma"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    android:gravity="center_horizontal"
+                    android:textSize="13sp"
+                    android:textStyle="italic"
+                    android:textColor="@color/fc_texto_2"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:id="@+id/member_sobre_mi"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:gravity="center_horizontal"
+                    android:lineSpacingExtra="4dp"
+                    android:textSize="14sp"
+                    android:textColor="@color/fc_texto"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:id="@+id/member_pm"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="36dp"
+                    android:paddingTop="14dp"
+                    android:paddingBottom="14dp"
+                    android:gravity="center"
+                    android:text="Enviar mensaje privado"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/fc_sobre_rojo"
+                    android:background="@color/fc_rojo" />
+
+                <!-- Su actividad. Son las tres consultas que el propio FC enlaza desde la
+                     ficha (sondeadas el 2026-08-28). Van detrás de un toque y NUNCA solas al
+                     abrir el perfil: cada una crea una búsqueda en la base de datos del foro. -->
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginTop="20dp"
+                    android:background="@color/fc_divisoria" />
+
+                <TextView
+                    android:id="@+id/member_started"
+                    style="@style/OptRow"
+                    android:text="Hilos que ha abierto  ›" />
+
+                <TextView
+                    android:id="@+id/member_threads"
+                    style="@style/OptRow"
+                    android:text="Hilos en los que participa  ›" />
+
+                <TextView
+                    android:id="@+id/member_posts"
+                    style="@style/OptRow"
+                    android:text="Sus mensajes  ›" />
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="@color/fc_divisoria" />
+
+                <!-- Ignorar desde el perfil: lo pidieron los testers (no había ningún sitio
+                     para ignorar salvo teclear el nombre a mano en Opciones). Escribe en la
+                     lista de ForoCoches, no solo en la app. -->
+                <TextView
+                    android:id="@+id/member_ignore"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:paddingTop="12dp"
+                    android:paddingBottom="12dp"
+                    android:gravity="center"
+                    android:text="Ignorar a este usuario"
+                    android:textSize="14sp"
+                    android:textColor="@color/fc_rojo" />
+            </LinearLayout>
+
+            </ScrollView>
+        </LinearLayout>
+
+        <!-- Capa LOGIN nativa (Fase 3): formulario propio. Las credenciales las envía
+             fcLogin por el form real de FC (same-origin, cookies del WebView), pero el
+             usuario nunca ve el foro por debajo. -->
+        <ScrollView
+            android:id="@+id/login_panel"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@color/fc_fondo"
+            android:fillViewport="true"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:gravity="center_vertical"
+                android:paddingStart="26dp"
+                android:paddingEnd="26dp"
+                android:paddingTop="32dp"
+                android:paddingBottom="32dp">
+
+                <!-- Marca centrada. Todo en rojo de la app (Foro y Plus). -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:text="ForoPlus"
+                    android:textSize="48sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="-0.03"
+                    android:textColor="@color/fc_rojo" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:gravity="center"
+                    android:text="Inicia sesión con tu cuenta de ForoCoches"
+                    android:textSize="20sp"
+                    android:textColor="@color/fc_texto_2" />
+
+                <EditText
+                    android:id="@+id/login_user"
+                    android:layout_width="match_parent"
+                    android:layout_height="58dp"
+                    android:layout_marginTop="34dp"
+                    android:background="@drawable/bg_login_input"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    android:gravity="center_vertical"
+                    android:hint="Usuario"
+                    android:textColorHint="@color/fc_texto_3"
+                    android:textSize="17sp"
+                    android:textColor="@color/fc_texto"
+                    android:textCursorDrawable="@drawable/cursor_login"
+                    android:inputType="text"
+                    android:maxLines="1"
+                    android:importantForAutofill="no" />
+
+                <EditText
+                    android:id="@+id/login_pass"
+                    android:layout_width="match_parent"
+                    android:layout_height="58dp"
+                    android:layout_marginTop="18dp"
+                    android:background="@drawable/bg_login_input"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    android:gravity="center_vertical"
+                    android:hint="Contraseña"
+                    android:textColorHint="@color/fc_texto_3"
+                    android:textSize="17sp"
+                    android:textColor="@color/fc_texto"
+                    android:textCursorDrawable="@drawable/cursor_login"
+                    android:inputType="textPassword"
+                    android:maxLines="1"
+                    android:importantForAutofill="no" />
+
+                <TextView
+                    android:id="@+id/login_error"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:background="@drawable/bg_login_error"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:paddingTop="10dp"
+                    android:paddingBottom="10dp"
+                    android:textSize="13sp"
+                    android:lineSpacingExtra="2dp"
+                    android:textColor="@color/fc_rojo"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:id="@+id/login_submit"
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:layout_marginTop="28dp"
+                    android:gravity="center"
+                    android:text="Iniciar sesión"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/fc_sobre_rojo"
+                    android:background="@drawable/bg_login_button" />
+
+                <TextView
+                    android:id="@+id/login_skip"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:layout_marginTop="12dp"
+                    android:gravity="center"
+                    android:text="Seguir sin cuenta"
+                    android:textSize="16sp"
+                    android:textColor="@color/fc_texto_2"
+                    android:background="@drawable/bg_login_ghost" />
+
+                <TextView
+                    android:id="@+id/login_register"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="18dp"
+                    android:paddingTop="10dp"
+                    android:paddingBottom="10dp"
+                    android:gravity="center"
+                    android:text="¿No tienes cuenta? Regístrate"
+                    android:textSize="14sp"
+                    android:textColor="@color/fc_texto_3"
+                    android:background="?attr/selectableItemBackground" />
+            </LinearLayout>
+        </ScrollView>
+
+        <!-- Capa web (la app clásica, también motor de datos cuando está oculta) -->
+        <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+            android:id="@+id/swipe_refresh"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="invisible">
+
+            <WebView
+                android:id="@+id/webview"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" />
+        </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+    </FrameLayout>
+
+    <!-- Barra inferior propia. Desde el 2026-10-02 son BarraAbajo.HUECOS (4) botones a partes
+         iguales y SIN scroll: lo demás vive en el panel del avatar (BarraAbajo). Aquí están
+         todos los botones posibles; pintarBarraInferior() mete en la fila solo los de abajo,
+         en el orden del usuario. Citas y Menciones son ahora un solo botón, Avisos, y Perfil ya
+         no está: es el avatar de arriba. -->
+    <FrameLayout
+        android:id="@+id/bottom_nav"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/fc_fondo"
+        android:elevation="8dp"
+        android:clipChildren="false"
+        android:clipToPadding="false">
+
+        <LinearLayout
+            android:id="@+id/bottom_nav_row"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:clipChildren="false"
+            android:clipToPadding="false"
+            android:paddingStart="4dp"
+            android:paddingEnd="4dp">
+
+            <include
+                android:id="@+id/nav_home"
+                layout="@layout/nav_item"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1" />
+            <include
+                android:id="@+id/nav_avisos"
+                layout="@layout/nav_item"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1" />
+            <include
+                android:id="@+id/nav_pm"
+                layout="@layout/nav_item"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1" />
+            <include
+                android:id="@+id/nav_favs"
+                layout="@layout/nav_item"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1" />
+            <include
+                android:id="@+id/nav_mythreads"
+                layout="@layout/nav_item"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1" />
+            <include
+                android:id="@+id/nav_participated"
+                layout="@layout/nav_item"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1" />
+            <include
+                android:id="@+id/nav_mismensajes"
+                layout="@layout/nav_item"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1" />
+            <include
+                android:id="@+id/nav_descargas"
+                layout="@layout/nav_item"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1" />
+        </LinearLayout>
+    </FrameLayout>
+
+</LinearLayout>

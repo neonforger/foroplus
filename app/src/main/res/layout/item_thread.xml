@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fila del listado. La raíz es un contenedor VERTICAL para poder colgar la línea
+     divisoria debajo: la fila en sí es horizontal (avatar + textos) y una View al final
+     habría salido como una barra vertical a la derecha. El fondo pulsable vive aquí, en la
+     raíz, que es la vista que recibe el click. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="?attr/selectableItemBackground">
+
+<LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingStart="14dp"
+    android:paddingEnd="14dp"
+    android:paddingTop="12dp"
+    android:paddingBottom="12dp">
+
+    <!-- El estado del hilo, como el sobre de la web de FC. Aquí iba la cara del que abrió el
+         hilo; la quitamos porque no aportaba nada (lo dijo un tester) y costaba una petición
+         por persona. Ver ThreadListAdapter.pintarEstado. -->
+    <FrameLayout
+        android:layout_width="30dp"
+        android:layout_height="30dp">
+
+        <ImageView
+            android:id="@+id/thread_sobre"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:padding="3dp"
+            android:src="@drawable/ic_sobre" />
+
+        <View
+            android:id="@+id/thread_participado"
+            android:layout_width="11dp"
+            android:layout_height="11dp"
+            android:layout_gravity="top|end"
+            android:background="@drawable/bg_punto_participado"
+            android:visibility="gone" />
+
+        <ImageView
+            android:id="@+id/thread_candado"
+            android:layout_width="15dp"
+            android:layout_height="15dp"
+            android:layout_gravity="bottom|end"
+            android:padding="1.5dp"
+            android:background="@drawable/bg_insignia"
+            android:src="@drawable/ic_candado"
+            android:contentDescription="@null"
+            android:visibility="gone" />
+    </FrameLayout>
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="8dp"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/thread_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            android:textColor="@color/fc_texto"
+            android:maxLines="3"
+            android:ellipsize="end" />
+
+        <!-- Autor y hora en la misma línea, pero en vistas SEPARADAS: la hora es un enlace al
+             último mensaje del hilo (como en la web móvil de FC) y necesita su propia zona de
+             toque. Con un enlace dentro del texto, el toque de la fila y el del enlace se
+             pelean y la zona sería de dos milímetros. -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="3dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/thread_meta"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textSize="12sp"
+                android:textColor="@color/fc_texto_2"
+                android:maxLines="1"
+                android:ellipsize="end" />
+
+            <!-- La hora y, debajo, quién escribió ese último mensaje (Juan, Telegram 2227: "con
+                 añadir el nombre del último posteador debajo de la fecha y hora bastaría"). Los
+                 dos son la misma zona de toque: los dos hablan del último mensaje. -->
+            <LinearLayout
+                android:id="@+id/thread_ultimo_zona"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="end"
+                android:paddingStart="8dp"
+                android:paddingEnd="2dp"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Ir al último mensaje">
+
+                <TextView
+                    android:id="@+id/thread_time"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textSize="12sp"
+                    android:textColor="@color/fc_texto_2"
+                    android:maxLines="1"
+                    android:importantForAccessibility="no" />
+
+                <!-- INVISIBLE (no gone) mientras se pregunta: así la fila no da un salto cuando
+                     llega el nombre. Gone solo cuando no se va a saber nunca. -->
+                <TextView
+                    android:id="@+id/thread_ultimo"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:maxWidth="140dp"
+                    android:textSize="11sp"
+                    android:textColor="@color/fc_texto_3"
+                    android:maxLines="1"
+                    android:ellipsize="end"
+                    android:importantForAccessibility="no"
+                    android:visibility="gone" />
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/thread_replies"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="12sp"
+        android:textColor="@color/fc_texto_2" />
+
+</LinearLayout>
+
+    <!-- Misma raya que separa los mensajes dentro de un hilo (item_post), con los márgenes
+         alineados al contenido de la fila. -->
+    <View
+        android:id="@+id/thread_divider"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginStart="14dp"
+        android:layout_marginEnd="14dp"
+        android:background="@color/fc_divisoria" />
+
+</LinearLayout>

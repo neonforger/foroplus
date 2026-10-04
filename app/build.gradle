@@ -1,0 +1,123 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
+
+// Credenciales de firma fuera del control de versiones (keystore.properties está en
+// .gitignore). Si el fichero no existe (p.ej. al clonar el repo), los builds debug y
+// release-sin-firmar siguen funcionando; solo el release firmado necesita estas claves.
+def keystorePropsFile = rootProject.file('keystore.properties')
+def keystoreProps = new Properties()
+if (keystorePropsFile.exists()) {
+    keystoreProps.load(new FileInputStream(keystorePropsFile))
+}
+def releaseStoreFile = file(keystoreProps['storeFile'] ?: '../release.keystore')
+def releaseSigningReady = keystorePropsFile.exists() &&
+    releaseStoreFile.exists() &&
+    ['storePassword', 'keyAlias', 'keyPassword'].every { key ->
+        keystoreProps[key]?.toString()?.trim()
+    }
+
+gradle.taskGraph.whenReady { graph ->
+    def releaseRequested = graph.allTasks.any { task ->
+        task.name.toLowerCase(java.util.Locale.ROOT).contains('release')
+    }
+    if (releaseRequested && !releaseSigningReady) {
+        throw new GradleException(
+            'Release builds require keystore.properties with storePassword, keyAlias, ' +
+                'keyPassword and a valid storeFile. Use assembleDebug for unsigned local builds.'
+        )
+    }
+}
+
+android {
+    namespace 'com.fcplus.forocoches'
+    compileSdk 36
+
+    defaultConfig {
+        // Identidad permanente en Play (no visible al usuario). Neutra, sin la marca.
+        applicationId "com.foroplus.app"
+        minSdk 24
+        targetSdk 36
+        versionCode 46
+        versionName "1.11.0"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    signingConfigs {
+        release {
+            if (releaseSigningReady) {
+                storeFile releaseStoreFile
+                storePassword keystoreProps['storePassword']
+                keyAlias keystoreProps['keyAlias']
+                keyPassword keystoreProps['keyPassword']
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            // Los builds release fallan arriba si no hay credenciales de firma completas.
+            signingConfig releaseSigningReady ? signingConfigs.release : null
+        }
+        debug {
+            // Rama v2-shell: paquete distinto para convivir en el mismo móvil con la
+            // app estable de testers (com.foroplus.app). NO mergear a main tal cual.
+            applicationIdSuffix ".v2"
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    kotlinOptions {
+        jvmTarget = '1.8'
+    }
+
+    testOptions {
+        unitTests {
+            includeAndroidResources = true
+        }
+    }
+}
+
+dependencies {
+    implementation 'androidx.core:core-ktx:1.12.0'
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'com.google.android.material:material:1.11.0'
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.7.0'
+    implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
+    implementation 'androidx.recyclerview:recyclerview:1.3.2'
+    implementation 'androidx.work:work-runtime-ktx:2.9.0'
+    implementation 'org.jsoup:jsoup:1.17.2'
+    // Control EXPLÍCITO del oscurecido automático del WebView. Desde targetSdk 33 el viejo
+    // setForceDark no hace nada, y sin esto Chromium decide por su cuenta si invierte los
+    // colores de los widgets de X/Instagram — con resultados distintos según el embed.
+    implementation 'androidx.webkit:webkit:1.8.0'
+    // Aviso de actualización dentro de la app (solo sirve a quien instaló desde Play).
+    // Vive detrás de la interfaz Actualizador: si algún día hay que distribuir fuera de
+    // Play, se cambia la implementación y no el sitio desde donde se llama.
+    implementation 'com.google.android.play:app-update-ktx:2.1.0'
+    // Tarjeta de valoración DENTRO de la app (In-App Review). Misma familia partida de Play
+    // que app-update, así que no choca con ella. Detrás de la interfaz Valoracion, por lo
+    // mismo que el actualizador: si algún día se distribuye fuera de Play, cambia la
+    // implementación y no quien la llama.
+    implementation 'com.google.android.play:review-ktx:2.0.2'
+    // Orientación EXIF de las fotos que se suben. Se usa la de androidx y no la del
+    // framework (android.media.ExifInterface) porque ésta NO lee HEIC por debajo de API 28, y
+    // los móviles nuevos disparan en HEIC: justo las fotos que la gente sube. Son ~50 KB.
+    implementation 'androidx.exifinterface:exifinterface:1.3.7'
+    // Las cookies de las cuentas guardadas son credenciales de sesión: no van en claro.
+    implementation 'androidx.security:security-crypto:1.0.0'
+
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.robolectric:robolectric:4.11.1'
+    testImplementation 'androidx.test:core:1.5.0'
+
+    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+}

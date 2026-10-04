@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Una fila del panel del avatar: icono, nombre y, si toca, un contador. 46dp de alto como
+     mínimo: es una zona de toque. (No confundir con item_cuenta, la fila de la hoja de cuentas). Las filas se crean por código (pintarPanelCuenta) porque
+     cuáles salen depende de lo que el usuario haya dejado en la barra de abajo. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:minHeight="46dp"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingStart="20dp"
+    android:paddingEnd="20dp"
+    android:background="?attr/selectableItemBackground">
+
+    <ImageView
+        android:id="@+id/cuenta_fila_icono"
+        android:layout_width="22dp"
+        android:layout_height="22dp"
+        android:contentDescription="@null" />
+
+    <TextView
+        android:id="@+id/cuenta_fila_texto"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:layout_marginStart="18dp"
+        android:textSize="15sp"
+        android:textColor="@color/fc_texto" />
+
+    <TextView
+        android:id="@+id/cuenta_fila_badge"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:minWidth="20dp"
+        android:paddingStart="5dp"
+        android:paddingEnd="5dp"
+        android:gravity="center"
+        android:textSize="11sp"
+        android:textStyle="bold"
+        android:textColor="@color/fc_sobre_rojo"
+        android:background="@drawable/badge_bg"
+        android:visibility="gone" />
+</LinearLayout>

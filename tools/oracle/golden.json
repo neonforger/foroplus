@@ -1,0 +1,41 @@
+{
+  "_comment": "Oraculo de regresion para content.js. Inputs fijos + salida esperada sobre fixtures congelados. Editar solo si cambian los fixtures.",
+  "inputs": {
+    "ignored": ["GTX", "Ibai_S", "Jorge_Lega"],
+    "keywords": ["lexus"],
+    "keywordFilterEnabled": true
+  },
+  "creators": {
+    "10571747": "shurmaikel",
+    "10672917": "El Chico",
+    "10688121": "Jorge_Lega",
+    "10006867": "Jorge_Lega",
+    "10687421": "Jorge_Lega",
+    "10687818": "rapidoycurioso",
+    "10637391": "August Horch",
+    "10685882": "KA6AH",
+    "10678579": "SantiDM",
+    "10680209": "SantiDM",
+    "10687437": "petrvs",
+    "10157615": "Jorge_Lega",
+    "7336041": "Dunkleosteus",
+    "10687378": "rijden"
+  },
+  "thread": {
+    "url": "https://forocoches.com/foro/showthread.php?t=11",
+    "ignoredAuthorWithPosts": "GTX",
+    "mustStayVisibleAuthor": "Electrik",
+    "quotedIgnoredUserNewSkinOnly": "Ibai_S"
+  },
+  "listing": {
+    "url": "https://forocoches.com/foro/forumdisplay.php?f=4&page=22",
+    "expectHiddenThreadIds": ["10688121", "10006867", "10687421", "10157615", "10672917"],
+    "mustStayVisibleThreadIds": ["10571747", "10637391", "10678579", "10687378"]
+  },
+  "fixtures": {
+    "thread_new.html": "thread",
+    "thread_old.html": "thread",
+    "listing_new.html": "listing",
+    "listing_old.html": "listing"
+  }
+}

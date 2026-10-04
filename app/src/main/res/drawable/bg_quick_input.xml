@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fondo de la caja de respuesta rápida: píldora gris clara, a juego con el resto de
+     campos de la app (fondo BLANCO fijo en los paneles). -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/fc_chip" />
+    <corners android:radius="22dp" />
+</shape>

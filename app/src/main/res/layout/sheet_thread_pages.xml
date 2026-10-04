@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Salto de página dentro de un hilo. Se abre tocando el "Página X de Y" de la cabecera.
+     El scroll infinito sirve para leer; esto sirve para BUSCAR (el final, lo no leído, o
+     una página concreta), que es lo que se perdió al quitar la paginación clásica. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@color/fc_fondo"
+    android:paddingStart="20dp"
+    android:paddingEnd="20dp"
+    android:paddingTop="18dp"
+    android:paddingBottom="24dp">
+
+    <TextView
+        android:id="@+id/jump_header"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        android:textColor="@color/fc_rojo"
+        android:letterSpacing="0.03"
+        android:text="IR A" />
+
+    <TextView
+        android:id="@+id/jump_last"
+        style="@style/OptRow"
+        android:text="Última página (lo más nuevo)" />
+
+    <TextView
+        android:id="@+id/jump_first"
+        style="@style/OptRow"
+        android:text="Primera página" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/fc_divisoria"
+        android:layout_marginTop="10dp"
+        android:layout_marginBottom="6dp" />
+
+    <TextView
+        android:id="@+id/jump_range"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="12sp"
+        android:textColor="@color/fc_texto_3"
+        android:layout_marginBottom="4dp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <EditText
+            android:id="@+id/jump_input"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:inputType="number"
+            android:maxLength="6"
+            android:textSize="15sp"
+            android:hint="Nº de página"
+            android:textColor="@color/fc_texto"
+            android:textColorHint="@color/fc_texto_3"
+            android:importantForAutofill="no" />
+
+        <TextView
+            android:id="@+id/jump_go"
+            style="@style/OptAddBtn"
+            android:text="Ir" />
+    </LinearLayout>
+
+</LinearLayout>

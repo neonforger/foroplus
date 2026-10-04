@@ -1,0 +1,1711 @@
+<?xml version="1.0" encoding="ISO-8859-1"?><!DOCTYPE html PUBLIC "-//WAPFORUM//DTD XHTML Mobile 1.0//EN" "http://www.wapforum.org/DTD/xhtml-mobile10.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" dir="ltr" lang="es">
+<head>
+<!-- Google tag (gtag.js) -->
+<script>
+(function () {
+  var ga_registrado = true;
+  var styleid = 7;
+  var analyticsLoaded = false;
+
+  function loadAnalytics() {
+    if (analyticsLoaded) return;
+    analyticsLoaded = true;
+    var script = document.createElement('script');
+    script.async = true;
+    script.src = 'https://www.googletagmanager.com/gtag/js?id=G-QCY7DPM9MZ';
+    script.onload = function () {
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      window.gtag = gtag;
+      gtag('js', new Date());
+      gtag('config', 'G-QCY7DPM9MZ', {
+        is_registered: ga_registrado,
+        style_id: styleid
+      });
+    };
+    document.head.appendChild(script);
+  }
+
+  function waitForTcfapi(maxWait, interval) {
+    var waited = 0;
+    function checkTcfapi() {
+      if (typeof window.__tcfapi === "function") {
+        window.__tcfapi('addEventListener', 2, function (tcData, success) {
+          if (success && (tcData.eventStatus === 'tcloaded' || tcData.eventStatus === 'useractioncomplete')) {
+            var analyticsConsent =
+              tcData.purpose && tcData.purpose.consents && tcData.purpose.consents["10"];
+            if (analyticsConsent) loadAnalytics();
+          }
+        });
+      } else if (waited < maxWait) {
+        waited += interval;
+        setTimeout(checkTcfapi, interval);
+      }
+    }
+    checkTcfapi();
+  }
+
+  waitForTcfapi(10000, 250);
+})();
+</script>
+<!-- End Google Tag Manager --><script async src="https://fundingchoicesmessages.google.com/i/pub-3755389162544803?ers=1" nonce="b3qAdts5x0My38kHmw54rA"></script><script nonce="b3qAdts5x0My38kHmw54rA">(function() {function signalGooglefcPresent() {if (!window.frames['googlefcPresent']) {if (document.body) {const iframe = document.createElement('iframe'); iframe.style = 'width: 0; height: 0; border: none; z-index: -1000; left: -1000px; top: -1000px;'; iframe.style.display = 'none'; iframe.name = 'googlefcPresent'; document.body.appendChild(iframe);} else {setTimeout(signalGooglefcPresent, 0);}}}signalGooglefcPresent();})();</script>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<!--<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0, minimum-scale=1.0, maximum-scale=1.0">-->
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="format-detection" content="telephone=no" />
+<link rel="canonical" href="https://forocoches.com/foro/forumdisplay.php?f=4&amp;order=desc&amp;page=22" />
+<link rel="apple-touch-icon" href="//forocoches.com/fcmovil/touch-icon-iphone.png" />
+<link rel="apple-touch-icon" sizes="72x72" href="//forocoches.com/fcmovil/touch-icon-ipad.png" />
+<link rel="apple-touch-icon" sizes="114x114" href="//forocoches.com/fcmovil/touch-icon-iphone4.png" />
+
+	
+<meta name="description" content="El mayor foro en español del mundo. Comenta lo que está pasando, debate sin filtros, humor y noticias. Esto es Forocoches." />
+	
+
+<!-- CSS Stylesheet -->
+<style type="text/css" id="vbulletin_css">
+body
+{
+	color: #000000;
+	font-family: Helvetica;
+	margin: 0;
+	padding: 0px;
+	text-align:center;
+	background: #ffffff;
+	-webkit-text-size-adjust:none;
+	overflow:auto;
+	overflow-x: hidden;
+	width:100%;
+	
+}
+a:link, body_alink
+{
+	color: #cc3300;
+	text-decoration: none;
+}
+a:visited, body_avisited
+{
+	color: #cc3300;
+	text-decoration: none;
+}
+a:hover, a:active, body_ahover
+{
+	color: #330099;
+	text-decoration: none;
+}
+.page
+{
+	background: #FFF;
+	color: #000000;
+	border: 1px solid #fff;
+	-webkit-border-top-right-radius: 10px;
+	-webkit-border-top-left-radius: 10px;
+	-webkit-border-bottom-left-radius: 10px;
+	-webkit-border-bottom-right-radius: 10px;
+}
+.wysiwyg
+{
+	background: #f2f2f2;
+	color: #000000;
+	font: 10pt Helvetica;
+	text-align:left;
+}
+textarea, .bginput
+{
+	font: 13px Helvetica;
+	padding: 3px;
+	width: 100%;
+	box-sizing: border-box;
+	-webkit-box-sizing: border-box;
+	margin: 5px 0 10px 0;
+	max-height:400px;
+}
+.bginput option, .bginput optgroup
+{
+	font-size: 13px;
+	font-family: Helvetica;
+}
+.button
+{
+	color: #cc3300;
+	font: 12pt Helvetica;
+	border: 1px solid #6A775B;
+	padding: 3px;
+	background: #f2f2f2;
+	margin: 5px 0 5px 0;
+	
+}
+select
+{
+	background: #f2f2f2;
+	font: 13px Helvetica;
+	padding: 3px;
+	box-sizing: border-box;
+	-webkit-box-sizing: border-box;
+	margin: 5px 0 10px 0;
+	
+}
+option, optgroup
+{
+	font-size: 13px;
+	font-family: Helvetica;
+}
+.smallfont
+{
+	font: 10pt Helvetica;
+}
+legend
+{
+	font-size: 14px;
+}
+.smallfont a {
+margin-top: 14px;
+}
+h2 {
+	margin:0;	  
+	padding-right:10px;		 
+	padding-bottom:10px;	
+	padding-left:10px;
+	font-size:16px;
+	font-family: Helvetica;
+	font-weight:bold;
+	color: rgb(76,86,108);	 /* Set each label color */
+}
+img {
+max-width: 100%;
+}
+/* ***** styling for 'big' usernames on postbit etc. ***** */
+.bigusername { font-size: 12pt; }
+
+/* ***** small padding on 'thead' elements ***** */
+td.thead, div.thead { padding: 4px; }
+
+/* ***** basic styles for multi-page nav elements */
+.pagenav a { text-decoration: none; }
+.pagenav td { padding: 10px; }
+.pagenav { margin:10px; }
+
+/* ***** define margin and font-size for elements inside panels ***** */
+.fieldset { margin-bottom: 6px; }
+.fieldset, .fieldset td, .fieldset p, .fieldset li { font-size: 10pt; }
+fieldset.fieldset{ border: 1px solid #a1a1a1; background: #fff; }
+
+/* ***** don't change the following ***** */
+form { display: inline; }
+label { cursor: default; }
+.normal { font-weight: normal; }
+.inlineimg { vertical-align: middle; }
+
+/* ***** Quotes ***** */
+.pre-quote {
+margin-right: 25px;
+border: 1px solid #a1a1a1;
+background: #e1e1e1;
+padding: 5px 5px 3px 5px;
+margin-top: 10px;
+-webkit-border-top-left-radius: 8px;
+-webkit-border-top-right-radius: 8px;
+word-wrap: break-word;
+}
+
+.post-quote {
+margin-right: 25px;
+padding: 5px;
+background: #FFF;
+border-left: 1px solid #a1a1a1;
+border-right: 1px solid #a1a1a1;
+border-bottom: 1px solid #a1a1a1;
+margin-bottom: 10px;
+-webkit-border-bottom-left-radius: 8px;
+-webkit-border-bottom-right-radius: 8px;
+word-wrap: break-word;
+display:block;
+max-height:350px;
+overflow:auto;
+}
+
+
+
+/***** Footer *****/
+.copyright {
+text-align:center;
+clear:both;
+font-size: 85%;
+color: #666;
+margin: auto;
+padding: 10px 0 5px 10px;
+}
+.page-margin {
+margin: 0px 0px 0px 0px;
+}
+
+hr.post {
+    border: 0;
+    height: 5px;
+    background: #333;
+    background-image: -webkit-linear-gradient(left, #ccc, #5591cc, #ccc); 
+    background-image:    -moz-linear-gradient(left, #ccc, #5591cc, #ccc); 
+    background-image:     -ms-linear-gradient(left, #ccc, #5591cc, #ccc); 
+    background-image:      -o-linear-gradient(left, #ccc, #5591cc, #ccc); 
+}
+
+.spoiler {
+color: #f2fcff;
+font-weight: bolder;
+margin: 2px;
+margin-top: 5px;
+background-color: #f2fcff;
+padding: 5px;
+border: 1px inset;
+width: auto;
+height: auto;
+max-height: 60px;
+text-align: left;
+-moz-border-radius: 6px;
+border-radius: 6px;
+cursor: crosshair;
+overflow: auto;
+}
+
+.video-youtube {
+	width:100%;
+	width:100%;
+	max-width:640px;
+	margin-left: auto;
+	margin-right: auto;
+}
+
+.video-youtubehd {
+	width:100%;
+	width:100%;
+	max-width:853px;
+	margin-left: auto;
+	margin-right: auto;
+}
+
+.video-sfire {
+	width:100%;
+	width:100%;
+	max-width:540px;
+	margin-left: auto;
+	margin-right: auto;
+}
+
+.video-container {
+	position:relative;
+	padding-bottom:56.25%;
+	padding-top:30px;
+	height:0;
+	overflow:hidden;
+}
+
+.video-container iframe, .video-container object, .video-container embed {
+	position:absolute;
+	top:0;
+	left:0;
+	width:100%;
+	height:100%;
+}
+
+.avatar {
+border-radius: 5%;
+-moz-border-radius: 5%;
+-webkit-border-radius: 5%;
+border: solid 1px silver;
+}
+h1 
+{
+	margin:0;
+	padding-top:10px;		  
+	padding-right:10px;		 
+	padding-bottom:10px;	
+	padding-left:10px;
+	font-size:16px;
+	font-family: Helvetica;
+	font-weight:bold;
+	color: rgb(76,86,108);	 /* Set each label color */		
+}
+ul 
+{	
+margin:0;   
+	padding: 0;	   
+	margin-top:0;
+	margin-right:0px;
+	margin-bottom:10px;
+	
+	font-size:14px;
+	font-family: Helvetica;
+	color:black;
+	
+	width: 100%;
+	background-color: #f2f2f2;
+	
+	border-width: 1px;
+	border-style:solid ;
+	border-color: #a1a1a1;
+	
+	-webkit-border-radius: 8px;
+}
+
+.ul2
+{	
+margin:0;   
+	padding: 0;	   
+	margin-top:3px;
+	margin-right:0px;
+	margin-bottom:10px;
+	
+	font-size:14px;
+	font-family: Helvetica;
+	color:black;
+
+	width: 100%;
+	background-color: #fff7f3;
+	
+	border-width: 1px;
+	border-style:solid ;
+	border-color: #a1a1a1;
+	
+	-webkit-border-radius: 8px;
+}
+
+.ulpagenav
+{	
+margin:0;   
+	padding: 0;	   
+	margin-top:3px;
+	margin-right:0px;
+	margin-bottom:10px;
+	
+	font-size:14px;
+	font-family: Helvetica;
+	color:black;
+
+	width: 100%;
+	background-color: #f6fdff;
+	
+	border-width: 1px;
+	border-style:solid ;
+	border-color: #a1a1a1;
+	
+	-webkit-border-radius: 8px;
+}
+
+li
+{	
+	list-style-type: none;	
+	
+	border-top-width:1px;
+	border-top-style:solid;
+	border-top-color:#a1a1a1;
+
+	padding-top:5px;		  
+	padding-right:6px;		 
+	padding-bottom:9px;
+	padding-left:6px;	
+}
+
+
+li:first-child 
+{
+	border-top:0;    /* Remove border above the first item of the list */
+}
+
+
+li a
+{
+	display: block;   /* Sets the href to be a block rather than inline */
+	
+	/* The padding properties adjust the text content within the href block */
+	padding-top: 5px;
+	padding-right: 6px;
+	padding-bottom: 9px;
+	padding-left: 6px;
+	
+	/* The margin properties adjust the size of the href block	*/
+	margin-top: -5px;
+	margin-right: -6px;
+	margin-bottom: -9px;
+	margin-left: -6px;	 
+	
+	text-decoration: none;
+	color:black;
+}
+li.inline {
+text-align:center;
+font-size:14px;
+}
+li.inline a {
+display:inline;
+font-size:14px;
+}
+li.link a {
+display:inline;
+}
+
+
+
+ul.rlink {
+
+	list-style-type: none;
+	text-align: right;
+	margin:0;   
+	padding: 0;	   
+	margin-top:3px;
+	margin-right:0px;
+	margin-bottom:10px;
+	
+	font-size:14px;
+	font-family: Helvetica;
+	color:black;
+	font-weight: bold;
+	
+	width: 100%;
+	background-color: #f6fdff;
+	
+	border-width: 1px;
+	border-style:solid ;
+	border-color: #a1a1a1;
+	
+	-webkit-border-radius: 8px;
+	border-radius: 8px;
+	-moz-border-radius: 8px;
+
+}
+
+li.rlink a {
+display:inline;
+font-size:14px;
+}
+
+
+li.link-search {
+background-color:#e1e1e1;
+-webkit-border-top-left-radius: 8px;
+-webkit-border-top-right-radius: 8px;
+border-top-left-radius: 8px;
+border-top-right-radius: 8px;
+-moz-border-top-left-radius: 8px;
+-moz-border-top-right-radius: 8px;
+}
+
+li.link-search a {
+display:inline;
+}
+
+
+
+
+
+.secondary	/* Used for secondary text (text that is less important) */
+{
+	list-style-type: none;	
+	
+	border-top-width:1px;	
+	border-top-style:solid;
+	border-top-color: #a1a1a1;
+
+	padding-top:10px;		  
+	padding-right:10px;		 
+	padding-bottom:14px;
+	padding-left:35px;  
+}
+.mobiletitle {
+    box-sizing: border-box;
+    margin: 0 0 5px 0;
+    padding: 10px;
+    line-height: 20px;
+    font-size: 20px;
+    font-weight: bold;
+    text-align: center;
+    text-shadow: rgba(0, 0, 0, 0.6) 0px -1px 0;
+    text-overflow: ellipsis;
+    color: #FFFFFF;
+    background: url("//web.archive.org/web/20210506121930im_/https://st.forocoches.com/foro/images/misc/iPhoneToolbar.png") #788097 repeat-x;
+    border-bottom: 1px solid #2d3642;
+}
+.mobiletitle a {
+color: #fff;
+}
+.mobilebutton {
+    position: absolute;
+    top: 8px;
+    right: 6px;
+    -webkit-border-image: url("//web.archive.org/web/20210506121930im_/https://st.forocoches.com/foro/images/misc/iPhoneButton.png") 0 5 0 5;
+    -webkit-border-radius: 0;
+    border-width: 0 5px 0 5px;
+    padding: 0;
+    height: 28px;
+    line-height: 28px;
+    font-size: 12px;
+    font-weight: bold;
+    color: #04a1ea;
+    text-shadow: rgba(0, 0, 0, 0.6) 0px -1px 0;
+    text-decoration: none;
+    background: none;
+    background-color: #798eb3;
+    background-image: url("//web.archive.org/web/20210506121930im_/https://st.forocoches.com/foro/images/misc/mobile_button.png") 0 5 0 5;
+}
+
+.mobilebuttonslide {
+    position: absolute;
+    top: 8px;
+    right: 6px;
+    -webkit-border-image: url("//web.archive.org/web/20210506121930im_/https://st.forocoches.com/foro/images/misc/iPhoneButton.png") 0 5 0 5;
+    -webkit-border-radius: 0;
+    border-width: 0 5px 0 5px;
+    padding: 0;
+    height: 28px;
+    line-height: 28px;
+    font-size: 12px;
+    font-weight: bold;
+    color: #04a1ea;
+    text-shadow: rgba(0, 0, 0, 0.6) 0px -1px 0;
+    text-decoration: none;
+    background: none;
+    background-color: #798eb3;
+    background-image: url("//web.archive.org/web/20210506121930im_/https://st.forocoches.com/foro/images/misc/mobile_button.png") 0 5 0 5;
+}
+
+#homeButton {
+    left: 6px;
+    right: auto;
+    -webkit-border-image: url("//web.archive.org/web/20210506121930im_/https://st.forocoches.com/foro/images/misc/iPhoneBackButton.png") 0 8 0 14;
+    border-width: 0 8px 0 14px;
+}
+
+.mobiletitlebottom {
+    height:50px;
+    text-align: center;
+    box-sizing: border-box;
+    margin: 5px 0 0px 0px;
+    padding: 10px;
+    line-height: 20px;
+    font-size: 20px;
+    font-weight: bold;
+    text-align: center;
+    text-shadow: rgba(0, 0, 0, 0.6) 0px -1px 0;
+    text-overflow: ellipsis;
+    color: #FFFFFF;
+    background: url("//web.archive.org/web/20210506121930im_/https://st.forocoches.com/foro/images/misc/iPhoneToolbar_footer2.png") #788097 repeat-x;
+    border-top: 1px solid #2d3642;
+}
+.mobiletitlebottom a {
+color: #fff;
+}
+.mobilebuttonbottom {
+    display: block;
+    width: 100px;
+    height: 28px;
+    -webkit-border-image: url("//web.archive.org/web/20210506121930im_/https://st.forocoches.com/foro/images/misc/iPhoneButton.png") 0 5 0 5;
+    -webkit-border-radius: 0;
+    border-width: 0 5px 0 5px;
+    padding: 0;
+    line-height: 28px;
+    font-size: 12px;
+    font-weight: bold;
+    color: #FFFFFF;
+    text-shadow: rgba(0, 0, 0, 0.6) 0px -1px 0;
+    text-decoration: none;
+    background: none;
+    background-color: #798eb3;
+    background-image: url("//web.archive.org/web/20210506121930im_/https://st.forocoches.com/foro/images/misc/iPhoneButton.png") 0 5 0 5;
+}
+
+#homeButtonbottom {
+    -webkit-border-image: url("//web.archive.org/web/20210506121930im_/https://st.forocoches.com/foro/images/misc/iPhoneBackButton.png") 0 8 0 14;
+    border-width: 0 8px 0 14px;
+}
+
+.mobile_button {
+    margin: 0 auto 10px auto;
+    text-align:center;
+    display: block;
+    width: 100px;
+    height: 28px;
+    -webkit-border-image: url("//web.archive.org/web/20210506121930im_/https://st.forocoches.com/foro/images/misc/mobile_button.png") 0 5 0 5;
+    -webkit-border-radius: 0;
+    border-width: 0 5px 0 5px;
+    padding: 0;
+    line-height: 28px;
+    font-size: 12px;
+    font-weight: bold;
+    color: #04a1ea;
+    text-shadow: rgba(0, 0, 0, 0.6) 0px -1px 0;
+    text-decoration: none;
+    background: none;
+    background-color: #798eb3;
+    background-image: url("//web.archive.org/web/20210506121930im_/https://st.forocoches.com/foro/images/misc/mobile_button.png") 0 5 0 5;
+}
+a.mobile_button {
+color:#fff;
+}
+
+.editorRow {
+  position: relative;
+}
+
+.toRow > .editor {
+  padding-left: 45px;
+}
+
+.editorRow input {
+  box-sizing: border-box;
+  -webkit-box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  width: 100%;
+  margin: 3px 0;
+  padding: 5px 3px;
+  font-family: inherit;
+  font-size: inherit;
+}
+
+.editorRow textarea {
+  box-sizing: border-box;
+  -webkit-box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  width: 100%;
+  height: 100px;
+  margin: 3px 0;
+  padding: 5px 3px;
+  font-family: inherit;
+  font-size: inherit;
+}
+
+.editorRow .label,
+.recipient .label {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  color: #555555;
+}
+
+.editorRow > .editor {
+  padding-left: 80px;
+}
+
+.editor,
+.fullEditor {
+  margin: 0;
+  padding: 10px;
+  border: none;
+  border-bottom: 1px solid #dddddd;
+  -webkit-border-radius: 0;
+  width: 100%;
+  background: transparent;
+  font-size: inherit;
+  font-family: inherit;
+}
+label {
+font-size: 14px;
+}
+.asmvinfo A {
+font-size: small;
+color: #c2806b; TEXT-DECORATION: none;
+}
+ol#posts {
+    list-style-type: none;
+    padding: 0;
+    border-bottom: 1px solid #B3B3B3;
+    background-color: #e1e1e1;
+-webkit-border-top-left-radius: 8px;
+-webkit-border-top-right-radius: 8px;
+}
+ol#posts li {
+    margin: 0;
+    padding: 0;
+}
+ol#posts li div.posthead {
+    height: 44px;
+    padding: 5px;
+}
+ol#posts li div.posthead span.xsaid {
+    display: block;
+    font-weight: bold;
+    margin-top: 3px;
+}
+ol#posts li div.posthead span.xsaid2px {
+    display: block;
+    font-weight: bold;
+    margin-top: 2px;
+}
+ol#posts li div.posthead span.postdate {
+    display: block;
+    font-size:small;
+    margin-top: 3px;
+    color: #808080;
+}
+ol#posts li div.posthead a.postuseravatarlink {
+    display: block;
+    padding: 0 5px 0 0;
+    height: 44px;
+    line-height: 44px;
+    position: relative;
+    float: right;
+}
+ol#posts li div.posthead a.postuseravatarlink p {
+    position: static;
+    top: 50%;
+    vertical-align: middle;
+    margin: 0;
+    padding: 0;
+}
+ol#posts li div.posthead a.postuseravatarlink img {
+    max-height: 44px;
+    max-width: 44px;
+    margin-top: 4px;
+    float: right;
+    -webkit-border-radius: 8px;
+}
+ol#posts li div.posthead a.fpostuseravatarlink {
+    display: block;
+    padding: 0 5px 0 0;
+    height: 44px;
+    line-height: 44px;
+    position: relative;
+    float: right;
+}
+ol#posts li div.posthead a.fpostuseravatarlink p {
+    position: static;
+    top: 50%;
+    vertical-align: middle;
+    margin: 0;
+    padding: 0;
+}
+ol#posts li div.posthead a.fpostuseravatarlink img {
+    max-height: 44px;
+    max-width: 44px;
+    margin-top: 4px;
+    float: right;
+    -webkit-border-radius: 8px;
+}
+.encabezado {
+text-align:right;
+margin-bottom: 3px;
+margin-right:0px;
+	  
+	padding-right:3px;		 
+	padding-bottom:5px;	
+	padding-left:5px;
+	
+	font-size:14px;
+	font-family: Helvetica;
+	font-weight:bold;
+	color: rgb(76,86,108);	 /* Set each label color */
+}
+.title-forum {
+font-weight:bold;
+text-align:center;
+margin-top: 5px;
+margin-bottom: 5px;
+word-wrap:break-word;
+}
+.title-forum-display {
+text-align:center;
+padding: 5px;
+background: #fff7f3;
+border-top: 1px solid #D3D3D3;
+border-bottom: 1px solid #D3D3D3;
+margin-top: 0px;
+margin-bottom: 12px;
+}
+
+.title-forum-f1 {
+font-weight:bold;
+font-size:13px;
+text-align:center;
+margin-top: 5px;
+margin-bottom: 5px;
+word-wrap:break-word;
+}
+.title-forum-display-f1 {
+text-align:center;
+padding: 5px;
+background: #fafff3;
+border-top: 1px solid #D3D3D3;
+border-bottom: 1px solid #D3D3D3;
+margin-top: 0px;
+margin-bottom: 12px;
+}
+
+.title-forum-f5 {
+font-weight:bold;
+font-size:11px;
+text-align:center;
+margin-top: 3px;
+margin-bottom: 3px;
+word-wrap:break-word;
+}
+.title-forum-display-f5 {
+text-align:center;
+padding: 4px;
+background: #eeeeee;
+border-top: 1px solid #D3D3D3;
+border-bottom: 1px solid #D3D3D3;
+margin-top: 0px;
+margin-bottom: 12px;
+}
+
+.title-forum-destacado {
+font-weight:bold;
+text-align:center;
+margin-top: 5px;
+margin-bottom: 5px;
+word-wrap:break-word;
+}
+.title-forum-display-destacado {
+text-align:center;
+padding: 5px;
+background: #ffd9c6;
+border-top: 1px solid #D3D3D3;
+border-bottom: 1px solid #D3D3D3;
+margin-top: 0px;
+margin-bottom: 12px;
+}
+
+.ds-forum-display {
+text-align:center;
+padding: 0px;
+background: #ffffff;
+border-top: 1px solid #D3D3D3;
+border-bottom: 1px solid #D3D3D3;
+margin-top: 0px;
+margin-bottom: 12px;
+}
+
+
+.message-forum {
+word-wrap:break-word;
+}
+
+.reply-count {
+font-weight:bold;
+}
+
+
+
+.float_banner { position: fixed; bottom:0px; background:#F4F4E3; width:100%; text-align:center; height:50px;z-index:99}
+.float_banner .add-banners { padding:0px 0px;}
+a.close_add { position:absolute; width:32px; line-height:20px; float:right; background:#d5d5d5; color:#6d6d6d; font-size:10px; text-align:center; margin-bottom:0px; border-radius: 3px 0px 0px 0px; cursor:pointer; text-decoration:none; font-weight:bold; top:-25px; right:0px;}
+a.close_add:visited, a.close_add:hover { text-decoration:none;}
+.add-banners{position:relative;display:inline-block;text-align:center;width:100%;margin:auto;padding:5px 0px;}
+.add-banners span{position:relative;font-size:11px;color:#444;}
+.add-banners img{max-width:99%;}
+.clearfix:before, .clearfix:after{content:"\0020";display:block;height:0;overflow:hidden;}
+.clearfix:after{clear:both;}
+.clearfix{zoom:1;}
+#container{margin:0px auto;margin-bottom:50px;}
+#infocookie{position:relative;width:100%;padding:4px 0;text-align:center;font-family:sans-serif;font-size:10px;border-bottom:1px solid #aaa;border-top:1px solid #aaa;color:#666;background:#f3f3f3;text-indent:-16px;margin-bottom:4px;margin-top:4px}
+#infocookie img{vertical-align:middle;height:16px;width:16px;margin-top:-1px}
+#infocookie_link{color:#666;text-decoration:underline;font-family:sans-serif;font-size:10px;}
+#infocookie_close{position:absolute;top:3px;right:3px;width:16px;height:16px;background:url(//web.archive.org/web/20210506121930im_/https://www.forocoches.com/info-close.png) no-repeat center}
+
+
+/* AdF */
+.ad {
+  word-wrap: break-word;
+}
+.ad-box {
+  text-align: center;
+}
+.ad-center {
+  width: 100%;
+  position: fixed;
+  left: 0;
+  bottom: 0;
+}
+.ad-center .ad-box {
+  background: #222;
+  width: 100%;
+}
+noindex:-o-prefocus,
+.ad-center {
+  position: absolute;
+}
+
+.dv1 
+{	
+	margin:0px;   
+	padding:4px;	   
+	margin-top:0px;
+	margin-right:0px;
+	margin-left:0px;
+	margin-bottom:0px;
+	
+	font-size:14px;
+	font-family: Helvetica;
+	color:black;
+	
+	width: 100%;
+	background-color: #f5f8fa;
+	
+	border-width: 1px;
+	border-style: solid;
+	border-color: #c9d3dd;
+	
+	-webkit-border-radius: 8px;
+}
+.dvslide 
+{	
+    margin: 0 0 0 0;
+    font-weight: normal;
+    text-align: center;
+    text-shadow: none;
+    text-overflow: none;
+
+	padding:6px;	   
+	margin-top:12px;
+	margin-right:0px;
+	margin-left:0px;
+	margin-bottom:0px;
+	
+	font-size:14px;
+	font-family: Helvetica;
+	color:black;
+	
+	width: 95%;
+	background-color: #f5f8fa;
+	
+	border-width: 1px;
+	border-style: solid;
+	border-color: #c9d3dd;
+	
+	-webkit-border-radius: 8px;
+}
+.mfont { font-size: 16px;  }
+.smallfont-gray { font-size: 11px; COLOR: #666666; }
+</style>
+<link rel="stylesheet" type="text/css" href="clientscript/vbulletin_important.css?v=3812vbs" />
+<!-- / CSS Stylesheet -->
+
+
+    <script type="text/javascript" src="/consentframework/stub" charset="utf-8"></script>
+<script type="text/javascript" src="/consentframework/cmp" charset="utf-8" async></script>
+
+
+
+<!-- auto -->
+<script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+
+<!-- / auto -->
+
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/yui/2.9.0/build/yahoo-dom-event/yahoo-dom-event.js?v=3812vbs"></script>
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/yui/2.9.0/build/connection/connection-min.js?v=3812vbs"></script>
+<script type="text/javascript">
+<!--
+var SESSIONURL = "";
+var SECURITYTOKEN = "fixture-security-token";
+var IMGDIR_MISC = "/foro/images/misc";
+var vb_disable_ajax = parseInt("0", 10);
+// -->
+</script>
+<script type="text/javascript" src="/foro/clientscript/vbulletin_global.js?v=3812vbs"></script>
+
+<script type="text/javascript">
+function createCookie(name,value,days)
+{
+	if (days)
+	{
+	var date = new Date();
+	date.setTime(date.getTime()+(days*24*60*60*1000));
+	var expires = "; expires="+date.toGMTString();
+	}
+	else
+	{
+	var expires = "";
+	}
+document.cookie = name+"="+encodeURIComponent(value)+expires+"; path=/; domain=.forocoches.com"; 
+}
+
+function readCookie(name)
+{
+var nameEQ = name + "=";
+var ca = document.cookie.split(';');
+	for(var i=0;i < ca.length;i++)
+	{
+	var c = ca[i];
+	while (c.charAt(0)==' ') c = c.substring(1,c.length);
+	if (c.indexOf(nameEQ) == 0) return decodeURIComponent(c.substring(nameEQ.length,c.length));
+	}
+return null;
+}
+
+function eraseCookie(name){createCookie(name,"",-1);}
+
+function GoVersionWeb()
+{
+createCookie('VW','1',3650);
+return true;
+}
+function infocookie_close()
+{
+createCookie('infocookie','1',3650);
+return true;
+}
+
+</script>
+
+
+<link rel="preload" href="https://securepubads.g.doubleclick.net/tag/js/gpt.js" as="script" type="text/javascript" />
+    <script>
+        var optidigitalQueue = optidigitalQueue || {};
+        optidigitalQueue.cmd = optidigitalQueue.cmd || [];
+    </script>
+
+ <script type='module'
+         id='optidigital-ad-init'
+         async
+		data-config='{"adUnit": "/1042320/m.forocoches.com/forumdisplay-registrados",
+		"uuid": {"email_md5": "00000000000000000000000000000000", "email_sha256": "0000000000000000000000000000000000000000000000000000000000000000"},
+		"pageTargeting":{"foro":"Coches"}}'
+		src='//scripts.opti-digital.com/modules/?site=forocoches'>
+</script>
+<meta name="robots" content="noarchive" />
+<title>Foro Coches - P&aacute;gina 22 - Forocoches</title>
+</head>
+<body>
+
+<!-- Google tag (gtag.js) -->
+<script>
+(function () {
+  var ga_registrado = true;
+  var styleid = 7;
+  var analyticsLoaded = false;
+
+  function loadAnalytics() {
+    if (analyticsLoaded) return;
+    analyticsLoaded = true;
+    var script = document.createElement('script');
+    script.async = true;
+    script.src = 'https://www.googletagmanager.com/gtag/js?id=G-QCY7DPM9MZ';
+    script.onload = function () {
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      window.gtag = gtag;
+      gtag('js', new Date());
+      gtag('config', 'G-QCY7DPM9MZ', {
+        is_registered: ga_registrado,
+        style_id: styleid
+      });
+    };
+    document.head.appendChild(script);
+  }
+
+  function waitForTcfapi(maxWait, interval) {
+    var waited = 0;
+    function checkTcfapi() {
+      if (typeof window.__tcfapi === "function") {
+        window.__tcfapi('addEventListener', 2, function (tcData, success) {
+          if (success && (tcData.eventStatus === 'tcloaded' || tcData.eventStatus === 'useractioncomplete')) {
+            var analyticsConsent =
+              tcData.purpose && tcData.purpose.consents && tcData.purpose.consents["10"];
+            if (analyticsConsent) loadAnalytics();
+          }
+        });
+      } else if (waited < maxWait) {
+        waited += interval;
+        setTimeout(checkTcfapi, interval);
+      }
+    }
+    checkTcfapi();
+  }
+
+  waitForTcfapi(10000, 250);
+})();
+</script>
+<!-- End Google Tag Manager --><script async src="https://fundingchoicesmessages.google.com/i/pub-3755389162544803?ers=1" nonce="b3qAdts5x0My38kHmw54rA"></script><script nonce="b3qAdts5x0My38kHmw54rA">(function() {function signalGooglefcPresent() {if (!window.frames['googlefcPresent']) {if (document.body) {const iframe = document.createElement('iframe'); iframe.style = 'width: 0; height: 0; border: none; z-index: -1000; left: -1000px; top: -1000px;'; iframe.style.display = 'none'; iframe.name = 'googlefcPresent'; document.body.appendChild(iframe);} else {setTimeout(signalGooglefcPresent, 0);}}}signalGooglefcPresent();})();</script>
+<script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/1/jquery.min.js"></script>
+<script type="text/javascript">
+    $(document).ready(function() {
+
+      $("a.mobilebuttonslide").click(function(){
+         $(".toggle_container").slideToggle( 'fast');
+      });
+
+   });
+</script>
+
+
+<div class="mobiletitle">
+<a href="/foro/">ForoCoches</a>
+<a id="homeButton" class="mobilebutton" href="/foro/">INICIO</a>
+<a class="mobilebuttonslide" href="#">BUSCAR</a>
+
+<div id="toggle_container" class="toggle_container" style="display: none;"><div class="block" align="center"><div class=dvslide>
+<form action="search.php?do=process" method="post">
+<input type="hidden" name="do" value="process" />
+<input type="hidden" name="quicksearch" value="1" />
+<input type="hidden" name="childforums" value="1" />
+<input type="hidden" name="exactname" value="1" />
+<input type="hidden" name="showposts" value="0" />
+<input type="hidden" name="titleonly" value="1" />
+<input type="hidden" name="s" value="" />
+<input type="hidden" name="securitytoken" value="fixture-security-token" />
+
+<input type="text" class="field" name="query" style="width:80%; background-color:#fff7cb;" /><br />
+<input type="submit" class="cbutton" value="Buscar Temas" style="margin-top:6px;" /><input class="cbutton" type="button" value="+" onclick="window.location.href='/foro/search.php'">
+</form>
+</div></div></div>
+</div>
+
+
+
+<div style="margin-top: 12px; margin-bottom: 8px; padding: 0px;">
+
+</div>
+<div class="page-margin">
+<!-- content table -->
+<div class="page" style="text-align:left">
+<div style="padding:0px 6px 0px 4px">
+
+<script type="text/javascript">
+<!--
+function log_out()
+{
+	ht = document.getElementsByTagName("html");
+	ht[0].style.filter = "progid:DXImageTransform.Microsoft.BasicImage(grayscale=1)";
+	if (confirm('¿Realmente quieres finalizar tu sesión?\n\nsi es así, presiona OK si no,\nentonces  presiona el botón CANCEL'))
+	{
+		return true;
+	}
+	else
+	{
+		ht[0].style.filter = "";
+		return false;
+	}
+}
+//-->
+</script>
+
+<ul class=ul2 ><li class="link" align="center"><a href="/foro/member.php?u=911128">neonforger</a>
+ | <a href="/foro/private.php?">Privados</a>: <strong>0</strong> | <a href="/foro/usertag.php?do=profilenotif&tab=mobile">Notificaciones</a>: <strong>0</strong></li>
+</ul>
+
+<!-- / breadcrumb, login, pm info -->
+
+
+<!-- breadcrumb -->
+<ul class=ulpagenav><li class="link" align="left">
+
+<a href="#" onclick="history.back(1); return false;"><img src="/foro/images/misc/navbits_start.gif" alt="Regresar" style="margin-bottom:1px; vertical-align: text-bottom;" border="0" /></a>
+<span class="navbar"><a href="index.php" accesskey="1">Forocoches</a></span> 
+	<span class="navbar">&raquo; <a href="forumdisplay.php?f=3">Zona ForoCoches</a></span>
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [{
+    "@type": "ListItem",
+    "position": 1,
+    "item": {
+      "@id": "https://forocoches.com/foro/forumdisplay.php?f=3",
+      "name": "Forocoches | Zona ForoCoches"
+    }
+  }]
+}
+</script>
+<span style="display:none;">
+	Coches
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [{
+    "@type": "ListItem",
+    "position": 2,
+    "item": {
+      "@id": "https://forocoches.com/foro/forumdisplay.php?f=4&order=desc&page=22",
+      "name": "Forocoches | Coches"
+    }
+  }]
+}
+</script></span>
+
+</li></ul>
+<!-- /breadcrumb -->
+
+
+
+<form action="profile.php?do=dismissnotice" method="post" id="vbnotices">
+<input type="hidden" name="do" value="dismissnotice" />
+<input type="hidden" name="securitytoken" value="fixture-security-token" />
+<input type="hidden" id="dismiss_notice_hidden" name="dismiss_noticeid" value="" />
+<input type="hidden" name="url" value="/foro/forumdisplay.php?f=4&amp;order=desc&amp;page=22" />
+	<table class="tborder" cellpadding="1" cellspacing="1" border="0" width="100%" align="center">
+	<tr>
+		<td class="alt1">
+			<div class="navbar_notice" id="navbar_notice_1645">
+	
+       <style type="text/css">
+       
+        #notices-wrapper * {
+            box-sizing: border-box;
+            font-family: Helvetica, 'Roboto', Arial, sans-serif;            
+        }
+    
+        #notices-wrapper {
+            display: flex;
+            flex: 1;
+            align-items: center;
+            justify-content: center;
+            min-height: 80px;
+        }
+    
+        #notices-wrapper[class*="bg-color-dark"] {
+            background-color: #00ffde;
+        }
+    
+        #notices-wrapper[class*="bg-color-dark"] .notice-container-text *  {
+            color: #000000;
+        }
+    
+        #notices-wrapper[class~="bg-color"] {
+            background-color: #00ffde;
+        }
+    
+        #notices-wrapper[class~="bg-color"] .notice-container-text *  {
+            color: #000000;
+        }
+    
+         #notices-wrapper .notice-container {
+            display: flex;
+            flex: 1;
+            padding: 12px;
+            gap: 8px;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+    
+         #notices-wrapper .notice-container-text {
+            display: flex;
+            flex: 2;
+            min-width: 200px;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            text-align: center;
+        }
+    
+        #notices-wrapper a {
+            text-decoration: none;
+            display: flex;
+            justify-content: center;
+        }
+    
+        #notices-wrapper a:hover {
+            text-decoration: underline;
+        }
+         #notices-wrapper .notice-content-image {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            max-width: 25%;
+        }
+         #notices-wrapper .notice-content-image img {
+            max-width: min(100%, 150px);
+            max-height: 100px;
+            height: auto;
+        }
+    
+        .title {
+            font-size: 16px;
+            font-weight: bold;
+        }
+        .subtitle {
+            font-size: 14px;
+        }
+        @media (max-width: 768px) {
+            /*Medium size screen*/
+            #notices-wrapper .notice-container {
+                padding: 8px;
+            }
+        }
+        @media (max-width: 576px) {
+            /*Small size screen - mobile*/
+            #notices-wrapper .notice-container {
+                padding: 6px;
+            }
+            .title {
+                font-size: 14px;
+            }
+            .subtitle {
+                font-size: 12px;
+            }
+            #notices-wrapper[class*="no-image-mobile"] .notice-content-image {
+                display: none;
+            }
+            #notices-wrapper .notice-content-image img {
+                max-height: 80px;
+            }
+        }
+
+        
+</style>
+<div id="guidedCreate" style="display:none">yes</div>
+<div id="title" style="display:none">HAZ EL 11 MÁS FOROCOCHERO DE LA HISTORIA</div>
+<div id="subtitle" style="display:none">...y gana un PACK REVEL MUNDIAL</div>
+<div id="backgroundColor" style="display:none">#00ffde</div>
+<div id="linkTitle" style="display:none">https://forocoches.com/foro/showthread.php?t=10712713#post514324033</div>
+<div id="linkSubtitle" style="display:none">https://forocoches.com/foro/showthread.php?t=10712713#post514324033</div>
+<div id="linkImage" style="display:none">https://forocoches.com/foro/showthread.php?t=10712713#post514324033</div>
+<div id="image1" style="display:none">https://cdn2.forocoches.com/uploads/svgexport-2-svg.png</div>
+<div id="image2" style="display:none">$image2</div>
+<div id="designTemplate" style="display:none">text+logo</div>
+<div id="countdownTimestamp" style="display:none">$countdownTimestamp</div>
+<div class="bg-color" id="notices-wrapper">
+<div class="notice-container">
+<div class="notice-container-text">
+
+<a class="title" target="_blank" href="https://forocoches.com/foro/showthread.php?t=10712713#post514324033">HAZ EL 11 MÁS FOROCOCHERO DE LA HISTORIA</a>
+<a class="subtitle" target="_blank" href="https://forocoches.com/foro/showthread.php?t=10712713#post514324033">...y gana un PACK REVEL MUNDIAL</a>
+<div class="subtitle" id="countdown"></div>
+
+</div>
+
+<div class="notice-content-image"><a target="_blank"  href="https://forocoches.com/foro/showthread.php?t=10712713#post514324033"><img alt="" src="https://cdn2.forocoches.com/uploads/svgexport-2-svg.png" /></a></div>
+</div>
+</div>
+
+</div>
+		</td>
+	</tr>
+	</table>
+	<br />
+</form>
+
+
+
+
+
+
+
+</div>
+</div>
+</div>
+<div class="title-forum-display">
+<span class="title-forum"><h1>Foro Coches</h1></span>
+
+</div>
+
+
+
+
+<div class="page-margin">
+<div class="page" style="text-align:left">
+<div style="padding:0px 6px 0px 4px">
+
+
+
+
+
+<div align="center">
+
+<a class="mobile_button" href="newthread.php?do=newthread&amp;f=4" rel="nofollow"> Nuevo Tema </a>
+</div>
+
+<!-- controls above thread list -->
+<ul class="ulpagenav">
+<li class="inline">
+
+<a href="forumdisplay.php?f=4&amp;order=desc" title="Primera P&aacute;gina - Resultados del 1 al 40 de 854"><strong>&laquo;</strong> Primer</a>
+
+P&aacute;g 22 de 22
+
+</li>
+<li class="inline">
+<a class="smallfont" href="forumdisplay.php?f=4&amp;order=desc&amp;page=21" title="P&aacute;gina Prev - Resultados del 801 al 840 de 854">&laquo; Anterior</a>
+|
+
+</li>
+</ul>
+
+
+	<!-- show threads -->
+	
+
+<!-- DES -->
+
+
+	<ul>
+	
+
+
+
+
+
+<li style="word-wrap:break-word; word-break:break-word; " />
+<img src="/foro/images/statusicon/thread_hot.gif" align="left" style="margin-right:3px;" /><a href="showthread.php?t=10571747" >[Serio] Padre primerizo en BCN. ¿Suicidio comprar Gasolina hoy? Presupuesto 35k.</a><div align=right class=asmvinfo><span style="word-wrap:break-word; word-break:break-word"><a href="showthread.php?t=10571747&amp;page=3#post513081354" style="word-wrap:break-word; word-break:break-word" /><strong>83</strong> Mensajes, 19-may-2026 (17:04) Sbiky</a></span></div>
+</li>
+
+
+
+
+
+<li style="word-wrap:break-word; word-break:break-word; " />
+<img src="/foro/images/statusicon/thread_hot.gif" align="left" style="margin-right:3px;" /><a href="showthread.php?t=10672917" >Fallo batería Lexus IS300h</a><div align=right class=asmvinfo><span style="word-wrap:break-word; word-break:break-word"><a href="showthread.php?t=10672917&amp;page=5#post513080064" style="word-wrap:break-word; word-break:break-word" /><strong>131</strong> Mensajes, 19-may-2026 (16:34) pipe1</a></span></div>
+</li>
+
+
+
+
+
+<li style="word-wrap:break-word; word-break:break-word; " />
+<img src="/foro/images/statusicon/thread_hot.gif" align="left" style="margin-right:3px;" /><a href="showthread.php?t=10688121" >Ford Bronco Sport II (2028)</a><div align=right class=asmvinfo><span style="word-wrap:break-word; word-break:break-word"><a href="showthread.php?t=10688121#post513078785" style="word-wrap:break-word; word-break:break-word" /><strong>0</strong> Mensajes, 19-may-2026 (16:07) Jorge_Lega</a></span></div>
+</li>
+
+<li style="word-wrap:break-word; word-break:break-word;" /><center>
+<div align='center'>
+<!-- Mobile_Pos1 -->
+<div id='optidigital-adslot-Mobile_Pos1' style='display:none;' class="Mobile_Pos1">
+</div>
+</div>
+</center></li>
+
+
+
+
+
+
+<li style="word-wrap:break-word; word-break:break-word; " />
+<img src="/foro/images/statusicon/thread_hot.gif" align="left" style="margin-right:3px;" /><a href="showthread.php?t=10006867" >Xiaomi YU7 (2025)</a><div align=right class=asmvinfo><span style="word-wrap:break-word; word-break:break-word"><a href="showthread.php?t=10006867&amp;page=2#post513078349" style="word-wrap:break-word; word-break:break-word" /><strong>56</strong> Mensajes, 19-may-2026 (15:58) EmprendeSaurio</a></span></div>
+</li>
+
+
+
+
+
+<li style="word-wrap:break-word; word-break:break-word; " />
+<img src="/foro/images/statusicon/thread_hot.gif" align="left" style="margin-right:3px;" /><a href="showthread.php?t=10687421" >Ford Fiesta VIII (2028)</a><div align=right class=asmvinfo><span style="word-wrap:break-word; word-break:break-word"><a href="showthread.php?t=10687421#post513074074" style="word-wrap:break-word; word-break:break-word" /><strong>21</strong> Mensajes, 19-may-2026 (14:35) Jorge_Lega</a></span></div>
+</li>
+
+
+
+
+
+<li style="word-wrap:break-word; word-break:break-word; " />
+<img src="/foro/images/statusicon/thread_hot.gif" align="left" style="margin-right:3px;" /><a href="showthread.php?t=10687818" >Problema con correa despespero</a><div align=right class=asmvinfo><span style="word-wrap:break-word; word-break:break-word"><a href="showthread.php?t=10687818#post513069120" style="word-wrap:break-word; word-break:break-word" /><strong>3</strong> Mensajes, 19-may-2026 (12:54) rapidoycurioso</a></span></div>
+</li>
+
+
+
+
+
+<li style="word-wrap:break-word; word-break:break-word; " />
+<img src="/foro/images/statusicon/thread_hot.gif" align="left" style="margin-right:3px;" /><a href="showthread.php?t=10637391" >Tesla Model 3 de segunda mano +consejos</a><div align=right class=asmvinfo><span style="word-wrap:break-word; word-break:break-word"><a href="showthread.php?t=10637391&amp;page=2#post513066622" style="word-wrap:break-word; word-break:break-word" /><strong>40</strong> Mensajes, 19-may-2026 (12:00) XM2000</a></span></div>
+</li>
+
+
+
+
+
+<li style="word-wrap:break-word; word-break:break-word; " />
+<img src="/foro/images/statusicon/thread_hot.gif" align="left" style="margin-right:3px;" /><a href="showthread.php?t=10685882" >El nuevo BMW Serie 7 es un meme</a><div align=right class=asmvinfo><span style="word-wrap:break-word; word-break:break-word"><a href="showthread.php?t=10685882&amp;page=4#post513065505" style="word-wrap:break-word; word-break:break-word" /><strong>91</strong> Mensajes, 19-may-2026 (11:35) javvu11</a></span></div>
+</li>
+
+
+
+
+
+<li style="word-wrap:break-word; word-break:break-word; " />
+<img src="/foro/images/statusicon/thread_hot.gif" align="left" style="margin-right:3px;" /><a href="showthread.php?t=10678579" >Comparativa BMW M635 CSi- Jaguar XJS V12- MB 500 SEC- Porsche 928 S</a><div align=right class=asmvinfo><span style="word-wrap:break-word; word-break:break-word"><a href="showthread.php?t=10678579&amp;page=3#post513062742" style="word-wrap:break-word; word-break:break-word" /><strong>67</strong> Mensajes, 19-may-2026 (10:30) SantiDM</a></span></div>
+</li>
+
+
+
+
+
+<li style="word-wrap:break-word; word-break:break-word; " />
+<img src="/foro/images/statusicon/thread_hot.gif" align="left" style="margin-right:3px;" /><a href="showthread.php?t=10680209" >Ford Puma, pero el original...</a><div align=right class=asmvinfo><span style="word-wrap:break-word; word-break:break-word"><a href="showthread.php?t=10680209&amp;page=3#post513062215" style="word-wrap:break-word; word-break:break-word" /><strong>88</strong> Mensajes, 19-may-2026 (10:18) SantiDM</a></span></div>
+</li>
+
+
+
+
+
+<li style="word-wrap:break-word; word-break:break-word; " />
+<img src="/foro/images/statusicon/thread_hot.gif" align="left" style="margin-right:3px;" /><a href="showthread.php?t=10687437" >Campaña DV5 OPEL.</a><div align=right class=asmvinfo><span style="word-wrap:break-word; word-break:break-word"><a href="showthread.php?t=10687437#post513059796" style="word-wrap:break-word; word-break:break-word" /><strong>8</strong> Mensajes, 19-may-2026 (09:24) agligugli</a></span></div>
+</li>
+
+
+
+
+
+<li style="word-wrap:break-word; word-break:break-word; " />
+<img src="/foro/images/statusicon/thread_hot.gif" align="left" style="margin-right:3px;" /><a href="showthread.php?t=10157615" >Jaguar &quot;Type 00&quot; (2026)</a><div align=right class=asmvinfo><span style="word-wrap:break-word; word-break:break-word"><a href="showthread.php?t=10157615&amp;page=9#post513056158" style="word-wrap:break-word; word-break:break-word" /><strong>245</strong> Mensajes, 19-may-2026 (07:25) Al Jourgensen</a></span></div>
+</li>
+
+
+
+
+
+<li style="word-wrap:break-word; word-break:break-word; " />
+<img src="/foro/images/statusicon/thread_hot.gif" align="left" style="margin-right:3px;" /><a href="showthread.php?t=7336041" >Los que habéis puesto el neumático CONTINENTAL ECOCONTACT 6 ¿que tal lo véis?</a><div align=right class=asmvinfo><span style="word-wrap:break-word; word-break:break-word"><a href="showthread.php?t=7336041#post513052620" style="word-wrap:break-word; word-break:break-word" /><strong>26</strong> Mensajes, 19-may-2026 (00:41) tornillos</a></span></div>
+</li>
+
+
+
+
+
+<li style="word-wrap:break-word; word-break:break-word; " />
+<img src="/foro/images/statusicon/thread_hot.gif" align="left" style="margin-right:3px;" /><a href="showthread.php?t=10687378" >¿Que son estos discos blancos detrás de las ruedas?</a><div align=right class=asmvinfo><span style="word-wrap:break-word; word-break:break-word"><a href="showthread.php?t=10687378#post513051772" style="word-wrap:break-word; word-break:break-word" /><strong>7</strong> Mensajes, 19-may-2026 (00:12) Rutiger</a></span></div>
+</li>
+
+<li style="word-wrap:break-word; word-break:break-word; " />
+<center>
+<div align='center'>
+<!-- Mobile_Pos7 -->
+<div id='optidigital-adslot-Mobile_Pos7' style='display:none;' class="Mobile_Pos7">
+</div>
+</div>
+</center>
+</li>
+
+	</ul>
+	<!-- end show threads -->
+
+<!-- ### END THREADS LIST ###  -->
+
+<ul class="ulpagenav">
+<li class="inline">
+
+<a href="forumdisplay.php?f=4&amp;order=desc" title="Primera P&aacute;gina - Resultados del 1 al 40 de 854"><strong>&laquo;</strong> Primer</a>
+
+P&aacute;g 22 de 22
+
+</li>
+<li class="inline">
+<a class="smallfont" href="forumdisplay.php?f=4&amp;order=desc&amp;page=21" title="P&aacute;gina Prev - Resultados del 801 al 840 de 854">&laquo; Anterior</a>
+|
+
+</li>
+</ul>
+
+
+
+</div>
+</div>
+<!-- /content area table -->
+</div>
+<!-- footer -->
+<div align="center">
+
+</div>
+<!-- /footer -->
+<div class="page-margin">
+
+<!-- infocookie -->
+
+<!-- /infocookie -->
+
+
+
+<!-- content table -->
+<div class="page" style="text-align:left">
+<div style="padding:0px 6px 0px 4px">
+<div align="center">
+<ul class=ul2>
+<div align="right">
+<li><img src="//forocoches.com/fcmovil/gofc.png" alt="" border="0"  style="float:left; margin-right: 5px;" /><a href="#top"><strong>ARRIBA&nbsp;&nbsp;▲</strong></a></li>
+<li><img src="//forocoches.com/fcmovil/gofc.png" alt="" border="0" style="float:left; margin-right: 5px;" /><a href="/foro/"><strong>INDICE FOROS</strong></a></li>
+<li><img src="//forocoches.com/fcmovil/foro.png" alt="" border="0" style="float:left; margin-right: 5px;" /><a href="/foro/forumdisplay.php?f=4"><strong>COCHES</strong></a></li>
+</div>
+</ul>
+</div>
+
+</div>
+</div>
+</div>
+
+
+<div class="title-forum-display-f5">
+<span class="title-forum-f5">
+    [ <a target="_blank" href="https://www.lwnetwork.com/lwnet/legal.php?ident=forocoches.com">Legal</a> ]
+    [ <a target="_blank" href="https://www.lwnetwork.com/lwnet/privacidad.php?ident=forocoches.com">Privacidad</a> ]
+    [ <a target="_blank" href="http://www.lwnetwork.com/lwnet/cookies.php?ident=forocoches.com">Cookies</a>
+    
+        
+            (<a href='javascript:Sddan.cmp.displayUI()'>Config &#x2699;</a>)
+        
+    
+    ]
+    [ <a target="_blank" href="https://www.lwnetwork.com/lwnet/notificaciones.php?ident=forocoches.com">Notificaciones</a> ]
+    [ <a href="/foro/showthread.php?t=8241760">Contacto</a> ]
+
+    <br/>
+    [ <a href="#" onclick="setNewDesign()">Nuevo diseño</a> ]
+<script type="text/javascript">
+    function setNewDesign () {
+        let data = {newstyleset: "8", securitytoken: SECURITYTOKEN, s: "", do: 'updatestyleid'};
+
+        var formBody = [];
+        for (var property in data) {
+            var encodedKey = encodeURIComponent(property);
+            var encodedValue = encodeURIComponent(data[property]);
+            formBody.push(encodedKey + "=" + encodedValue);
+        }
+        formBody = formBody.join("&");
+
+        fetch("/foro/profile.php?do=updatestyleid", {
+            method: "POST",
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: formBody
+        }).then(res => {
+            console.log(res);
+            window.location.reload();
+        });
+    }
+</script>
+</span>
+</div>
+
+
+<footer>
+<div class="mobiletitlebottom">
+<a class="mobilebuttonbottom" style="float:left;" onclick="GoVersionWeb();" href="https://forocoches.com/foro/forumdisplay.php?f=4&amp;order=desc&amp;page=22">Versión PC</a>
+
+<a class="mobilebuttonbottom" style="float:right;" href="login.php?do=logout&amp;logouthash=fixture-security-token"  onclick="return log_out('¿Realmente quieres finalizar tu sesión?\n\nsi es así, presiona OK si no,\nentonces  presiona el botón CANCEL')">Fin Sesión</a>
+
+</div>
+</footer>
+<div class="clearfix"></div>
+</div>
+
+<!-- auto DST correction code -->
+<form action="profile.php?do=dst" method="post" name="dstform">
+	<input type="hidden" name="s" value="" />
+	<input type="hidden" name="securitytoken" value="fixture-security-token" />
+	<input type="hidden" name="do" value="dst" />
+</form>
+<script type="text/javascript">
+<!--
+	var tzOffset = 1 + 1;
+	var utcOffset = new Date().getTimezoneOffset() / 60;
+	if (Math.abs(tzOffset + utcOffset) == 1)
+	{	// Dst offset is 1 so its changed
+		//document.forms.dstform.submit();
+	}
+//-->
+</script>
+<!-- / auto DST correction code -->
+
+
+
+<script type="text/javascript">
+<!--
+	// Main vBulletin Javascript Initialization
+	vBulletin_init();
+
+//-->
+</script>
+
+
+
+
+<script type="text/javascript" src="/consentframework/stub" charset="utf-8"></script>
+<script type="text/javascript" src="/consentframework/cmp" charset="utf-8" async></script>
+</body>
+</html>

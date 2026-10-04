@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Blanco, el mismo de la ficha de Play, para que el icono del móvil y el de la
+         tienda sean el mismo dibujo. NO puede ser transparente: un adaptativo sin fondo
+         lo rellena el lanzador, y en la 41 salió un tile NEGRO (reportado el 2026-09-18).
+         El roto2 es blanco por dentro, pero su contorno negro es quien lo delimita, así
+         que sobre blanco sigue leyéndose. -->
+    <color name="ic_launcher_background">#FFFFFF</color>
+</resources>

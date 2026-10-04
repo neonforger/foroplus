@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Relleno de la barra: rojo de la app, proporcional al porcentaje de la opción. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/fc_rojo" />
+    <corners android:radius="4dp" />
+</shape>

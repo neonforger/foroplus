@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingTop="18dp"
+    android:paddingBottom="10dp"
+    android:background="@color/fc_fondo">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="8dp"
+        android:text="Cambiar de cuenta"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:textColor="@color/fc_texto" />
+
+    <LinearLayout
+        android:id="@+id/cuentas_lista"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginTop="6dp"
+        android:layout_marginBottom="6dp"
+        android:background="@color/fc_divisoria" />
+
+    <TextView
+        android:id="@+id/cuentas_anadir"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="14dp"
+        android:paddingBottom="14dp"
+        android:text="＋  Añadir cuenta"
+        android:textSize="15sp"
+        android:textColor="@color/fc_rojo"
+        android:background="?attr/selectableItemBackground" />
+
+</LinearLayout>

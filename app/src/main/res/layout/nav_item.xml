@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Ítem de la barra inferior propia (6 destinos con scroll lateral).
+     Icono/etiqueta/badge se rellenan por código en configureBottomBar.
+
+     TAMAÑOS (subidos el 2026-09-21): la barra pasaba desapercibida y la insignia de
+     citas/menciones era casi invisible. Creció TODO menos el ANCHO del ítem, que se queda
+     en 76dp a propósito: seis ítems son 456dp sobre una pantalla de 360dp, así que la fila
+     ya va con scroll lateral y ensancharla empuja más destinos fuera de la pantalla — justo
+     lo contrario de lo que se busca. Crecer a lo alto se nota igual y no esconde nada. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="76dp"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:paddingTop="9dp"
+    android:paddingBottom="9dp"
+    android:clipChildren="false"
+    android:clipToPadding="false"
+    android:background="?attr/selectableItemBackgroundBorderless">
+
+    <FrameLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:clipChildren="false"
+        android:clipToPadding="false">
+
+        <ImageView
+            android:id="@+id/nav_icon"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:contentDescription="@null" />
+
+        <TextView
+            android:id="@+id/nav_badge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top|end"
+            android:translationX="10dp"
+            android:translationY="-6dp"
+            android:minWidth="18dp"
+            android:paddingStart="4dp"
+            android:paddingEnd="4dp"
+            android:gravity="center"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:textColor="@color/fc_sobre_rojo"
+            android:background="@drawable/badge_bg"
+            android:visibility="gone" />
+    </FrameLayout>
+
+    <TextView
+        android:id="@+id/nav_label"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="3dp"
+        android:textSize="11sp"
+        android:maxLines="1" />
+
+</LinearLayout>

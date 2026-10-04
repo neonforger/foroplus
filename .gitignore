@@ -1,0 +1,22 @@
+*.iml
+.gradle
+/local.properties
+/.idea
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+app/build/
+release.keystore
+release.keystore.*
+*.keystore
+keystore.properties
+.superpowers/
+downloads/
+
+# Skills de Claude Code instaladas en local (y sus permisos): no son de la app
+.claude/
+.agents/
+skills-lock.json
