@@ -236,7 +236,10 @@ object PostImages {
         origenLocal?.invoke(url)?.let { return it }
         val conn = URL(url).openConnection() as HttpURLConnection
         conn.setRequestProperty("User-Agent", UA)
-        if (url.contains("forocoches.com")) {
+        // La cookie de sesión solo va al host de FC, no a cualquier URL que CONTENGA el texto
+        // "forocoches.com" (p. ej. `forocoches.com.evil.example`), que es lo que permitía un
+        // `url.contains(...)`: bastaba una imagen en un post para filtrar `bbpassword`.
+        if (TrustedOrigins.isTrustedForocochesUrl(url)) {
             CookieManager.getInstance().getCookie("https://forocoches.com")
                 ?.let { conn.setRequestProperty("Cookie", it) }
         }

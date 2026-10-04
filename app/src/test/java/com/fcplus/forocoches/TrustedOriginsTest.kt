@@ -28,6 +28,15 @@ class TrustedOriginsTest {
     }
 
     @Test
+    fun `isHttpsUrl exige esquema https y host de verdad`() {
+        assertTrue(TrustedOrigins.isHttpsUrl("https://otro.example/api"))
+        assertFalse(TrustedOrigins.isHttpsUrl("http://forocoches.com/foro/"))
+        assertFalse(TrustedOrigins.isHttpsUrl("otro.example/api"))
+        assertFalse(TrustedOrigins.isHttpsUrl("javascript:alert(1)"))
+        assertFalse(TrustedOrigins.isHttpsUrl("ftp://x/y"))
+    }
+
+    @Test
     fun `falls back to default url for untrusted input`() {
         assertEquals(
             TrustedOrigins.DEFAULT_URL,

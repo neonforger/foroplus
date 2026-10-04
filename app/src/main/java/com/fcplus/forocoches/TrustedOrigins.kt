@@ -29,6 +29,12 @@ object TrustedOrigins {
         return scheme == "http" || scheme == "https"
     }
 
+    /** HTTPS con host de verdad: única forma aceptable de un endpoint que viene de fuera. */
+    fun isHttpsUrl(rawUrl: String?): Boolean {
+        val uri = parse(rawUrl) ?: return false
+        return uri.scheme?.lowercase(Locale.US) == "https" && !uri.host.isNullOrEmpty()
+    }
+
     private fun parse(rawUrl: String?): URI? {
         val trimmed = rawUrl?.trim()
         if (trimmed.isNullOrEmpty()) return null

@@ -2535,9 +2535,11 @@ class MainActivity : AppCompatActivity() {
 
     /**
      * Las cookies de sesión de cada cuenta. Son **credenciales**, así que van cifradas; si el
-     * keystore del móvil falla (pasa en algunos), se cae a preferencias normales antes que
-     * dejar la función rota — el CookieManager ya guarda las de la cuenta activa en claro de
-     * todos modos.
+     * keystore del móvil falla (pasa en algunos), `cofre` vale null y [guardarCookie]/
+     * [leerCookieCruda] usan un almacén SOLO en memoria: cambiar de cuenta sigue funcionando
+     * durante la sesión, pero al reiniciar hay que volver a entrar. Es a propósito — caer a un
+     * `SharedPreferences` sin cifrar dejaba `bbpassword` (el "recordarme") en claro en disco,
+     * que es justo lo que el cofre existe para evitar.
      *
      * OJO versión: `security-crypto:1.0.0` (la que pide el plan) es la última estable y NO
      * trae la clase `MasterKey` nueva — esa API llegó en 1.1.0-alpha. Con 1.0.0 la forma de
@@ -2545,7 +2547,7 @@ class MainActivity : AppCompatActivity() {
      * `String` en vez de un objeto `MasterKey`. Mismo cifrado, mismo `catch` de red de
      * seguridad; solo cambia la llamada por la que existe de verdad en esta versión.
      */
-    private val cofre: android.content.SharedPreferences by lazy {
+    private val cofre: android.content.SharedPreferences? by lazy {
         try {
             val aliasMaestra = androidx.security.crypto.MasterKeys.getOrCreate(
                 androidx.security.crypto.MasterKeys.AES256_GCM_SPEC
@@ -2556,9 +2558,27 @@ class MainActivity : AppCompatActivity() {
                 androidx.security.crypto.EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
             )
         } catch (e: Throwable) {
-            android.util.Log.w("Cuentas", "sin cifrado disponible", e)
-            getSharedPreferences("fc_cuentas_cookies", MODE_PRIVATE)
+            android.util.Log.w("Cuentas", "sin cifrado disponible: no se guardan cookies en disco", e)
+            null
         }
+    }
+
+    /** Respaldo en memoria para cuando no hay cifrado: la sesión vive, pero no toca el disco. */
+    private val cookiesSinCifrar = java.util.concurrent.ConcurrentHashMap<String, String>()
+
+    private fun guardarCookie(uid: String, json: String) {
+        val c = cofre
+        if (c != null) c.edit().putString(uid, json).apply() else cookiesSinCifrar[uid] = json
+    }
+
+    private fun leerCookieCruda(uid: String): String {
+        val c = cofre
+        return if (c != null) c.getString(uid, "") ?: "" else cookiesSinCifrar[uid].orEmpty()
+    }
+
+    private fun borrarCookie(uid: String) {
+        val c = cofre
+        if (c != null) c.edit().remove(uid).apply() else cookiesSinCifrar.remove(uid)
     }
 
     private fun guardarCookiesDe(uid: String) {
@@ -2567,11 +2587,11 @@ class MainActivity : AppCompatActivity() {
         if (cookies.isEmpty()) return
         val o = org.json.JSONObject()
         for ((k, v) in cookies) o.put(k, v)
-        cofre.edit().putString(uid, o.toString()).apply()
+        guardarCookie(uid, o.toString())
     }
 
     private fun cookiesDe(uid: String): Map<String, String> {
-        val s = cofre.getString(uid, "") ?: ""
+        val s = leerCookieCruda(uid)
         if (s.isEmpty()) return emptyMap()
         return try {
             val o = org.json.JSONObject(s)
@@ -2579,7 +2599,7 @@ class MainActivity : AppCompatActivity() {
         } catch (_: Exception) { emptyMap() }
     }
 
-    private fun borrarCookiesGuardadas(uid: String) { cofre.edit().remove(uid).apply() }
+    private fun borrarCookiesGuardadas(uid: String) { borrarCookie(uid) }
 
     /**
      * Cambia a [uid], avisando antes si hay un borrador sin enviar (en la barra rápida o en el

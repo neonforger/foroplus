@@ -39,6 +39,20 @@ class SubidaImagenTest {
     }
 
     @Test
+    fun `un host sin https se ignora y se usa catbox`() {
+        // La config vive en un repo público: no se sube la foto de nadie en claro ni a un
+        // esquema raro, aunque el fichero remoto lo pida.
+        assertEquals(
+            SubidaImagen.CATBOX,
+            SubidaImagen.host(JSONObject("""{"imagenes":{"url":"http://otro.example/api"}}"""))
+        )
+        assertEquals(
+            SubidaImagen.CATBOX,
+            SubidaImagen.host(JSONObject("""{"imagenes":{"url":"otro.example/api"}}"""))
+        )
+    }
+
+    @Test
     fun `un lado absurdo se acota`() {
         val h = SubidaImagen.host(JSONObject("""{"imagenes":{"url":"https://x.example","ladoMax":10}}"""))
         assertEquals(320, h.ladoMax)

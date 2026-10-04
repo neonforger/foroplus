@@ -53,7 +53,19 @@ object Avisos {
         val fijo = b.optBoolean("fijo", false)
         if (!fijo && descartados.contains(id)) return null
 
-        return Aviso(id = id, texto = texto, fijo = fijo, enlace = b.optString("enlace").trim())
+        return Aviso(id = id, texto = texto, fijo = fijo, enlace = enlaceSeguro(b.optString("enlace")))
+    }
+
+    /**
+     * El enlace del aviso, solo si es http(s).
+     *
+     * El aviso lo sirve un fichero remoto: sin este filtro, un `javascript:`, un `intent://`
+     * o un `file://` acabarían en `openExternal` → `ACTION_VIEW`. Con el esquema acotado a
+     * http(s), lo peor que puede llegar al navegador es una web normal.
+     */
+    fun enlaceSeguro(raw: String): String {
+        val t = raw.trim()
+        return if (t.isNotEmpty() && TrustedOrigins.isHttpOrHttps(t)) t else ""
     }
 
     /** Los ids descartados viven en una sola cadena, del más viejo al más nuevo. */

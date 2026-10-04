@@ -92,6 +92,17 @@ class AvisosTest {
     }
 
     @Test
+    fun `un enlace con esquema peligroso se descarta`() {
+        // El aviso viene de un fichero remoto: javascript:/intent:// no pueden llegar a
+        // openExternal -> ACTION_VIEW.
+        val j = """{"aviso": {"id": "x", "texto": "hola", "enlace": "javascript:alert(1)"}}"""
+        assertEquals("", Avisos.para(cfg(j), 31, emptySet())?.enlace)
+        assertEquals("", Avisos.enlaceSeguro("intent://evil#Intent;scheme=https;end"))
+        assertEquals("", Avisos.enlaceSeguro("  "))
+        assertEquals("http://forocoches.com/foro/", Avisos.enlaceSeguro("http://forocoches.com/foro/"))
+    }
+
+    @Test
     fun `los descartados se leen y se anaden sin duplicar`() {
         assertEquals(emptyList<String>(), Avisos.leerDescartados(""))
         assertEquals(listOf("a", "b"), Avisos.leerDescartados("a\nb"))

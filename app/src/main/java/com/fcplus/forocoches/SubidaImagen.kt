@@ -52,7 +52,9 @@ object SubidaImagen {
     fun host(config: JSONObject?): HostImagenes {
         val o = config?.optJSONObject("imagenes") ?: return CATBOX
         val url = o.optString("url").trim()
-        if (url.isEmpty()) return CATBOX
+        // Solo HTTPS con host real: la URL viene de un fichero remoto mutable, y no se acepta
+        // subir la foto de nadie en claro ni a un esquema raro.
+        if (!TrustedOrigins.isHttpsUrl(url)) return CATBOX
         val campos = LinkedHashMap<String, String>()
         o.optJSONObject("campos")?.let { c ->
             for (k in c.keys()) campos[k] = c.optString(k)
