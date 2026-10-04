@@ -14,55 +14,70 @@
 <body>
 <h1>Política de privacidad</h1>
 <p class="muted">Aplicación: <strong>ForoPlus</strong> (cliente <strong>no oficial</strong> para el foro forocoches.com)<br>
-Última actualización: 27 de julio de 2026</p>
+Última actualización: 4 de octubre de 2026</p>
 
 <p>ForoPlus es una aplicación Android <strong>no oficial</strong> e independiente para el foro
 <em>forocoches.com</em>. No está afiliada, asociada, autorizada ni respaldada por Forocoches ni por
 los titulares de su marca. Su interfaz es <strong>nativa</strong> de la aplicación; el foro se carga
 a través de un componente WebView interno que actúa como <strong>motor en segundo plano</strong> —y
-donde se guardan las cookies de tu sesión—, no como la pantalla que ves. Sobre esa base añade mejoras
-de uso (filtros, avisos de mensajes privados).</p>
+donde se guardan las cookies de tu sesión—, no como la pantalla que ves. El código fuente es público:
+<a href="https://github.com/neonforger/foroplus">github.com/neonforger/foroplus</a>.</p>
 
 <h2>1. Resumen</h2>
 <p>La aplicación <strong>no recopila, no almacena en servidores y no comparte</strong> datos
 personales con el desarrollador ni con terceros. No incluye analítica, ni publicidad, ni
-rastreadores, ni servidor propio. Toda la información se procesa <strong>en tu dispositivo</strong>.</p>
+rastreadores, ni servidor propio. Toda la información se procesa <strong>en tu dispositivo</strong>.
+La única excepción es la subida de fotos, que solo ocurre si tú adjuntas una (ver punto 3).</p>
 
 <h2>2. Datos que se manejan en el dispositivo</h2>
 <ul>
   <li><strong>Sesión e inicio de sesión:</strong> necesitas tu propia cuenta de Forocoches. Cuando
   inicias sesión, tus credenciales se envían <strong>directamente a forocoches.com</strong> (nunca a
-  un servidor del desarrollador, que no existe) y las <em>cookies</em> de sesión resultantes se
-  guardan <strong>únicamente en tu dispositivo</strong>. Cerrar sesión las elimina.</li>
-  <li><strong>Avisos de mensajes privados y notificaciones:</strong> para mostrarte un aviso, la
-  aplicación consulta forocoches.com <strong>con tu propia sesión</strong> y lee el número de mensajes
-  y una vista previa del último. Ese contenido se usa para crear la notificación local y
-  <strong>no se almacena ni se transmite</strong> a terceros.</li>
-  <li><strong>Preferencias de filtrado</strong> (lista de usuarios ignorados y palabras clave) y
-  ajustes: se guardan localmente. Una lista de configuración de filtros se descarga desde un
-  repositorio público alojado en GitHub; esa petición <strong>no envía datos personales tuyos</strong>.</li>
+  un servidor del desarrollador, que no existe). La contraseña no se guarda. Las <em>cookies</em> de
+  sesión resultantes se guardan <strong>únicamente en tu dispositivo</strong>; si usas varias cuentas,
+  las de cada una se guardan cifradas (en los pocos móviles donde el cifrado del sistema falla, se
+  guardan en el almacenamiento privado de la aplicación). Cerrar sesión las elimina.</li>
+  <li><strong>Preferencias</strong> (usuarios ignorados, palabras filtradas, ajustes y apariencia) y
+  <strong>hilos guardados para leer sin conexión</strong>: se guardan localmente, en el almacenamiento
+  privado de la aplicación.</li>
+  <li><strong>Lo que lees y escribes</strong> (hilos, mensajes, mensajes privados, citas y menciones):
+  la aplicación lo pide a forocoches.com con tu propia sesión para mostrártelo o enviarlo, y
+  <strong>no lo transmite a nadie más</strong>.</li>
 </ul>
+<p>La aplicación <strong>no muestra notificaciones ni trabaja en segundo plano</strong>: solo se
+conecta mientras la estás usando.</p>
 
 <h2>3. Conexiones de red y contenido de terceros</h2>
 <p>La aplicación se conecta a:</p>
 <ul>
-  <li><strong>forocoches.com</strong> — para mostrar el foro, iniciar sesión y comprobar tus
-  mensajes/avisos. El uso del foro se rige por la política de privacidad del propio Forocoches.</li>
-  <li><strong>GitHub</strong> — para descargar el fichero público de configuración de filtros.</li>
+  <li><strong>forocoches.com</strong> — para mostrar el foro, iniciar sesión, publicar y leer tus
+  mensajes y avisos. El uso del foro se rige por la política de privacidad del propio Forocoches.</li>
+  <li><strong>GitHub</strong> — para descargar un fichero público de configuración (ajustes de
+  lectura del foro, avisos para los usuarios y notas de las actualizaciones). Esa petición
+  <strong>no envía datos personales tuyos</strong>.</li>
+  <li><strong>catbox.moe</strong> — <strong>solo si adjuntas una foto</strong> a un mensaje: la foto se
+  sube a ese servicio de alojamiento de imágenes para poder insertar su enlace en el mensaje,
+  porque el foro no aloja imágenes. La foto queda <strong>pública</strong> en ese enlace, como
+  cualquier imagen que se publica en el foro, y se rige por las condiciones de catbox.moe.
+  Antes de subirla, la aplicación reduce las fotos y las vuelve a codificar, lo que
+  <strong>elimina sus metadatos</strong> (como la ubicación GPS de la cámara); los GIF animados se
+  suben tal cual.</li>
   <li><strong>Proveedores de contenido incrustado</strong> — cuando un mensaje del foro incluye
-  imágenes o contenido de servicios como imgur, X (Twitter), Instagram, TikTok o YouTube, tu
-  dispositivo los descarga <strong>directamente de esos servicios</strong> para mostrarlos. Como en
-  cualquier navegador, esos proveedores podrían registrar tu dirección IP; ForoPlus
-  <strong>no les envía ningún otro dato tuyo</strong>. Enlaces y contenidos externos se rigen por las
-  políticas de sus respectivos proveedores.</li>
+  contenido de servicios como X (Twitter), Instagram, TikTok, YouTube o Vocaroo, tu dispositivo lo
+  carga <strong>directamente de esos servicios</strong> para mostrarlo. Como en cualquier navegador,
+  esos proveedores podrían registrar tu dirección IP; ForoPlus <strong>no les envía ningún otro dato
+  tuyo</strong>. Las imágenes de los mensajes las sirve el propio foro.</li>
 </ul>
 
 <h2>4. Permisos</h2>
 <ul>
-  <li><code>INTERNET</code> — cargar el foro y comprobar avisos.</li>
-  <li><code>POST_NOTIFICATIONS</code> — mostrar avisos de mensajes privados y notificaciones.</li>
-  <li><code>FOREGROUND_SERVICE</code> / <code>FOREGROUND_SERVICE_DATA_SYNC</code> — comprobar
-  periódicamente en segundo plano si tienes mensajes o avisos nuevos.</li>
+  <li><code>INTERNET</code> — conectarse al foro y a los servicios anteriores. Es el único permiso que
+  pide la aplicación.</li>
+  <li>Una librería del sistema que usa la aplicación (<em>WorkManager</em>) añade por su cuenta
+  permisos técnicos como <code>ACCESS_NETWORK_STATE</code>, <code>WAKE_LOCK</code>,
+  <code>RECEIVE_BOOT_COMPLETED</code> o <code>FOREGROUND_SERVICE</code>. La aplicación solo usa esa
+  librería para <strong>cancelar</strong> tareas en segundo plano de versiones antiguas; no programa
+  ninguna.</li>
 </ul>
 
 <h2>5. Edad y contenido</h2>
