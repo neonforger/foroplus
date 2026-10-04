@@ -1,0 +1,257 @@
+From 0289e94ad59673f14a4f11c0d598dabbd016c4e0 Mon Sep 17 00:00:00 2001
+From: raulrl555 <raulrl555@users.noreply.github.com>
+Date: Sun, 4 Oct 2026 18:02:17 +0200
+Subject: [PATCH] Endurece el manejo de sesion y la config remota
+
+Corrige los hallazgos de la revision de seguridad:
+
+- PostImages.descargar adjuntaba la cookie de sesion de FC a cualquier URL
+  que CONTUVIERA "forocoches.com" (p. ej. forocoches.com.evil.example),
+  filtrando bbpassword desde una imagen de un post. Ahora exige host real
+  via TrustedOrigins.isTrustedForocochesUrl.
+- El cofre de cookies por cuenta caia a SharedPreferences SIN cifrar si el
+  Keystore fallaba, dejando bbpassword en claro en disco. Ahora falla en
+  cerrado: respaldo solo en memoria (la sesion vive, no toca disco).
+- La config remota podia apuntar la subida de fotos a un host http y el
+  enlace del aviso a un esquema peligroso (javascript:/intent://). Se acota
+  la subida a HTTPS con host real y el enlace del aviso a http(s).
+
+Tests anadidos en TrustedOriginsTest, AvisosTest y SubidaImagenTest.
+
+Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+---
+ .../main/java/com/fcplus/forocoches/Avisos.kt | 14 ++++++-
+ .../com/fcplus/forocoches/MainActivity.kt     | 38 ++++++++++++++-----
+ .../java/com/fcplus/forocoches/PostAdapter.kt |  5 ++-
+ .../com/fcplus/forocoches/SubidaImagen.kt     |  4 +-
+ .../com/fcplus/forocoches/TrustedOrigins.kt   |  6 +++
+ .../java/com/fcplus/forocoches/AvisosTest.kt  | 11 ++++++
+ .../com/fcplus/forocoches/SubidaImagenTest.kt | 14 +++++++
+ .../fcplus/forocoches/TrustedOriginsTest.kt   |  9 +++++
+ 8 files changed, 89 insertions(+), 12 deletions(-)
+
+diff --git a/app/src/main/java/com/fcplus/forocoches/Avisos.kt b/app/src/main/java/com/fcplus/forocoches/Avisos.kt
+index 308e716..1bbfc4e 100644
+--- a/app/src/main/java/com/fcplus/forocoches/Avisos.kt
++++ b/app/src/main/java/com/fcplus/forocoches/Avisos.kt
+@@ -53,7 +53,19 @@ object Avisos {
+         val fijo = b.optBoolean("fijo", false)
+         if (!fijo && descartados.contains(id)) return null
+ 
+-        return Aviso(id = id, texto = texto, fijo = fijo, enlace = b.optString("enlace").trim())
++        return Aviso(id = id, texto = texto, fijo = fijo, enlace = enlaceSeguro(b.optString("enlace")))
++    }
++
++    /**
++     * El enlace del aviso, solo si es http(s).
++     *
++     * El aviso lo sirve un fichero remoto: sin este filtro, un `javascript:`, un `intent://`
++     * o un `file://` acabarían en `openExternal` → `ACTION_VIEW`. Con el esquema acotado a
++     * http(s), lo peor que puede llegar al navegador es una web normal.
++     */
++    fun enlaceSeguro(raw: String): String {
++        val t = raw.trim()
++        return if (t.isNotEmpty() && TrustedOrigins.isHttpOrHttps(t)) t else ""
+     }
+ 
+     /** Los ids descartados viven en una sola cadena, del más viejo al más nuevo. */
+diff --git a/app/src/main/java/com/fcplus/forocoches/MainActivity.kt b/app/src/main/java/com/fcplus/forocoches/MainActivity.kt
+index 685ffdd..d892171 100644
+--- a/app/src/main/java/com/fcplus/forocoches/MainActivity.kt
++++ b/app/src/main/java/com/fcplus/forocoches/MainActivity.kt
+@@ -2535,9 +2535,11 @@ class MainActivity : AppCompatActivity() {
+ 
+     /**
+      * Las cookies de sesión de cada cuenta. Son **credenciales**, así que van cifradas; si el
+-     * keystore del móvil falla (pasa en algunos), se cae a preferencias normales antes que
+-     * dejar la función rota — el CookieManager ya guarda las de la cuenta activa en claro de
+-     * todos modos.
++     * keystore del móvil falla (pasa en algunos), `cofre` vale null y [guardarCookie]/
++     * [leerCookieCruda] usan un almacén SOLO en memoria: cambiar de cuenta sigue funcionando
++     * durante la sesión, pero al reiniciar hay que volver a entrar. Es a propósito — caer a un
++     * `SharedPreferences` sin cifrar dejaba `bbpassword` (el "recordarme") en claro en disco,
++     * que es justo lo que el cofre existe para evitar.
+      *
+      * OJO versión: `security-crypto:1.0.0` (la que pide el plan) es la última estable y NO
+      * trae la clase `MasterKey` nueva — esa API llegó en 1.1.0-alpha. Con 1.0.0 la forma de
+@@ -2545,7 +2547,7 @@ class MainActivity : AppCompatActivity() {
+      * `String` en vez de un objeto `MasterKey`. Mismo cifrado, mismo `catch` de red de
+      * seguridad; solo cambia la llamada por la que existe de verdad en esta versión.
+      */
+-    private val cofre: android.content.SharedPreferences by lazy {
++    private val cofre: android.content.SharedPreferences? by lazy {
+         try {
+             val aliasMaestra = androidx.security.crypto.MasterKeys.getOrCreate(
+                 androidx.security.crypto.MasterKeys.AES256_GCM_SPEC
+@@ -2556,22 +2558,40 @@ class MainActivity : AppCompatActivity() {
+                 androidx.security.crypto.EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+             )
+         } catch (e: Throwable) {
+-            android.util.Log.w("Cuentas", "sin cifrado disponible", e)
+-            getSharedPreferences("fc_cuentas_cookies", MODE_PRIVATE)
++            android.util.Log.w("Cuentas", "sin cifrado disponible: no se guardan cookies en disco", e)
++            null
+         }
+     }
+ 
++    /** Respaldo en memoria para cuando no hay cifrado: la sesión vive, pero no toca el disco. */
++    private val cookiesSinCifrar = java.util.concurrent.ConcurrentHashMap<String, String>()
++
++    private fun guardarCookie(uid: String, json: String) {
++        val c = cofre
++        if (c != null) c.edit().putString(uid, json).apply() else cookiesSinCifrar[uid] = json
++    }
++
++    private fun leerCookieCruda(uid: String): String {
++        val c = cofre
++        return if (c != null) c.getString(uid, "") ?: "" else cookiesSinCifrar[uid].orEmpty()
++    }
++
++    private fun borrarCookie(uid: String) {
++        val c = cofre
++        if (c != null) c.edit().remove(uid).apply() else cookiesSinCifrar.remove(uid)
++    }
++
+     private fun guardarCookiesDe(uid: String) {
+         if (uid.isEmpty()) return
+         val cookies = SesionFC.leer(CookieManager.getInstance())
+         if (cookies.isEmpty()) return
+         val o = org.json.JSONObject()
+         for ((k, v) in cookies) o.put(k, v)
+-        cofre.edit().putString(uid, o.toString()).apply()
++        guardarCookie(uid, o.toString())
+     }
+ 
+     private fun cookiesDe(uid: String): Map<String, String> {
+-        val s = cofre.getString(uid, "") ?: ""
++        val s = leerCookieCruda(uid)
+         if (s.isEmpty()) return emptyMap()
+         return try {
+             val o = org.json.JSONObject(s)
+@@ -2579,7 +2599,7 @@ class MainActivity : AppCompatActivity() {
+         } catch (_: Exception) { emptyMap() }
+     }
+ 
+-    private fun borrarCookiesGuardadas(uid: String) { cofre.edit().remove(uid).apply() }
++    private fun borrarCookiesGuardadas(uid: String) { borrarCookie(uid) }
+ 
+     /**
+      * Cambia a [uid], avisando antes si hay un borrador sin enviar (en la barra rápida o en el
+diff --git a/app/src/main/java/com/fcplus/forocoches/PostAdapter.kt b/app/src/main/java/com/fcplus/forocoches/PostAdapter.kt
+index 255131e..10fa441 100644
+--- a/app/src/main/java/com/fcplus/forocoches/PostAdapter.kt
++++ b/app/src/main/java/com/fcplus/forocoches/PostAdapter.kt
+@@ -236,7 +236,10 @@ object PostImages {
+         origenLocal?.invoke(url)?.let { return it }
+         val conn = URL(url).openConnection() as HttpURLConnection
+         conn.setRequestProperty("User-Agent", UA)
+-        if (url.contains("forocoches.com")) {
++        // La cookie de sesión solo va al host de FC, no a cualquier URL que CONTENGA el texto
++        // "forocoches.com" (p. ej. `forocoches.com.evil.example`), que es lo que permitía un
++        // `url.contains(...)`: bastaba una imagen en un post para filtrar `bbpassword`.
++        if (TrustedOrigins.isTrustedForocochesUrl(url)) {
+             CookieManager.getInstance().getCookie("https://forocoches.com")
+                 ?.let { conn.setRequestProperty("Cookie", it) }
+         }
+diff --git a/app/src/main/java/com/fcplus/forocoches/SubidaImagen.kt b/app/src/main/java/com/fcplus/forocoches/SubidaImagen.kt
+index 1cf7d61..dc1c0f9 100644
+--- a/app/src/main/java/com/fcplus/forocoches/SubidaImagen.kt
++++ b/app/src/main/java/com/fcplus/forocoches/SubidaImagen.kt
+@@ -52,7 +52,9 @@ object SubidaImagen {
+     fun host(config: JSONObject?): HostImagenes {
+         val o = config?.optJSONObject("imagenes") ?: return CATBOX
+         val url = o.optString("url").trim()
+-        if (url.isEmpty()) return CATBOX
++        // Solo HTTPS con host real: la URL viene de un fichero remoto mutable, y no se acepta
++        // subir la foto de nadie en claro ni a un esquema raro.
++        if (!TrustedOrigins.isHttpsUrl(url)) return CATBOX
+         val campos = LinkedHashMap<String, String>()
+         o.optJSONObject("campos")?.let { c ->
+             for (k in c.keys()) campos[k] = c.optString(k)
+diff --git a/app/src/main/java/com/fcplus/forocoches/TrustedOrigins.kt b/app/src/main/java/com/fcplus/forocoches/TrustedOrigins.kt
+index 944b34d..7356936 100644
+--- a/app/src/main/java/com/fcplus/forocoches/TrustedOrigins.kt
++++ b/app/src/main/java/com/fcplus/forocoches/TrustedOrigins.kt
+@@ -29,6 +29,12 @@ object TrustedOrigins {
+         return scheme == "http" || scheme == "https"
+     }
+ 
++    /** HTTPS con host de verdad: única forma aceptable de un endpoint que viene de fuera. */
++    fun isHttpsUrl(rawUrl: String?): Boolean {
++        val uri = parse(rawUrl) ?: return false
++        return uri.scheme?.lowercase(Locale.US) == "https" && !uri.host.isNullOrEmpty()
++    }
++
+     private fun parse(rawUrl: String?): URI? {
+         val trimmed = rawUrl?.trim()
+         if (trimmed.isNullOrEmpty()) return null
+diff --git a/app/src/test/java/com/fcplus/forocoches/AvisosTest.kt b/app/src/test/java/com/fcplus/forocoches/AvisosTest.kt
+index 76081a9..3644635 100644
+--- a/app/src/test/java/com/fcplus/forocoches/AvisosTest.kt
++++ b/app/src/test/java/com/fcplus/forocoches/AvisosTest.kt
+@@ -91,6 +91,17 @@ class AvisosTest {
+         assertEquals("https://t.me/foroplus", Avisos.para(cfg(j), 31, emptySet())?.enlace)
+     }
+ 
++    @Test
++    fun `un enlace con esquema peligroso se descarta`() {
++        // El aviso viene de un fichero remoto: javascript:/intent:// no pueden llegar a
++        // openExternal -> ACTION_VIEW.
++        val j = """{"aviso": {"id": "x", "texto": "hola", "enlace": "javascript:alert(1)"}}"""
++        assertEquals("", Avisos.para(cfg(j), 31, emptySet())?.enlace)
++        assertEquals("", Avisos.enlaceSeguro("intent://evil#Intent;scheme=https;end"))
++        assertEquals("", Avisos.enlaceSeguro("  "))
++        assertEquals("http://forocoches.com/foro/", Avisos.enlaceSeguro("http://forocoches.com/foro/"))
++    }
++
+     @Test
+     fun `los descartados se leen y se anaden sin duplicar`() {
+         assertEquals(emptyList<String>(), Avisos.leerDescartados(""))
+diff --git a/app/src/test/java/com/fcplus/forocoches/SubidaImagenTest.kt b/app/src/test/java/com/fcplus/forocoches/SubidaImagenTest.kt
+index c43726b..ba0367d 100644
+--- a/app/src/test/java/com/fcplus/forocoches/SubidaImagenTest.kt
++++ b/app/src/test/java/com/fcplus/forocoches/SubidaImagenTest.kt
+@@ -38,6 +38,20 @@ class SubidaImagenTest {
+         assertEquals(SubidaImagen.CATBOX.ladoMax, h.ladoMax)
+     }
+ 
++    @Test
++    fun `un host sin https se ignora y se usa catbox`() {
++        // La config vive en un repo público: no se sube la foto de nadie en claro ni a un
++        // esquema raro, aunque el fichero remoto lo pida.
++        assertEquals(
++            SubidaImagen.CATBOX,
++            SubidaImagen.host(JSONObject("""{"imagenes":{"url":"http://otro.example/api"}}"""))
++        )
++        assertEquals(
++            SubidaImagen.CATBOX,
++            SubidaImagen.host(JSONObject("""{"imagenes":{"url":"otro.example/api"}}"""))
++        )
++    }
++
+     @Test
+     fun `un lado absurdo se acota`() {
+         val h = SubidaImagen.host(JSONObject("""{"imagenes":{"url":"https://x.example","ladoMax":10}}"""))
+diff --git a/app/src/test/java/com/fcplus/forocoches/TrustedOriginsTest.kt b/app/src/test/java/com/fcplus/forocoches/TrustedOriginsTest.kt
+index bcb7ba7..9049089 100644
+--- a/app/src/test/java/com/fcplus/forocoches/TrustedOriginsTest.kt
++++ b/app/src/test/java/com/fcplus/forocoches/TrustedOriginsTest.kt
+@@ -27,6 +27,15 @@ class TrustedOriginsTest {
+         assertFalse(TrustedOrigins.isTrustedForocochesUrl("ftp://forocoches.com/foro/"))
+     }
+ 
++    @Test
++    fun `isHttpsUrl exige esquema https y host de verdad`() {
++        assertTrue(TrustedOrigins.isHttpsUrl("https://otro.example/api"))
++        assertFalse(TrustedOrigins.isHttpsUrl("http://forocoches.com/foro/"))
++        assertFalse(TrustedOrigins.isHttpsUrl("otro.example/api"))
++        assertFalse(TrustedOrigins.isHttpsUrl("javascript:alert(1)"))
++        assertFalse(TrustedOrigins.isHttpsUrl("ftp://x/y"))
++    }
++
+     @Test
+     fun `falls back to default url for untrusted input`() {
+         assertEquals(
+-- 
+2.43.0
+
