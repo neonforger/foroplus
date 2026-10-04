@@ -28,6 +28,24 @@ class TrustedOriginsTest {
     }
 
     @Test
+    fun `la cookie de FC solo viaja a FC y por https`() {
+        assertTrue(TrustedOrigins.llevaCookieDeFc("https://forocoches.com/foro/attachment.php?id=1"))
+        assertTrue(TrustedOrigins.llevaCookieDeFc("https://static.forocoches.com/img/a.png"))
+        assertTrue(TrustedOrigins.llevaCookieDeFc("HTTPS://ForoCoches.com/foro/x.gif"))
+        // Lo que dejaba pasar el contains("forocoches.com") (aviso de @ivhere, 2026-10-04):
+        assertFalse(TrustedOrigins.llevaCookieDeFc("https://forocoches.com.evil.test/x.jpg"))
+        assertFalse(TrustedOrigins.llevaCookieDeFc("https://evil.test/forocoches.com.jpg"))
+        assertFalse(TrustedOrigins.llevaCookieDeFc("https://evil.test/x.jpg?forocoches.com"))
+        assertFalse(TrustedOrigins.llevaCookieDeFc("https://malforocoches.com/x.jpg"))
+        assertFalse(TrustedOrigins.llevaCookieDeFc("https://forocoches.com@evil.test/x.jpg"))
+        assertFalse(TrustedOrigins.llevaCookieDeFc("https://evil.test\\@forocoches.com/x.jpg"))
+        // Sin TLS, nunca: la cookie iría en claro.
+        assertFalse(TrustedOrigins.llevaCookieDeFc("http://forocoches.com/foro/x.png"))
+        assertFalse(TrustedOrigins.llevaCookieDeFc(""))
+        assertFalse(TrustedOrigins.llevaCookieDeFc(null))
+    }
+
+    @Test
     fun `falls back to default url for untrusted input`() {
         assertEquals(
             TrustedOrigins.DEFAULT_URL,

@@ -1,6 +1,16 @@
 {
   "versiones": [
     {
+      "code": 47,
+      "nombre": "1.11.1",
+      "fecha": "2026-10-04",
+      "notas": [
+        "Arreglado un fallo de seguridad que encontró @ivhere: en ciertos casos la app podía mandar tu sesión a otra web al cargar una imagen. En la práctica era muy difícil que pasara, porque el foro sirve todas las imágenes desde sus propios servidores, pero ya está cerrado del todo",
+        "Las cuentas sin foto ya muestran un avatar en vez de un hueco en blanco",
+        "El panel de tu avatar, más compacto"
+      ]
+    },
+    {
       "code": 46,
       "nombre": "1.11.0",
       "fecha": "2026-10-02",

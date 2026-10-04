@@ -24,6 +24,20 @@ object TrustedOrigins {
         return (scheme == "https" || scheme == "http") && isForocochesHost(host)
     }
 
+    /**
+     * ¿Se le puede mandar la cookie de sesión de FC a esta URL? Solo a FC de verdad (el host,
+     * no un texto dentro de la URL) y solo por https: la cookie `bbpassword` equivale a la
+     * cuenta. Antes se decidía con `url.contains("forocoches.com")` y una imagen en
+     * `forocoches.com.loquesea.net` o con `?forocoches.com` se llevaba la sesión entera
+     * (aviso de @ivhere en el grupo, 2026-10-04).
+     */
+    fun llevaCookieDeFc(rawUrl: String?): Boolean {
+        val uri = parse(rawUrl) ?: return false
+        if (uri.scheme?.lowercase(Locale.US) != "https") return false
+        val host = uri.host?.lowercase(Locale.US) ?: return false
+        return isForocochesHost(host)
+    }
+
     fun isHttpOrHttps(rawUrl: String?): Boolean {
         val scheme = parse(rawUrl)?.scheme?.lowercase(Locale.US) ?: return false
         return scheme == "http" || scheme == "https"

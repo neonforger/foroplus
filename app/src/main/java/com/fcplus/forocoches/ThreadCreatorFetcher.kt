@@ -39,6 +39,8 @@ class ThreadCreatorFetcher {
         val url = "https://forocoches.com/foro/showthread.php?t=$threadId"
         val conn = URL(url).openConnection() as HttpURLConnection
         conn.setRequestProperty("Cookie", cookie)
+        // Sin seguir redirecciones: Android reenviaría la cookie puesta a mano a donde apunten.
+        conn.instanceFollowRedirects = false
         conn.setRequestProperty("User-Agent", UA)
         conn.connectTimeout = 10_000
         conn.readTimeout = 15_000

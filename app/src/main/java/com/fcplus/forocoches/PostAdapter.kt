@@ -232,16 +232,30 @@ object PostImages {
      * cabecera y la cookie correctas, y el descargador de hilos lo reutiliza en vez de hacerse
      * una copia que se desincronice.
      */
-    fun descargar(url: String, maxBytes: Long = Long.MAX_VALUE): ByteArray {
+    fun descargar(url: String, maxBytes: Long = Long.MAX_VALUE): ByteArray =
+        descargar(url, maxBytes, saltos = 0)
+
+    private fun descargar(url: String, maxBytes: Long, saltos: Int): ByteArray {
         origenLocal?.invoke(url)?.let { return it }
         val conn = URL(url).openConnection() as HttpURLConnection
         conn.setRequestProperty("User-Agent", UA)
-        if (url.contains("forocoches.com")) {
+        val conCookie = TrustedOrigins.llevaCookieDeFc(url)
+        if (conCookie) {
             CookieManager.getInstance().getCookie("https://forocoches.com")
                 ?.let { conn.setRequestProperty("Cookie", it) }
+            // La cookie es una cabecera puesta a mano, y al seguir una redirección Android la
+            // reenvía al destino aunque sea otra web. Con cookie, las redirecciones se siguen
+            // aquí: cada salto vuelve a decidir si le toca la cookie.
+            conn.instanceFollowRedirects = false
         }
         conn.connectTimeout = 10_000
         conn.readTimeout = 15_000
+        if (conCookie && conn.responseCode in 300..399) {
+            val destino = conn.getHeaderField("Location")
+            conn.disconnect()
+            if (destino.isNullOrBlank() || saltos >= 5) throw java.io.IOException("redirección sin salida")
+            return descargar(URL(URL(url), destino).toString(), maxBytes, saltos + 1)
+        }
         // Con tope, se corta en cuanto se sabe que no cabe: por la cabecera si la manda, y si
         // no, leyendo (hay GIF en el foro de 53 MB, ver MainActivity.traerImagen).
         if (maxBytes != Long.MAX_VALUE && conn.contentLengthLong > maxBytes) {
