@@ -1,0 +1,9 @@
+# Falsos positivos revisados a mano (2026-10-06). Formato: huella de gitleaks.
+# Firma pública de la URL de una foto de netcarshow.com dentro de un post del fixture de la
+# encuesta: contenido público del foro, no una credencial.
+a7d0b9e87a18dfd986e8e4d38444e1ee1fe5c71c:app/src/test/resources/showthread_poll_public.html:generic-api-key:6730
+a7d0b9e87a18dfd986e8e4d38444e1ee1fe5c71c:app/src/test/resources/showthread_poll_public.html:generic-api-key:6899
+a7d0b9e87a18dfd986e8e4d38444e1ee1fe5c71c:app/src/test/resources/showthread_poll_public.html:generic-api-key:7244
+# Los tokens inventados del test FixturesSinSecretosTest, en el commit en que entraron sin marcar.
+48392e7a0a1399511b5a74fe1db60c421b03eeaa:app/src/test/java/com/fcplus/forocoches/FixturesSinSecretosTest.kt:generic-api-key:41
+48392e7a0a1399511b5a74fe1db60c421b03eeaa:app/src/test/java/com/fcplus/forocoches/FixturesSinSecretosTest.kt:generic-api-key:46

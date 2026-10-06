@@ -38,12 +38,12 @@ class FixturesSinSecretosTest {
     @Test
     fun `un securitytoken real si lo es`() {
         assertEquals(listOf("SECURITYTOKEN"), FixturesSinSecretos.buscar(
-            """var SECURITYTOKEN = "1234567890-0123456789abcdef0123456789abcdef01234567";"""))
+            """var SECURITYTOKEN = "1234567890-0123456789abcdef0123456789abcdef01234567";"""))  // gitleaks:allow (inventado)
     }
 
     @Test
     fun `el del formulario y el del logout tambien`() {
-        val token = "1234567890-0123456789abcdef0123456789abcdef01234567"
+        val token = "1234567890-0123456789abcdef0123456789abcdef01234567"  // gitleaks:allow (inventado)
         val html = """<input type="hidden" name="securitytoken" value="$token" />
             <a href="login.php?do=logout&logouthash=$token">"""
         assertEquals(listOf("securitytoken", "logouthash"), FixturesSinSecretos.buscar(html))
