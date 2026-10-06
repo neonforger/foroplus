@@ -2,7 +2,7 @@
 
 Cliente **no oficial** de ForoCoches para Android. Gratis, sin anuncios y con interfaz nativa.
 
-**[Descargar en Google Play](https://play.google.com/store/apps/details?id=com.foroplus.app)** · [Grupo de Telegram](https://t.me/foroplus)
+**[Descargar en Google Play](https://play.google.com/store/apps/details?id=com.foroplus.app)** · [APK en GitHub](#descargar-y-verificar) · [Grupo de Telegram](https://t.me/foroplus)
 
 <p>
   <img src="docs/capturas/lista.jpg" width="200" alt="Lista de hilos">
@@ -39,6 +39,40 @@ Cliente **no oficial** de ForoCoches para Android. Gratis, sin anuncios y con in
   ([`RemoteConfig.kt`](app/src/main/java/com/fcplus/forocoches/RemoteConfig.kt)) que sirve para
   avisar de actualizaciones o de problemas. Ese fichero no recibe ningún dato tuyo.
 - [Política de privacidad](docs/privacy-policy.html).
+
+## Descargar y verificar
+
+Hay dos canales, y **no se mezclan**:
+
+- **[Google Play](https://play.google.com/store/apps/details?id=com.foroplus.app)**: se actualiza
+  sola desde la tienda.
+- **[GitHub Releases](https://github.com/neonforger/foroplus/releases)** (desde la 1.11.2): el APK
+  lo compila y lo firma GitHub Actions a partir del código de cada tag
+  ([`release.yml`](.github/workflows/release.yml)).
+
+Las dos usan el mismo paquete (`com.foroplus.app`) pero firmas distintas, así que Android no deja
+instalar una encima de la otra: para pasar de un canal al otro hay que desinstalar la que tengas, y
+se pierden la sesión y los ajustes.
+
+La versión de Play la vuelve a firmar Google, y Play le añade su propia protección contra
+manipulaciones, así que ese APK no es exactamente lo que sale de este código. **La que se puede
+verificar contra el código es la de GitHub:**
+
+1. **SHA-256 del APK**, que viene en las notas de cada release:
+   ```bash
+   sha256sum ForoPlus-1.11.2.apk
+   ```
+2. **De dónde sale**: cada APK lleva una *attestation* de GitHub que dice de qué commit y de qué
+   workflow se compiló.
+   ```bash
+   gh attestation verify ForoPlus-1.11.2.apk -R neonforger/foroplus
+   ```
+3. **Certificado de firma**, el mismo en todas las versiones del canal GitHub:
+   ```bash
+   apksigner verify --print-certs ForoPlus-1.11.2.apk
+   ```
+   Tiene que salir este SHA-256:
+   `a5cef9c494a13d430a4bc42dcee52e4d57502032517d1f02951eba08eb37b3a5`
 
 ## Cómo funciona
 
