@@ -5,5 +5,5 @@ a7d0b9e87a18dfd986e8e4d38444e1ee1fe5c71c:app/src/test/resources/showthread_poll_
 a7d0b9e87a18dfd986e8e4d38444e1ee1fe5c71c:app/src/test/resources/showthread_poll_public.html:generic-api-key:6899
 a7d0b9e87a18dfd986e8e4d38444e1ee1fe5c71c:app/src/test/resources/showthread_poll_public.html:generic-api-key:7244
 # Los tokens inventados del test FixturesSinSecretosTest, en el commit en que entraron sin marcar.
-48392e7a0a1399511b5a74fe1db60c421b03eeaa:app/src/test/java/com/fcplus/forocoches/FixturesSinSecretosTest.kt:generic-api-key:41
-48392e7a0a1399511b5a74fe1db60c421b03eeaa:app/src/test/java/com/fcplus/forocoches/FixturesSinSecretosTest.kt:generic-api-key:46
+45425a0e75679c732917c543598f5016ab62ad5a:app/src/test/java/com/fcplus/forocoches/FixturesSinSecretosTest.kt:generic-api-key:41
+45425a0e75679c732917c543598f5016ab62ad5a:app/src/test/java/com/fcplus/forocoches/FixturesSinSecretosTest.kt:generic-api-key:46
