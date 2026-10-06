@@ -1,6 +1,16 @@
 {
   "versiones": [
     {
+      "code": 49,
+      "nombre": "1.11.2",
+      "fecha": "2026-10-06",
+      "notas": [
+        "Los móviles con Android 7 ya pueden abrir la app: se cerraba nada más arrancar",
+        "En Android 7, añadir una opción a una encuesta ya no cierra la app",
+        "ForoPlus ahora es de código abierto (licencia GPL-3.0): el código está en github.com/neonforger/foroplus"
+      ]
+    },
+    {
       "code": 48,
       "nombre": "1.11.1",
       "fecha": "2026-10-04",
