@@ -13,13 +13,15 @@ Dos reglas que son el porqué de todo este fichero:
 Uso:  python tools/gen_icons.py [ruta_del_png_fuente]
 
 La fuente es el roto2 de 512 con fondo TRANSPARENTE. Vive fuera del repo (en el
-Escritorio del dueño, junto a las variantes de color), así que si se ha movido hay que
+Escritorio del dueño, junto a las variantes de color), así que siempre hay que
 pasarla por argumento.
 """
 from PIL import Image
 import numpy as np, sys
 
-SRC = sys.argv[1] if len(sys.argv) > 1 else r"C:/Users/domen/Desktop/icones/icono_roto_512_transparente.png"
+if len(sys.argv) < 2:
+    sys.exit("uso: python tools/gen_icons.py <png del icono, 512x512 con fondo transparente>")
+SRC = sys.argv[1]
 RES = "app/src/main/res"
 BG = (255, 255, 255, 255)          # mismo blanco que el 512 de la ficha de Play
 

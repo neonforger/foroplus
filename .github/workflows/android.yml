@@ -11,6 +11,8 @@ on:
       - 'gradlew'
       - 'gradlew.bat'
       - '.github/workflows/android.yml'
+      # FixturesSinSecretosTest también vigila los fixtures del oráculo
+      - 'tools/oracle/fixtures/**'
   pull_request:
     paths:
       - 'app/**'
@@ -21,6 +23,8 @@ on:
       - 'gradlew'
       - 'gradlew.bat'
       - '.github/workflows/android.yml'
+      # FixturesSinSecretosTest también vigila los fixtures del oráculo
+      - 'tools/oracle/fixtures/**'
   workflow_dispatch: {}
 
 jobs:
