@@ -72,6 +72,9 @@ object GifAnimado {
      * sin él, `AnimatedImageDrawable` avanza sus fotogramas y no se entera nadie.
      */
     fun animar(d: AnimatedImageDrawable, tv: TextView) {
+        // En la práctica nunca llega aquí por debajo de Android 9 (decodificar devuelve null),
+        // pero sin la guarda Lint no lo puede saber, y es gratis.
+        if (!soportado()) return
         d.callback = object : Drawable.Callback {
             override fun invalidateDrawable(who: Drawable) = tv.invalidate()
             override fun scheduleDrawable(who: Drawable, what: Runnable, cuando: Long) {

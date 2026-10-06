@@ -37,8 +37,13 @@ class ForocochesApp : Application() {
         // (NotificationHelper) y "fc_service2" el del servicio en primer plano.
         try {
             val nm = getSystemService(NOTIFICATION_SERVICE) as android.app.NotificationManager
-            nm.deleteNotificationChannel("fc_notifications")
-            nm.deleteNotificationChannel("fc_service2")
+            // Los canales son de Android 8. En un Android 7 la llamada no existe y lanza
+            // NoSuchMethodError, que es un Error y el catch de abajo NO lo para: la app se
+            // cerraba al abrirla (ArranqueAndroid7Test). Allí no hay canales que borrar.
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                nm.deleteNotificationChannel("fc_notifications")
+                nm.deleteNotificationChannel("fc_service2")
+            }
             // Y el aviso que pudiera quedar colgando en la bandeja de una versión anterior:
             // sin esto se queda ahí hasta que el usuario lo aparte a mano.
             nm.cancelAll()

@@ -4760,7 +4760,10 @@ class MainActivity : AppCompatActivity() {
             setHintTextColor(color(R.color.fc_texto_3))
             textSize = 15f
             inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
-            importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO
+            // El autorrelleno es de Android 8: en un Android 7 esta llamada cerraba la app.
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO
+            }
         }
         pollOptions.addView(caja)
         pollAdd.visibility = if (pollOptions.childCount >= EncuestaNueva.MAX_OPCIONES) View.GONE else View.VISIBLE
