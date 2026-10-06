@@ -20,3 +20,10 @@ downloads/
 .claude/
 .agents/
 skills-lock.json
+
+# Lo privado vive en otro repo (albertdom/foroplus-privado), clonado en privado/
+/privado/
+/CLAUDE.md
+/MEMORY.md
+/notas-*.txt
+/ficha-play*.txt
