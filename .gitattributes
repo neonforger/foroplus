@@ -1,0 +1,4 @@
+# Los scripts de shell tienen que llegar a Linux (la CI) con LF; los .bat, con CRLF.
+gradlew text eol=lf
+*.sh text eol=lf
+*.bat text eol=crlf
