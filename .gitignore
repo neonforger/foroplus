@@ -21,7 +21,7 @@ downloads/
 .agents/
 skills-lock.json
 
-# Lo privado vive en otro repo (albertdom/foroplus-privado), clonado en privado/
+# Notas privadas del mantenedor (otro repo, clonado en privado/): nunca entran aquí
 /privado/
 /CLAUDE.md
 /MEMORY.md

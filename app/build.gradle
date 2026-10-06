@@ -4,8 +4,8 @@ plugins {
 }
 
 // Credenciales de firma fuera del control de versiones (keystore.properties está en
-// .gitignore). Si el fichero no existe (p.ej. al clonar el repo), los builds debug y
-// release-sin-firmar siguen funcionando; solo el release firmado necesita estas claves.
+// .gitignore). Sin ellas (p. ej. al clonar el repo) el debug compila igual; cualquier tarea de
+// release falla A PROPÓSITO (abajo), para que nunca salga un release sin firmar.
 def keystorePropsFile = rootProject.file('keystore.properties')
 def keystoreProps = new Properties()
 if (keystorePropsFile.exists()) {
@@ -63,8 +63,8 @@ android {
             signingConfig releaseSigningReady ? signingConfigs.release : null
         }
         debug {
-            // Rama v2-shell: paquete distinto para convivir en el mismo móvil con la
-            // app estable de testers (com.foroplus.app). NO mergear a main tal cual.
+            // Paquete distinto (com.foroplus.app.v2) para convivir en el mismo móvil con la
+            // app de Play (com.foroplus.app). El release no lleva sufijo.
             applicationIdSuffix ".v2"
         }
     }

@@ -85,5 +85,13 @@ en el [grupo de Telegram](https://t.me/foroplus). Lo que aportes entra bajo la m
 [GPL-3.0](LICENSE): puedes usar, estudiar, modificar y redistribuir el código, siempre que lo que
 distribuyas siga siendo GPL-3.0 con su código fuente.
 
-El nombre **ForoPlus** y su icono no forman parte de la licencia: si publicas una versión
-modificada, ponle otro nombre y otro icono.
+**Lo que NO cubre la licencia:**
+
+- **El nombre ForoPlus**: no se concede ningún derecho de marca sobre él (apartado 7(e) de la
+  GPL-3.0).
+- **El icono de la app**: las imágenes `ic_launcher*.png` de `app/src/main/res/mipmap-*/`. Están
+  en el repo para que el proyecto compile, pero no se licencian bajo la GPL-3.0: todos los
+  derechos reservados.
+
+Si publicas una versión modificada, ponle otro nombre y otro icono, para que nadie la confunda con
+esta.
