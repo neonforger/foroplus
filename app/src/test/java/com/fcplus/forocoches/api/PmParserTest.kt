@@ -33,9 +33,9 @@ class PmParserTest {
 
     @Test
     fun `parsea remitentes distintos (no solo el propio usuario)`() {
-        val malak = inbox.firstOrNull { it.sender == "MalakianRocks" }
-        assertTrue("no se encontró el MP de otro usuario", malak != null)
-        assertEquals(797899L, malak!!.senderId)
+        val otro = inbox.firstOrNull { it.sender == "OtroUsuario" }
+        assertTrue("no se encontró el MP de otro usuario", otro != null)
+        assertEquals(123456L, otro!!.senderId)
     }
 
     @Test
