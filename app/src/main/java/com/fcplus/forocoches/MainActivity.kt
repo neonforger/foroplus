@@ -114,6 +114,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var navTop: TextView
     /** Subforos reales del índice (fid → nombre), para la elección del Popurrí en Opciones. */
     private var subforosConocidos: List<Pair<Int, String>> = emptyList()
+    /** Los mismos, por fid: los usa la miga de las filas del Popurrí. */
+    private var nombresDeForo: Map<Int, String> = emptyMap()
 
     // ── Panel de hilo nativo (Fase 2) ──
     private lateinit var threadPanel: View
@@ -929,7 +931,10 @@ class MainActivity : AppCompatActivity() {
         try {
             val arr = org.json.JSONObject(json).optJSONArray("listas")
             for (i in 0 until (arr?.length() ?: 0)) {
-                listas.add(parseThreadItems(arr!!.optJSONObject(i)?.optJSONArray("threads")))
+                val lista = arr!!.optJSONObject(i)
+                // Cada lista sabe de qué subforo es; al mezclarlas se perdería, así que se apunta
+                // en cada hilo (la miga de la fila).
+                listas.add(Popurri.conForo(lista?.optInt("fid") ?: 0, parseThreadItems(lista?.optJSONArray("threads"))))
             }
         } catch (_: Exception) { return }
         listLoaded = true
@@ -3323,6 +3328,7 @@ class MainActivity : AppCompatActivity() {
             ultimosPosteadores.autor(pid)?.let { if (yaIgnorado(it)) "" else it }
         }
         adapter.pedirUltimo = { pid -> lanzarUltimos(ultimosPosteadores.quiero(pid)) }
+        adapter.nombreDeForo = { fid -> Popurri.etiqueta(fid, nombresDeForo) }
         configureThreadPanel()
 
         // Secciones nativas (Bloque B): citas/menciones y perfil.
@@ -3541,6 +3547,10 @@ class MainActivity : AppCompatActivity() {
         // El catálogo COMPLETO se recuerda entero, aunque se escondan pestañas: lo necesitan
         // la pantalla de organizar (para poder devolver lo escondido) y la del Popurrí.
         subforosConocidos = forums.map { it.fid to it.name }
+        // Los nombres pueden llegar después que el Popurrí (arranque directo en él): sin esto
+        // sus filas se quedarían sin miga hasta el siguiente refresco.
+        nombresDeForo = subforosConocidos.toMap()
+        if (::adapter.isInitialized) adapter.nombresDeForoCambiados()
         // Y encima del defecto va lo que haya elegido el usuario.
         val porFid = forums.associateBy { it.fid.toString() }
         val visibles = OrdenBarra

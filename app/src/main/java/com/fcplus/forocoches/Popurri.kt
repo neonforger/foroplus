@@ -88,6 +88,22 @@ object Popurri {
         return unicos.sortedByDescending { momento(it.time, ahora) ?: Long.MIN_VALUE }
     }
 
+    /**
+     * Apunta en cada hilo de qué subforo viene, para la miga de la fila. Va ANTES de [mezclar]:
+     * si un hilo sale en dos subforos, la mezcla se queda con su primera aparición, y así el
+     * subforo viaja con ella.
+     */
+    fun conForo(fid: Int, hilos: List<ThreadItem>): List<ThreadItem> =
+        if (fid <= 0) hilos else hilos.map { it.copy(foroFid = fid) }
+
+    /**
+     * Lo que se pinta encima del título: el nombre del subforo tal y como lo escribe FC
+     * ("Electrónica / Informática"). "" si el hilo no trae subforo (fuera del Popurrí) o si el
+     * nombre aún no se conoce: mejor sin miga que con un número.
+     */
+    fun etiqueta(fid: Int, nombres: Map<Int, String>): String =
+        if (fid <= 0) "" else nombres[fid]?.trim().orEmpty()
+
     /** Los subforos elegidos, tal y como se guardan: "2,45,109". */
     fun leer(guardado: String): List<Int> =
         guardado.split(',')

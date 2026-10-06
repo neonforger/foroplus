@@ -124,4 +124,43 @@ class PopurriTest {
         assertEquals(Popurri.TOPE, despues.size)
         assertEquals(listOf(2, 3, 4, 5, 6), despues)
     }
+
+    // ── De qué subforo es cada hilo (la miga encima del título) ────────────────
+
+    @Test
+    fun `cada hilo se lleva el subforo de su lista`() {
+        val etiquetados = Popurri.conForo(17, listOf(hilo("1", "Hoy 10:00"), hilo("2", "Hoy 09:00")))
+        assertEquals(listOf(17, 17), etiquetados.map { it.foroFid })
+    }
+
+    @Test
+    fun `sin subforo valido los hilos se quedan como venian`() {
+        val hilos = listOf(hilo("1", "Hoy 10:00"))
+        assertEquals(hilos, Popurri.conForo(0, hilos))
+    }
+
+    @Test
+    fun `un hilo repetido en dos subforos se queda con el de su primera aparicion`() {
+        // mezclar se queda con la primera aparición: el subforo tiene que viajar con ella.
+        val general = Popurri.conForo(2, listOf(hilo("1", "Hoy 10:00")))
+        val electronica = Popurri.conForo(17, listOf(hilo("1", "Hoy 10:00"), hilo("2", "Hoy 11:00")))
+        val mezcla = Popurri.mezclar(listOf(general, electronica), ahora)
+        assertEquals(mapOf("2" to 17, "1" to 2), mezcla.associate { it.tid to it.foroFid })
+    }
+
+    @Test
+    fun `la etiqueta es el nombre del subforo`() {
+        val nombres = mapOf(2 to "General", 17 to "Electrónica / Informática")
+        assertEquals("Electrónica / Informática", Popurri.etiqueta(17, nombres))
+    }
+
+    @Test
+    fun `sin subforo o con uno desconocido no hay etiqueta`() {
+        // Fuera del Popurrí el hilo no trae subforo (0), y la lista de nombres puede no haber
+        // llegado todavía: en los dos casos la fila se pinta sin miga, no con un número.
+        val nombres = mapOf(2 to "General")
+        assertEquals("", Popurri.etiqueta(0, nombres))
+        assertEquals("", Popurri.etiqueta(17, nombres))
+        assertEquals("", Popurri.etiqueta(2, emptyMap()))
+    }
 }

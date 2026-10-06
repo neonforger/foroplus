@@ -23,7 +23,13 @@ data class ThreadItem(
      */
     val lastPostUrl: String = "",
     /** Lo que FC dice del hilo en su fila: si has escrito en él, si está cerrado. */
-    val estado: EstadoHilo = EstadoHilo()
+    val estado: EstadoHilo = EstadoHilo(),
+    /**
+     * Subforo del que viene el hilo, SOLO en el Popurrí (que mezcla varios); 0 en el resto,
+     * donde ya lo dice la pestaña. Se guarda el número y no el nombre porque la lista de
+     * subforos puede llegar después que los hilos: el nombre se busca al pintar ([Popurri.etiqueta]).
+     */
+    val foroFid: Int = 0
 )
 
 data class MenuLinks(
@@ -176,6 +182,14 @@ class ThreadListAdapter(
         }
     }
 
+    /** Nombre del subforo de un hilo del Popurrí ("" = sin miga). Ver [Popurri.etiqueta]. */
+    var nombreDeForo: (Int) -> String = { "" }
+
+    /** Han llegado (o cambiado) los nombres de los subforos: repinta si hay filas con miga. */
+    fun nombresDeForoCambiados() {
+        if (items.any { it.foroFid > 0 }) notifyDataSetChanged()
+    }
+
     /** Tamaño de los títulos, en sp (Opciones → Tamaño de los títulos). */
     var tituloSp: Float = 15f
         set(v) {
@@ -207,6 +221,7 @@ class ThreadListAdapter(
         val sobre: ImageView = v.findViewById(R.id.thread_sobre)
         val participado: View = v.findViewById(R.id.thread_participado)
         val candado: View = v.findViewById(R.id.thread_candado)
+        val foro: TextView = v.findViewById(R.id.thread_foro)
         val title: TextView = v.findViewById(R.id.thread_title)
         val meta: TextView = v.findViewById(R.id.thread_meta)
         val time: TextView = v.findViewById(R.id.thread_time)
@@ -260,6 +275,11 @@ class ThreadListAdapter(
 
     override fun onBindViewHolder(h: Holder, pos: Int) {
         val item = items[pos]
+        // Popurrí: de qué subforo es el hilo. Solo informa: tocarlo abre el hilo, como el resto
+        // de la fila (un objetivo pequeño dentro de una fila que ya se toca da toques fallidos).
+        val foro = nombreDeForo(item.foroFid)
+        h.foro.text = foro
+        h.foro.visibility = if (foro.isEmpty()) View.GONE else View.VISIBLE
         h.title.text = item.title
         h.title.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, tituloSp)
         applyTitleStyle(h, item)
