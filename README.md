@@ -74,3 +74,16 @@ falla a propósito.
 ## Fallos e ideas
 
 En el [grupo de Telegram](https://t.me/foroplus) o abriendo una *issue* aquí.
+
+## Contribuir
+
+Los pull requests son bienvenidos. Para cambios grandes, mejor abrir antes un issue o comentarlo
+en el [grupo de Telegram](https://t.me/foroplus). Lo que aportes entra bajo la misma licencia.
+
+## Licencia
+
+[GPL-3.0](LICENSE): puedes usar, estudiar, modificar y redistribuir el código, siempre que lo que
+distribuyas siga siendo GPL-3.0 con su código fuente.
+
+El nombre **ForoPlus** y su icono no forman parte de la licencia: si publicas una versión
+modificada, ponle otro nombre y otro icono.
