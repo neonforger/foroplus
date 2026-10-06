@@ -1,0 +1,10 @@
+<!-- Respuestas de la fila del listado: el MISMO bocadillo con tres puntos que pinta la web móvil
+     de FC en esa posición (`/image/new_icons/citas.svg`, su variable CSS "citas"; leído por CDP el
+     2026-10-06). Allí es gris #949494 y blanco en oscuro; aquí lo tiñe la fila (drawableTint)
+     con la paleta, que ya cambia sola en modo oscuro. Sustituye al emoji 💬, que no se teñía. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="14dp" android:height="14dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <path android:fillColor="@color/fc_texto_3" android:fillType="evenOdd"
+        android:pathData="m15.6667 4c3.4715 0 6.2857 2.81421 6.2857 6.2857v3.4286c0 1.8605-.8083 3.5322-2.093 4.6831.8247.4942 1.8718 1.0285 3.1406 1.6026l-7.2873-.0002c-.0153.0001-.0307.0002-.046.0002h-8.38099c-3.4715 0-6.28571-2.8142-6.28571-6.2857v-3.4286c0-3.47149 2.81421-6.2857 6.28571-6.2857zm-9.4286 6.6667c-.72323 0-1.30953.5969-1.30953 1.3333s.5863 1.3333 1.30953 1.3333 1.30952-.5969 1.30952-1.3333-.58629-1.3333-1.30952-1.3333zm5.2381 0c-.7232 0-1.3095.5969-1.3095 1.3333s.5863 1.3333 1.3095 1.3333 1.3095-.5969 1.3095-1.3333-.5863-1.3333-1.3095-1.3333zm5.2381 0c-.7232 0-1.3095.5969-1.3095 1.3333s.5863 1.3333 1.3095 1.3333 1.3095-.5969 1.3095-1.3333-.5863-1.3333-1.3095-1.3333z"/>
+</vector>

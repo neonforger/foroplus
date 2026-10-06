@@ -272,7 +272,9 @@ class ThreadListAdapter(
         h.zonaUltimo.isClickable = saltaAlUltimo
         h.zonaUltimo.setOnClickListener(if (saltaAlUltimo) View.OnClickListener { onLastPost(item) } else null)
         pintarUltimo(h, item, pedir = true)
-        h.replies.text = if (item.replies.isNotEmpty()) "💬 ${item.replies}" else ""
+        // Sin número se esconde entero: si no, quedaría el icono suelto.
+        h.replies.text = item.replies
+        h.replies.visibility = if (item.replies.isNotEmpty()) View.VISIBLE else View.GONE
         // Pulsación larga = acciones del hilo, mismo gesto que en los mensajes.
         h.itemView.setOnLongClickListener { onLongClick(item); true }
         h.itemView.setOnClickListener {

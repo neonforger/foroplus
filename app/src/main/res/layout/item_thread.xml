@@ -134,10 +134,16 @@
         </LinearLayout>
     </LinearLayout>
 
+    <!-- El bocadillo es el icono de respuestas de FC (ic_respuestas), teñido del mismo gris que
+         el número: el emoji que había antes no se podía teñir. -->
     <TextView
         android:id="@+id/thread_replies"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:drawableStart="@drawable/ic_respuestas"
+        android:drawablePadding="4dp"
+        android:drawableTint="@color/fc_texto_2"
         android:textSize="12sp"
         android:textColor="@color/fc_texto_2" />
 
