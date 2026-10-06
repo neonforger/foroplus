@@ -26,7 +26,9 @@ sealed class Screen {
          * avisos. Sin esto, volver atrás a una búsqueda por mensajes la reconstruía como
          * búsqueda por hilos y te cambiaba los resultados bajo los pies.
          */
-        val porMensajes: Boolean = false
+        val porMensajes: Boolean = false,
+        /** Solo "search": de quién son los resultados ("" = de todo el foro). */
+        val usuario: String = ""
     ) : Screen()
 
     /** Citas o menciones aisladas. [kind] es "quotes" o "mentions". */

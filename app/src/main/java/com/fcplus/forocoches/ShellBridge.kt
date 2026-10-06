@@ -45,8 +45,13 @@ class ShellBridge(
     /** Fecha real de una cita/mención (su lista solo trae la hora). Ver [SelloNoticia]. */
     private val onNoticeDateResult: (String) -> Unit = {},
     /** Quién escribió un mensaje: el "último que escribe" de la lista. Ver [UltimosPosteadores]. */
-    private val onLastPosterResult: (String) -> Unit = {}
+    private val onLastPosterResult: (String) -> Unit = {},
+    /** Nombres que propone el foro para el campo de usuario del buscador. Ver [BusquedaPorUsuario]. */
+    private val onUserSuggestionsResult: (String) -> Unit = {}
 ) {
+    @JavascriptInterface
+    fun onUserSuggestions(json: String) = onUserSuggestionsResult(json)
+
     @JavascriptInterface
     fun onNoticeDate(json: String) = onNoticeDateResult(json)
 

@@ -2,11 +2,19 @@
 <!-- Buscador. OJO con los colores fijos del EditText: el tema es DayNight y el panel tiene
      fondo blanco, así que sin textColor/textColorHint explícitos el campo es invisible en
      modo oscuro (mismo patrón que login_user y sheet_thread_pages). -->
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- Desplazable desde que tiene campo de usuario: con el teclado abierto y las sugerencias
+     de nombres, el contenido no cabe y el botón de buscar quedaba tapado (medido en el
+     Samsung el 2026-10-07). El relleno del teclado se le pone a esta vista (showSearchSheet). -->
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@color/fc_fondo"
+    android:clipToPadding="false">
+
+<LinearLayout
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:background="@color/fc_fondo"
     android:paddingStart="20dp"
     android:paddingEnd="20dp"
     android:paddingTop="18dp"
@@ -46,6 +54,60 @@
         android:layout_marginTop="4dp"
         android:visibility="gone" />
 
+    <!-- Buscar por usuario, como el campo "Buscar por nombre de usuario" de FC. Opcional: con
+         palabras, las busca solo en lo suyo; sin palabras, enseña todo lo suyo (lo de su ficha). -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingStart="4dp"
+            android:paddingEnd="2dp"
+            android:textSize="16sp"
+            android:textColor="@color/fc_texto_3"
+            android:text="\@" />
+
+        <EditText
+            android:id="@+id/search_user"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:inputType="text|textNoSuggestions"
+            android:imeOptions="actionSearch"
+            android:maxLines="1"
+            android:textSize="16sp"
+            android:hint="Usuario (opcional)"
+            android:textColor="@color/fc_texto"
+            android:textColorHint="@color/fc_texto_3"
+            android:importantForAutofill="no" />
+
+        <TextView
+            android:id="@+id/search_user_clear"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:gravity="center"
+            android:textSize="16sp"
+            android:textColor="@color/fc_texto_3"
+            android:text="✕"
+            android:contentDescription="Quitar el usuario"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:visibility="gone" />
+    </LinearLayout>
+
+    <!-- Nombres que propone el foro al escribir (a partir de 3 letras). Como mucho cinco: el
+         panel no se desplaza y con el teclado abierto no puede tapar el botón de buscar. -->
+    <LinearLayout
+        android:id="@+id/search_sugerencias"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="gone" />
+
 <!-- Antes era un interruptor "Buscar solo en los títulos". El problema no era la etiqueta,
          era que apagarlo buscaba dentro de los mensajes y seguía devolviendo HILOS. Ahora son
          dos búsquedas distintas y cada una dice lo que te va a dar, porque lo que cambia no es
@@ -77,6 +139,7 @@
     </RadioGroup>
 
     <TextView
+        android:id="@+id/search_ayuda"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="2dp"
@@ -99,3 +162,5 @@
         android:background="@color/fc_rojo" />
 
 </LinearLayout>
+
+</androidx.core.widget.NestedScrollView>

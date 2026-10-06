@@ -467,6 +467,9 @@ class MainActivity : AppCompatActivity() {
     private var pendingMarkReadUnknown = false
     private var searchQuery = ""           // término del buscador (listSource = "search")
     private var searchTitleOnly = true
+    private var searchUser = ""            // de quién son los resultados ("" = de todo el foro)
+    /** El buscador abierto espera sugerencias de nombres; null si no hay buscador abierto. */
+    private var alLlegarSugerencias: ((String) -> Unit)? = null
     private var loadingThreadPage = false
     private var isThreadVisible = false
     private var cameFromThread = false     // para que atrás desde la web vuelva al hilo
@@ -997,21 +1000,114 @@ class MainActivity : AppCompatActivity() {
             insets
         }
         val input = view.findViewById<EditText>(R.id.search_input)
+        val usuario = view.findViewById<EditText>(R.id.search_user)
+        val quitarUsuario = view.findViewById<View>(R.id.search_user_clear)
+        val sugerencias = view.findViewById<LinearLayout>(R.id.search_sugerencias)
+        val recientes = view.findViewById<LinearLayout>(R.id.search_recientes)
+        val ayuda = view.findViewById<TextView>(R.id.search_ayuda)
+        val ayudaSinUsuario = ayuda.text
         val scope = view.findViewById<android.widget.RadioGroup>(R.id.search_scope)
         input.setText(searchQuery)
+        usuario.setText(searchUser)
         scope.check(if (searchTitleOnly) R.id.search_scope_titles else R.id.search_scope_posts)
         fun lanzar(q: String) {
-            if (q.length < 3) { toast("Escribe al menos 3 caracteres"); return }
-            searchQuery = q
-            searchTitleOnly = scope.checkedRadioButtonId != R.id.search_scope_posts
-            recordarBusqueda(q)
-            sheet.dismiss()
-            runSearch()
+            val porTitulos = scope.checkedRadioButtonId != R.id.search_scope_posts
+            when (val p = BusquedaPorUsuario.decidir(q, usuario.text.toString(), porTitulos)) {
+                is PeticionBusqueda.NoVale -> toast(p.motivo)
+                // Sin palabras es todo lo suyo: la misma pantalla que su ficha, sin repetirla.
+                is PeticionBusqueda.TodoDe -> {
+                    sheet.dismiss()
+                    showUserActivity(p.usuario, if (p.porTitulos) "started" else "posts")
+                }
+                is PeticionBusqueda.Palabras -> {
+                    searchQuery = p.palabras
+                    searchUser = p.usuario
+                    searchTitleOnly = p.porTitulos
+                    recordarBusqueda(p.palabras)
+                    sheet.dismiss()
+                    runSearch()
+                }
+            }
         }
-        pintarBusquedasRecientes(view.findViewById(R.id.search_recientes)) { lanzar(it) }
+        pintarBusquedasRecientes(recientes) { lanzar(it) }
+        val hayRecientes = recientes.visibility == View.VISIBLE
+
+        // Sugerencias de nombres: se piden con una pausa (no en cada tecla) y solo se pinta la
+        // respuesta de lo que sigue escrito (ver BusquedaPorUsuario.sugerencias).
+        val pausa = android.os.Handler(android.os.Looper.getMainLooper())
+        var elegido = ""          // nombre recién tocado: no se vuelve a pedir sugerencias por él
+        fun pintarSugerencias(nombres: List<String>) {
+            sugerencias.removeAllViews()
+            for (nombre in nombres.take(5)) {
+                sugerencias.addView(TextView(this).apply {
+                    text = "@$nombre"
+                    textSize = 15f
+                    setTextColor(color(R.color.fc_texto))
+                    minHeight = dp(44)
+                    gravity = android.view.Gravity.CENTER_VERTICAL
+                    setPadding(dp(4), 0, dp(4), 0)
+                    setBackgroundResource(android.R.drawable.list_selector_background)
+                    setOnClickListener {
+                        elegido = nombre
+                        usuario.setText(nombre)
+                        usuario.setSelection(nombre.length)
+                        pintarSugerencias(emptyList())
+                    }
+                })
+            }
+            val hay = sugerencias.childCount > 0
+            sugerencias.visibility = if (hay) View.VISIBLE else View.GONE
+            // Las recientes son un atajo para las PALABRAS: mientras se elige usuario, sobran y
+            // dejan sitio (el panel no se desplaza y el teclado está abierto).
+            recientes.visibility = if (!hay && hayRecientes) View.VISIBLE else View.GONE
+        }
+        fun pintarAyuda(texto: String) {
+            val u = BusquedaPorUsuario.limpiarUsuario(texto)
+            quitarUsuario.visibility = if (u.isEmpty()) View.GONE else View.VISIBLE
+            ayuda.text = if (u.isEmpty()) ayudaSinUsuario else
+                "Con usuario: por títulos salen los hilos que abrió @$u; por mensajes, sus mensajes. Sin palabras, todo lo suyo."
+        }
+        alLlegarSugerencias = { json ->
+            BusquedaPorUsuario.sugerencias(json, usuario.text.toString())?.let { pintarSugerencias(it) }
+        }
+        usuario.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+            override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+            override fun afterTextChanged(s: android.text.Editable?) {
+                val texto = s?.toString().orEmpty()
+                pintarAyuda(texto)
+                pausa.removeCallbacksAndMessages(null)
+                val limpio = BusquedaPorUsuario.limpiarUsuario(texto)
+                if (!BusquedaPorUsuario.pedirSugerencias(texto) || limpio == elegido) {
+                    pintarSugerencias(emptyList()); return
+                }
+                pausa.postDelayed({
+                    webView.evaluateJavascript(
+                        "window.fcSugerirUsuarios&&fcSugerirUsuarios('${jsEscape(limpio)}')", null
+                    )
+                }, 350)
+            }
+        })
+        pintarAyuda(searchUser)
+        elegido = BusquedaPorUsuario.limpiarUsuario(searchUser)
+        quitarUsuario.setOnClickListener { elegido = ""; usuario.setText("") }
+        val alBuscarDesdeTeclado = TextView.OnEditorActionListener { _, accion, _ ->
+            if (accion == android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH) {
+                lanzar(input.text.toString().trim()); true
+            } else false
+        }
+        input.setOnEditorActionListener(alBuscarDesdeTeclado)
+        usuario.setOnEditorActionListener(alBuscarDesdeTeclado)
         view.findViewById<View>(R.id.search_go).setOnClickListener {
             lanzar(input.text.toString().trim())
         }
+        sheet.setOnDismissListener {
+            pausa.removeCallbacksAndMessages(null)
+            alLlegarSugerencias = null
+        }
+        // Abierto entero: con el campo de usuario ya no cabe en la altura a medias del panel.
+        sheet.behavior.skipCollapsed = true
+        sheet.behavior.state = com.google.android.material.bottomsheet.BottomSheetBehavior.STATE_EXPANDED
         sheet.show()
         input.requestFocus()
     }
@@ -1135,7 +1231,7 @@ class MainActivity : AppCompatActivity() {
      */
     private fun runSearch(apilar: Boolean = true) {
         if (apilar) nav.push(
-            Screen.ThreadList("search", query = searchQuery, porMensajes = !searchTitleOnly)
+            Screen.ThreadList("search", query = searchQuery, porMensajes = !searchTitleOnly, usuario = searchUser)
         )
         // Buscar en los mensajes devuelve MENSAJES, y esos no caben en el listado de hilos:
         // se pintan en el panel de avisos, que es el que ya sabe dibujar un mensaje suelto.
@@ -1143,7 +1239,7 @@ class MainActivity : AppCompatActivity() {
         listSource = "search"
         myThreadsBase = ""
         forumTabs.visibility = View.GONE
-        nativeHeader.text = "\"$searchQuery\""
+        nativeHeader.text = BusquedaPorUsuario.cabecera(searchQuery, searchUser, porMensajes = false)
         listLoaded = false
         adapter.submit(emptyList())
         showNative()
@@ -1185,12 +1281,12 @@ class MainActivity : AppCompatActivity() {
         swipeRefresh.visibility = View.INVISIBLE
         bottomNav.visibility = View.VISIBLE
         setSelectedNav(R.id.nav_home)
-        noticesHeader.text = "\"$searchQuery\" · mensajes"
+        noticesHeader.text = BusquedaPorUsuario.cabecera(searchQuery, searchUser, porMensajes = true)
         noticeAdapter.submit(emptyList())
         noticesEmpty.visibility = View.GONE
         noticesLoading.visibility = View.VISIBLE
         webView.evaluateJavascript(
-            "window.fcSearch&&fcSearch('${jsEscape(searchQuery)}',false,'')", null
+            "window.fcSearch&&fcSearch('${jsEscape(searchQuery)}',false,'','${jsEscape(searchUser)}')", null
         )
     }
 
@@ -1238,7 +1334,7 @@ class MainActivity : AppCompatActivity() {
                 "window.fcLoadUserActivity&&fcLoadUserActivity('posts','${jsEscape(actividadUsuario)}'," +
                     "'${jsEscape(url)}','${jsEscape(actividadEnHilo)}')"
             } else {
-                "window.fcSearch&&fcSearch('${jsEscape(searchQuery)}',false,'${jsEscape(url)}')"
+                "window.fcSearch&&fcSearch('${jsEscape(searchQuery)}',false,'${jsEscape(url)}','${jsEscape(searchUser)}')"
             }, null
         )
     }
@@ -2035,7 +2131,8 @@ class MainActivity : AppCompatActivity() {
             noticesEmpty.text = when (currentNoticesKind) {
                 "quotes" -> "No tienes citas recientes"
                 "userposts" -> "Este usuario no tiene mensajes visibles"
-                "searchposts" -> "Ningún mensaje contiene \"$searchQuery\""
+                "searchposts" -> "Ningún mensaje contiene \"$searchQuery\"" +
+                    (if (searchUser.isEmpty()) "" else " de @$searchUser")
                 else -> "No tienes menciones recientes"
             }
         }
@@ -3274,7 +3371,8 @@ class MainActivity : AppCompatActivity() {
                 onQuienSoyData = { json -> runOnUiThread { onQuienSoy(json) } },
                 onThreadDescargaData = { json -> runOnUiThread { onPaginaDescargada(json) } },
                 onThreadDescargaErrorData = { r -> runOnUiThread { cancelarDescarga(motivoDescarga(r)) } },
-                onLastPosterResult = { json -> runOnUiThread { onLastPosterJson(json) } }
+                onLastPosterResult = { json -> runOnUiThread { onLastPosterJson(json) } },
+                onUserSuggestionsResult = { json -> runOnUiThread { alLlegarSugerencias?.invoke(json) } }
             ),
             "AndroidShell"
         )
@@ -5875,10 +5973,15 @@ class MainActivity : AppCompatActivity() {
                     // El panel de avisos no cachea nada suyo: se rehace siempre, igual que
                     // "sus mensajes" (showUserActivity) cuando vuelves a él.
                     searchQuery = s.query
+                    searchUser = s.usuario
                     restaurarNoticias = true      // volver a la fila en la que ibas
                     runSearch(apilar = false)
-                } else if (Restauracion.hayQueRehacerBusqueda(s.query, listSource, searchQuery, listLoaded)) {
+                } else if (Restauracion.hayQueRehacerBusqueda(
+                        BusquedaPorUsuario.clave(s.query, s.usuario), listSource,
+                        BusquedaPorUsuario.clave(searchQuery, searchUser), listLoaded)) {
+                    // La clave lleva el usuario: "tesla de @x" no es lo mismo que "tesla".
                     searchQuery = s.query
+                    searchUser = s.usuario
                     runSearch(apilar = false)
                 } else { showNative(); setSelectedNav(navIdForList()) }
             }
@@ -6824,7 +6927,8 @@ class MainActivity : AppCompatActivity() {
             // Mis hilos / Participados: el motor resuelve el UID/usuario real (el DOM vivo
             // trae u=0) y busca; para paginar reusa la URL con searchid (myThreadsBase).
             "search" -> "window.fcSearch&&fcSearch('${jsEscape(searchQuery)}',${searchTitleOnly}," +
-                "'${jsEscape(if (page > 1 && myThreadsBase.isNotEmpty()) myThreadsBase + "&page=$page" else "")}')"
+                "'${jsEscape(if (page > 1 && myThreadsBase.isNotEmpty()) myThreadsBase + "&page=$page" else "")}'," +
+                "'${jsEscape(searchUser)}')"
             "mine", "participated" -> {
                 val mode = if (listSource == "mine") "started" else "participated"
                 val pageUrl = if (page > 1 && myThreadsBase.isNotEmpty())

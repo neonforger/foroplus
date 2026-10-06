@@ -2679,7 +2679,7 @@
   // 2026-09-21 con `showposts=1`: FC añade `highlight=<consulta>` a cada enlace, así que el
   // selector de parseUserPosts vale tal cual, y llegan 100 anclas para 25 mensajes (gotcha 38,
   // de ahí que deduplicar por `p=` no sea opcional).
-  window.fcSearch = function (query, titleOnly, pageUrl) {
+  window.fcSearch = function (query, titleOnly, pageUrl, usuario) {
     var porMensajes = !titleOnly;
     // Los dos modos pintan en PANTALLAS distintas, así que sus errores tienen que viajar por
     // el canal de su pantalla: por el de la lista o por el del panel de avisos.
@@ -2725,6 +2725,13 @@
         body.set('do', 'process'); body.set('securitytoken', token);
         body.set('query', query); body.set('titleonly', titleOnly ? '1' : '0');
         body.set('showposts', porMensajes ? '1' : '0'); body.set('dosearch', 'Buscar');
+        // Por usuario, como el campo "Buscar por nombre de usuario" de FC (medido 2026-10-07).
+        // exactname no viene en el formulario pero FC lo acepta, y es lo que usan los enlaces
+        // de la ficha. Por títulos, starteronly=1 = los hilos que ABRIÓ; por mensajes, los suyos.
+        if (usuario) {
+          body.set('searchuser', usuario); body.set('exactname', '1');
+          body.set('starteronly', titleOnly ? '1' : '0');
+        }
         return fetch('https://forocoches.com/foro/search.php?do=process', {
           method: 'POST', credentials: 'same-origin',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body.toString()
@@ -2735,6 +2742,54 @@
         emit(new DOMParser().parseFromString(res.h, 'text/html'), res.u);
       })
       .catch(function (e) { fallo(String(e)); });
+  };
+
+  // Sugerencias de nombres para el campo de usuario del buscador: el MISMO autocompletado de la
+  // web (vbulletin_ajax_namesugg.js → POST ajax.php?do=usersearch con `fragment`; contesta a
+  // partir de 3 letras, con hasta 15 <user userid="N">nombre</user>). Pide el securitytoken de la
+  // sesión: se saca de search.php y se reusa unos minutos, NUNCA del DOM vivo, que es la página
+  // del arranque y puede ser de otra cuenta (gotcha 31). Si FC no contesta con nombres (token
+  // caducado), se pide token nuevo y se reintenta una vez. Medido por CDP el 2026-10-07.
+  var tokenSugerencias = { valor: '', cuando: 0 };
+  function tokenParaSugerir(nuevo) {
+    if (!nuevo && tokenSugerencias.valor && Date.now() - tokenSugerencias.cuando < 5 * 60 * 1000) {
+      return Promise.resolve(tokenSugerencias.valor);
+    }
+    return fetch('https://forocoches.com/foro/search.php', { credentials: 'same-origin' })
+      .then(function (r) { return r.text(); })
+      .then(function (html) {
+        var el = new DOMParser().parseFromString(html, 'text/html').querySelector('input[name="securitytoken"]');
+        var t = el ? el.value : '';
+        tokenSugerencias = { valor: (t && t !== 'guest') ? t : '', cuando: Date.now() };
+        return tokenSugerencias.valor;
+      });
+  }
+
+  window.fcSugerirUsuarios = function (fragmento) {
+    var frag = String(fragmento || '').trim();
+    function entregar(nombres) {
+      AndroidShell.onUserSuggestions(JSON.stringify({ fragment: frag, nombres: nombres }));
+    }
+    function pedir(token) {
+      if (!token) return Promise.resolve(null);
+      var body = new URLSearchParams();
+      body.set('securitytoken', token); body.set('do', 'usersearch'); body.set('fragment', frag);
+      return fetch('https://forocoches.com/foro/ajax.php?do=usersearch', {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body.toString()
+      }).then(function (r) { return r.text(); })
+        .then(function (xml) {
+          if (xml.indexOf('<users') === -1) return null;
+          var doc = new DOMParser().parseFromString(xml, 'text/xml');
+          return Array.prototype.map.call(doc.getElementsByTagName('user'), function (u) {
+            return (u.textContent || '').trim();
+          }).filter(function (n) { return n; });
+        });
+    }
+    tokenParaSugerir(false).then(pedir)
+      .then(function (nombres) { return nombres || tokenParaSugerir(true).then(pedir); })
+      .then(function (nombres) { entregar(nombres || []); })
+      .catch(function () { entregar([]); });
   };
 
   // Mis hilos ('started') y Participados ('participated'). El UID real NO está en el DOM
