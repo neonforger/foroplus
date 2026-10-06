@@ -13,7 +13,7 @@ cat > "$raiz/.git/hooks/pre-commit" <<'HOOK'
 case "$(git config user.email)" in
   *@users.noreply.github.com) ;;
   *) echo "pre-commit: user.email no es noreply de GitHub; configúralo en este clon:" >&2
-     echo "  git config user.email 112471184+albertdom@users.noreply.github.com" >&2
+     echo "  git config user.email 289227753+neonforger@users.noreply.github.com" >&2
      exit 1 ;;
 esac
 # Y nada con pinta de secreto entra en un commit.

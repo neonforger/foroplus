@@ -16,13 +16,13 @@ import java.net.URL
  */
 object RemoteConfig {
 
-    // Repo PÚBLICO y propio, creado para esto (2026-08-14). Antes se descargaba de
-    // `neonforger/forolibre`, que no controlamos; y el repo de la app es privado, así que
-    // raw.githubusercontent devuelve 404 (y meter un token en el APK no es opción: se
-    // extrae del paquete). Editar ese fichero y hacer push cambia la config y el aviso de
-    // versión de todos los usuarios sin publicar nada en Play.
+    // Repo PÚBLICO y propio, creado para esto. Editar ese fichero y hacer push cambia la
+    // config y el aviso de versión de todos los usuarios sin publicar nada en Play.
+    // Vive en la cuenta del proyecto desde la 49 (2026-10-06); las versiones hasta la 48
+    // leen la copia de `albertdom/foroplus-config`, que hay que mantener IGUAL mientras
+    // quede gente en ellas.
     private const val REMOTE_URL =
-        "https://raw.githubusercontent.com/albertdom/foroplus-config/main/fc_config.json"
+        "https://raw.githubusercontent.com/neonforger/foroplus-config/main/fc_config.json"
     private const val PREFS = "fc_remote_config"
     private const val KEY_JSON = "json"
 
