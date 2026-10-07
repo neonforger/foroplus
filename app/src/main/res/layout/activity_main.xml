@@ -2321,12 +2321,29 @@
                 android:paddingEnd="32dp"
                 android:paddingBottom="24dp">
 
-                <ImageView
-                    android:id="@+id/member_avatar"
+                <FrameLayout
                     android:layout_width="96dp"
                     android:layout_height="96dp"
-                    android:layout_marginTop="48dp"
-                    android:contentDescription="@null" />
+                    android:layout_marginTop="48dp">
+
+                    <ImageView
+                        android:id="@+id/member_avatar"
+                        android:layout_width="96dp"
+                        android:layout_height="96dp"
+                        android:contentDescription="@null" />
+
+                    <!-- Solo si se abrió desde un mensaje donde FC lo marcaba: la ficha de FC no
+                         dice si alguien está conectado (showMemberProfile). -->
+                    <View
+                        android:id="@+id/member_conectado_punto"
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:layout_gravity="top|end"
+                        android:layout_marginTop="4dp"
+                        android:layout_marginEnd="4dp"
+                        android:background="@drawable/bg_punto_conectado"
+                        android:visibility="gone" />
+                </FrameLayout>
 
                 <TextView
                     android:id="@+id/member_name"
@@ -2336,6 +2353,20 @@
                     android:textSize="22sp"
                     android:textStyle="bold"
                     android:textColor="@color/fc_texto" />
+
+                <TextView
+                    android:id="@+id/member_conectado"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:drawableStart="@drawable/bg_punto_conectado"
+                    android:drawablePadding="6dp"
+                    android:gravity="center_vertical"
+                    android:textSize="13sp"
+                    android:fontFamily="sans-serif-medium"
+                    android:textColor="@color/fc_conectado_texto"
+                    android:text="Conectado ahora"
+                    android:visibility="gone" />
 
                 <!-- Antigüedad y actividad. Empieza diciendo "Usuario de ForoCoches" y se
                      sustituye por los datos reales cuando llega la ficha; si FC no los diera,

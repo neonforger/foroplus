@@ -311,6 +311,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var memberSobreMi: TextView
     private lateinit var memberAvatar: android.widget.ImageView
     private lateinit var memberName: TextView
+    private lateinit var memberConectado: View
+    private lateinit var memberConectadoPunto: View
     private lateinit var memberPmBtn: TextView
     private var isMemberVisible = false
     private var currentMemberUid = ""
@@ -1722,6 +1724,8 @@ class MainActivity : AppCompatActivity() {
         memberPanel = findViewById(R.id.member_panel)
         memberAvatar = findViewById(R.id.member_avatar)
         memberName = findViewById(R.id.member_name)
+        memberConectado = findViewById(R.id.member_conectado)
+        memberConectadoPunto = findViewById(R.id.member_conectado_punto)
         memberStats = findViewById(R.id.member_stats)
         memberFirma = findViewById(R.id.member_firma)
         memberSobreMi = findViewById(R.id.member_sobre_mi)
@@ -1780,7 +1784,17 @@ class MainActivity : AppCompatActivity() {
      *   postbit sí trae el del autor). Se usa solo si la página de perfil no trae ninguno
      *   suyo — de invitado, por ejemplo, FC no lo pinta.
      */
-    private fun showMemberProfile(uid: String, knownAvatar: String = "", remember: Boolean = true) {
+    /**
+     * @param conectado lo dijo FC en el mensaje desde el que se abre (el punto verde de su avatar).
+     *   La ficha de FC no lo enseña, así que entrando por cualquier otro sitio no se sabe y no se
+     *   pinta nada.
+     */
+    private fun showMemberProfile(
+        uid: String,
+        knownAvatar: String = "",
+        remember: Boolean = true,
+        conectado: Boolean = false
+    ) {
         if (remember) nav.push(Screen.Member(uid))
         currentMemberUid = uid
         currentMemberUsername = ""
@@ -1807,6 +1821,8 @@ class MainActivity : AppCompatActivity() {
         // encima del nombre (visto el 2026-10-03 haciendo las capturas de Play; gotcha 46: el
         // camino "sin foto" no es una rareza). Si llega su avatar, lo sustituye.
         memberAvatar.setImageResource(R.drawable.ic_avatar_fc)
+        memberConectado.visibility = if (conectado) View.VISIBLE else View.GONE
+        memberConectadoPunto.visibility = if (conectado) View.VISIBLE else View.GONE
         webView.evaluateJavascript("window.fcLoadMember&&fcLoadMember('${jsEscape(uid)}')", null)
     }
 
@@ -3752,7 +3768,9 @@ class MainActivity : AppCompatActivity() {
             // Nombre/avatar del autor → su perfil nativo (uid real del HTML crudo).
             // El avatar del autor ya lo tenemos del postbit: se pasa como respaldo por si la
             // página de perfil no trae el suyo (así el perfil nunca sale con la foto de otro).
-            onAuthorClick = { post -> if (post.uid.isNotEmpty()) showMemberProfile(post.uid, post.avatar) },
+            onAuthorClick = { post ->
+                if (post.uid.isNotEmpty()) showMemberProfile(post.uid, post.avatar, conectado = post.conectado)
+            },
             onEmbedFullscreen = { view, cb -> onEmbedFullscreen(view, cb) },
             onImageClick = { url -> abrirVisorImagen(url) }
         )
@@ -6322,7 +6340,10 @@ class MainActivity : AppCompatActivity() {
         threadLoading.visibility = View.GONE
         threadRefresh.isRefreshing = false
         restrictedView.visibility = View.GONE
-        val t = parseThreadPayload(json) ?: return
+        // Una copia descargada trae la marca de "conectado" de cuando se bajó: no vale para ahora.
+        val t = parseThreadPayload(json)
+            ?.let { it.copy(posts = Presencia.paraMostrar(it.posts, esCopia = copiaAbierta.isNotEmpty())) }
+            ?: return
         // Respuesta tardía de otro hilo (el user ya abrió otro): descartar.
         if (!t.url.startsWith(currentThreadUrl)) return
         // Hilos abiertos por enlace p= (citas/menciones, y el "último mensaje" del listado):

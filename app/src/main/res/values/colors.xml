@@ -32,6 +32,10 @@
     <color name="fc_texto_off">#BDBDBD</color>
     <!-- "Has escrito en este hilo" en el listado: el turquesa del thread-notification-bullet de FC. -->
     <color name="fc_participado">#3FAFBC</color>
+    <!-- "Conectado ahora": el verde de FC (su variable user-status-online-color). El del texto, más oscuro,
+         porque el de FC sobre blanco no llega al contraste mínimo para leerse. -->
+    <color name="fc_conectado">#3FBC42</color>
+    <color name="fc_conectado_texto">#2E7D32</color>
 
     <!-- Líneas divisorias y separadores. -->
     <color name="fc_divisoria">#EEEEEE</color>

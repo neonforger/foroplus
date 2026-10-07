@@ -1071,6 +1071,12 @@
             catch (e) {}
           }
 
+          // Conectado ahora: FC pone en el avatar un punto con
+          // style="…background: var(--user-status-online-color)…" y, si no lo está, nada (no
+          // hay marca de "desconectado"). Es el único elemento con esa variable en línea, y la
+          // cabecera ya va sin el mensaje, así que una cita no puede colarlo. Medido 2026-10-07.
+          var enLinea = !!header.querySelector('[style*="user-status-online-color"]');
+
           // Mensaje simplificado para render nativo.
           var m = msg.cloneNode(true);
           m.querySelectorAll('style').forEach(function (x) { x.remove(); });
@@ -1154,7 +1160,7 @@
 
           posts.push({
             pid: pid, author: author, uid: uid, avatar: avatar, date: date,
-            html: m.innerHTML, own: !!own, embeds: embeds
+            html: m.innerHTML, own: !!own, embeds: embeds, online: enLinea
           });
         });
         if (!posts.length) {

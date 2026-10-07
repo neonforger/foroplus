@@ -14,6 +14,8 @@
     <color name="fc_texto_3">#8A8A90</color>
     <color name="fc_texto_off">#55555C</color>
     <color name="fc_participado">#4FC3CF</color>
+    <color name="fc_conectado">#3FBC42</color>
+    <color name="fc_conectado_texto">#66D16A</color>
 
     <color name="fc_divisoria">#2E2E34</color>
     <color name="fc_chip">#2A2A30</color>

@@ -1,0 +1,9 @@
+<!-- Punto de "conectado ahora" en el avatar: el de FC, en su verde, con un aro del color del
+     fondo para que se separe de la foto (mismo patrón que bg_punto_participado). -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
+    <!-- Tamaño propio para cuando va como drawableStart ("Conectado ahora" de la ficha); como
+         fondo de una vista manda el tamaño de la vista. -->
+    <size android:width="10dp" android:height="10dp" />
+    <solid android:color="@color/fc_conectado" />
+    <stroke android:width="2dp" android:color="@color/fc_fondo" />
+</shape>

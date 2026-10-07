@@ -44,7 +44,9 @@ data class PostItem(
     val html: String,
     val page: Int = 1,
     val own: Boolean = false,
-    val embeds: List<EmbedSpec> = emptyList()
+    val embeds: List<EmbedSpec> = emptyList(),
+    /** El autor está conectado ahora (el punto verde de FC en su avatar). Ver [Presencia]. */
+    val conectado: Boolean = false
 )
 
 data class ThreadPayload(
@@ -84,7 +86,8 @@ fun parseThreadPayload(json: String): ThreadPayload? {
                     html = o.optString("html"),
                     page = pageNum,
                     own = o.optBoolean("own", false),
-                    embeds = parseEmbeds(o.optJSONArray("embeds"))
+                    embeds = parseEmbeds(o.optJSONArray("embeds")),
+                    conectado = o.optBoolean("online", false)
                 )
             )
         }
@@ -518,6 +521,7 @@ class PostAdapter(
 
     class Holder(v: View) : RecyclerView.ViewHolder(v) {
         val avatar: ImageView = v.findViewById(R.id.post_avatar)
+        val conectado: View = v.findViewById(R.id.post_conectado)
         val author: TextView = v.findViewById(R.id.post_author)
         val date: TextView = v.findViewById(R.id.post_date)
         val content: TextView = v.findViewById(R.id.post_content)
@@ -804,6 +808,9 @@ class PostAdapter(
     }
 
     private fun bindAvatar(h: Holder, item: PostItem) {
+        // Solo se pinta para quien FC marca como conectado: para el resto, nada (FC no dice
+        // "desconectado", y quien va en modo invisible tampoco llevaría el punto).
+        h.conectado.visibility = if (item.conectado) View.VISIBLE else View.GONE
         // Quien no tiene avatar lleva el relleno del PROPIO foro (`ic_avatar_fc`), el mismo
         // que ve cualquiera entrando por el navegador. FC lo sirve como `avatar.svg`, que
         // BitmapFactory no sabe decodificar, así que aquí se pinta con el vector nativo.
