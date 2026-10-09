@@ -44,6 +44,24 @@ class DescargaMas18Test {
         assertTrue(r.deCache)
     }
 
+    @Test fun `una version nueva no se tapa con la cache`() {
+        DescargaMas18(prefs) { ejemplo }.pagina(cfg, 1)
+        val r = DescargaMas18(prefs) { ejemplo.replace("\"v\": 1", "\"v\": 2") }.pagina(cfg, 1)
+        assertTrue(r.lectura is LecturaMas18.Mal)
+        assertTrue((r.lectura as LecturaMas18.Mal).motivo.contains("actualiza", ignoreCase = true))
+        assertFalse(r.deCache)
+    }
+
+    @Test fun `solo se guardan las tres primeras paginas`() {
+        DescargaMas18(prefs) { ejemplo }.pagina(cfg, 5)
+        val r = DescargaMas18(prefs) { null }.pagina(cfg, 5)
+        assertTrue(r.lectura is LecturaMas18.Mal)
+        assertTrue((r.lectura as LecturaMas18.Mal).motivo.startsWith("Sin conexión"))
+        assertFalse(prefs.contains("pagina_5"))
+        DescargaMas18(prefs) { ejemplo }.pagina(cfg, 3)
+        assertTrue(DescargaMas18(prefs) { null }.pagina(cfg, 3).deCache)
+    }
+
     @Test fun `sin red y sin cache dice el motivo`() {
         val r = DescargaMas18(prefs) { null }.pagina(cfg, 2)
         assertTrue(r.lectura is LecturaMas18.Mal)

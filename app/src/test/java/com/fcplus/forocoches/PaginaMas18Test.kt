@@ -4,8 +4,11 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.util.TimeZone
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 
+// Robolectric: así corre el org.json de Android (el de la JVM no, y difieren con los null).
+@RunWith(RobolectricTestRunner::class)
 class PaginaMas18Test {
 
     private fun ejemplo() = javaClass.classLoader!!.getResource("contrato/mas18-ejemplo.json").readText()
@@ -54,15 +57,45 @@ class PaginaMas18Test {
         assertEquals(setOf("+18"), p.hilos[0].etiquetas)
     }
 
+    @Test fun `autor null de JSON no sale como la palabra null`() {
+        val j = """{"v":1,"pagina":1,"hilos":[{"tid":5,"titulo":"x +18","autor":null,
+            "ultimo":{"autor":null,"fecha":"2026-10-08T17:55:00Z","pid":9}}]}"""
+        val h = bien(j).hilos[0]
+        assertEquals("", h.autor)
+        assertEquals("", h.ultimoAutor)
+    }
+
+    @Test fun `fecha ISO con Z, con offset y con fracciones`() {
+        fun f(s: String) = bien("""{"v":1,"generado":"$s","hilos":[]}""").generado
+        val esperado = 1791484200000L
+        assertEquals(esperado, f("2026-10-08T18:30:00Z"))
+        assertEquals(esperado, f("2026-10-08T18:30:00+00:00"))
+        assertEquals(esperado, f("2026-10-08T18:30:00.123Z"))
+        assertEquals(esperado, f("2026-10-08T20:30:00+02:00"))
+        assertEquals(0L, f("basura"))
+    }
+
+    @Test fun `etiquetas del JSON se normalizan y las desconocidas se recalculan del titulo`() {
+        fun et(arr: String) = bien("""{"v":1,"hilos":[{"tid":5,"titulo":"algo +18","etiquetas":$arr}]}""").hilos[0].etiquetas
+        assertEquals(setOf("+hd"), et("""["+HD"]"""))
+        assertEquals(setOf("peña"), et("""["penya"]"""))
+        assertEquals(setOf("+18"), et("""["+raro"]"""))
+    }
+
+    @Test fun `la version nueva se marca como tal`() {
+        val r = PaginaMas18Parser.leer(ejemplo().replace("\"v\": 1", "\"v\": 2")) as LecturaMas18.Mal
+        assertTrue(r.version)
+        assertTrue(!(PaginaMas18Parser.leer("<html>") as LecturaMas18.Mal).version)
+    }
+
     @Test fun `hora de hoy, como la escribe FC, en hora de Madrid`() {
-        TimeZone.setDefault(TimeZone.getTimeZone("Europe/Madrid"))
         val h = bien(ejemplo()).hilos[0]
         assertEquals("Hoy 19:55", PaginaMas18Parser.horaFila(h, ahora))
     }
 
     @Test fun `el historico sin ultimo dice el mes de creacion`() {
         val h = bien(ejemplo()).hilos[1]
-        assertEquals("abr 2024", PaginaMas18Parser.horaFila(h, ahora))
+        assertEquals("creado abr 2024", PaginaMas18Parser.horaFila(h, ahora))
     }
 
     @Test fun `a ThreadItem - url del hilo y enlace al ultimo solo si hay pid`() {

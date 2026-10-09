@@ -46,7 +46,12 @@ class OptionsController(
     /** Se ha encendido o apagado el "último que escribe" del listado: repintar las filas. */
     private val onUltimoChanged: () -> Unit = {},
     /** Se ha tocado la sección +18 o el ocultar +18/+16 de las listas. */
-    private val onMas18Changed: () -> Unit = {}
+    private val onMas18Changed: () -> Unit = {},
+    /**
+     * Si la sección +18 puede abrirse ahora mismo (la config remota la ofrece). Si no, con el
+     * interruptor encendido se avisa debajo: encendido y sin pestaña parecería un fallo.
+     */
+    private val mas18Disponible: () -> Boolean = { true }
 ) {
     companion object {
         const val PREF_FONT_IDX = "post_font_idx"
@@ -117,6 +122,12 @@ class OptionsController(
     private val ultimoSwitch: SwitchCompat = panel.findViewById(R.id.opt_ultimo_switch)
     private val mas18Switch: SwitchCompat = panel.findViewById(R.id.opt_mas18_switch)
     private val ocultarMas18Switch: SwitchCompat = panel.findViewById(R.id.opt_ocultar_mas18_switch)
+    private val mas18NoDisponible: TextView = panel.findViewById(R.id.opt_mas18_nodisponible)
+
+    private fun pintarMas18NoDisponible() {
+        mas18NoDisponible.visibility =
+            if (mas18Activa(prefs) && !mas18Disponible()) View.VISIBLE else View.GONE
+    }
     private val popurriChips: LinearLayout = panel.findViewById(R.id.opt_popurri_chips)
     private val kwToggle: TextView = panel.findViewById(R.id.opt_kw_toggle)
     private val hilosToggle: TextView = panel.findViewById(R.id.opt_hilos_toggle)
@@ -159,6 +170,7 @@ class OptionsController(
         mas18Switch.setOnCheckedChangeListener { _, checked ->
             if (checked == mas18Activa(prefs)) return@setOnCheckedChangeListener   // lo pinta bind()
             prefs.edit().putBoolean(PREF_MAS18, checked).apply()
+            pintarMas18NoDisponible()
             onMas18Changed()
         }
         ocultarMas18Switch.setOnCheckedChangeListener { _, checked ->
@@ -283,6 +295,7 @@ class OptionsController(
         ultimoSwitch.isChecked = ultimoEnLista(prefs)
         mas18Switch.isChecked = mas18Activa(prefs)
         ocultarMas18Switch.isChecked = ocultarMas18(prefs)
+        pintarMas18NoDisponible()
         kwSwitch.isChecked = keywordRepo.isEnabled()
         renderKeywords()
         renderHilos()

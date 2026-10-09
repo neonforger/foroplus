@@ -1672,6 +1672,16 @@
                             android:text="Una pestaña con los hilos +18, +16, +14, +prv y +hd. La lista la prepara un servidor de ForoPlus leyendo el foro como invitado. La app solo descarga la lista: no envía nada."
                             android:textSize="12sp"
                             android:textColor="@color/fc_texto_3" />
+                        <TextView
+                            android:id="@+id/opt_mas18_nodisponible"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="Ahora mismo no está disponible"
+                            android:textSize="12sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/fc_rojo"
+                            android:visibility="gone" />
 
                         <LinearLayout
                             android:layout_width="match_parent"

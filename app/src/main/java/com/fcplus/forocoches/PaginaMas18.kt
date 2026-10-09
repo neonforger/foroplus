@@ -32,7 +32,12 @@ data class PaginaMas18(
 
 sealed class LecturaMas18 {
     data class Bien(val pagina: PaginaMas18) : LecturaMas18()
-    data class Mal(val motivo: String) : LecturaMas18()
+    /**
+     * [version]: el JSON es válido pero de una versión que esta app no entiende. Se distingue del
+     * resto de fallos porque NO debe taparse con la lista guardada (sería esconder que hay que
+     * actualizar y etiquetar de "sin conexión" una lista que sí llegó).
+     */
+    data class Mal(val motivo: String, val version: Boolean = false) : LecturaMas18()
 }
 
 /**
@@ -48,7 +53,7 @@ object PaginaMas18Parser {
             return LecturaMas18.Mal("La lista no se ha podido leer")
         }
         val v = o.optInt("v", 0)
-        if (v > VERSION) return LecturaMas18.Mal("Hay una versión nueva de la lista: actualiza la app para verla")
+        if (v > VERSION) return LecturaMas18.Mal("Hay una versión nueva de la lista: actualiza la app para verla", version = true)
         if (v < 1) return LecturaMas18.Mal("La lista no se ha podido leer")
         val pagina = o.optInt("pagina", 1).coerceAtLeast(1)
         val arr = o.optJSONArray("hilos")
@@ -56,35 +61,56 @@ object PaginaMas18Parser {
         for (i in 0 until (arr?.length() ?: 0)) {
             val h = arr!!.optJSONObject(i) ?: continue
             val tid = h.optLong("tid", 0)
-            val titulo = h.optString("titulo").trim()
+            val titulo = h.texto("titulo")
             if (tid <= 0 || titulo.isEmpty()) continue
             val et = h.optJSONArray("etiquetas")
-            val etiquetas = (0 until (et?.length() ?: 0)).map { et!!.optString(it) }.filter { it.isNotEmpty() }.toSet()
+            // Lo que no sea una etiqueta conocida se tira (el servidor podría inventar "+raro"), y si
+            // no queda ninguna se recalcula del título, como en los hilos que vienen sin etiquetas.
+            val etiquetas = (0 until (et?.length() ?: 0)).mapNotNull { i -> normalizarEtiqueta(et!!.opt(i)) }.toSet()
                 .ifEmpty { EtiquetasHilo.de(titulo) }
             val ult = h.optJSONObject("ultimo")
             hilos.add(HiloMas18(
                 tid = tid, titulo = titulo, etiquetas = etiquetas,
-                autor = h.optString("autor").trim(),
+                autor = h.texto("autor"),
                 respuestas = h.optInt("respuestas", 0),
-                ultimoFecha = ult?.optString("fecha")?.let { iso(it) },
-                ultimoAutor = ult?.optString("autor")?.trim() ?: "",
+                ultimoFecha = ult?.texto("fecha")?.let { iso(it) },
+                ultimoAutor = ult?.texto("autor") ?: "",
                 ultimoPid = ult?.optLong("pid", 0) ?: 0,
-                creadoAprox = h.optString("creado_aprox").trim(),
+                creadoAprox = h.texto("creado_aprox"),
             ))
         }
         return LecturaMas18.Bien(PaginaMas18(
             v = v,
-            generado = iso(o.optString("generado")) ?: 0,
+            generado = iso(o.texto("generado")) ?: 0,
             pagina = pagina,
             totalPaginas = o.optInt("total_paginas", pagina).coerceAtLeast(pagina),
-            historicoHasta = o.optString("historico_hasta").trim(),
+            historicoHasta = o.texto("historico_hasta"),
             hilos = hilos,
         ))
     }
 
+    /**
+     * optString de Android devuelve el TEXTO "null" para un null de JSON (el org.json de la JVM
+     * pura devuelve ""): se mira isNull antes para que el teléfono y los tests coincidan.
+     */
+    private fun JSONObject.texto(k: String): String = if (isNull(k)) "" else optString(k).trim()
+
+    private fun normalizarEtiqueta(v: Any?): String? {
+        if (v !is String) return null
+        val e = v.trim().lowercase(Locale.ROOT).let { if (it == "penya") "peña" else it }
+        return e.takeIf { it in EtiquetasHilo.TODAS }
+    }
+
+    /**
+     * ISO-8601 tolerante: "...Z", "...+00:00" y con fracción de segundo ("...123Z"). Se normaliza a
+     * "yyyy-MM-dd'T'HH:mm:ssZ" porque el patrón con 'Z' literal solo entendía la primera forma.
+     */
     private fun iso(s: String): Long? = try {
-        SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US)
-            .apply { timeZone = TimeZone.getTimeZone("UTC") }.parse(s)?.time
+        val n = s.trim()
+            .replace(Regex("""\.\d+"""), "")
+            .replace(Regex("""Z$"""), "+0000")
+            .replace(Regex("""([+-]\d{2}):(\d{2})$"""), "$1$2")
+        SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ", Locale.US).parse(n)?.time
     } catch (_: Exception) { null }
 
     /** "AAAA-MM" → "abr 2024"; "" si no se entiende. */
@@ -98,10 +124,10 @@ object PaginaMas18Parser {
     /**
      * La hora de la fila con las MISMAS tres formas que FC ("Hoy 19:55", "Ayer 13:32",
      * "01-jul-2026 14:24"), para que todo lo que ya entiende la lista (Popurri.momento) la entienda.
-     * Los hilos del histórico, sin fecha, dicen el mes de creación.
+     * Los hilos del histórico, sin fecha, dicen "creado <mes>".
      */
     fun horaFila(h: HiloMas18, ahora: Long): String {
-        val f = h.ultimoFecha ?: return mesLegible(h.creadoAprox)
+        val f = h.ultimoFecha ?: return mesLegible(h.creadoAprox).let { if (it.isEmpty()) "" else "creado $it" }
         val zona = TimeZone.getTimeZone("Europe/Madrid")
         val c = Calendar.getInstance(zona).apply { timeInMillis = f }
         val hoy = Calendar.getInstance(zona).apply { timeInMillis = ahora }

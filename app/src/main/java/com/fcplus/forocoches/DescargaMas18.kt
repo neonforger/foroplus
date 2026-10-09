@@ -26,9 +26,14 @@ class DescargaMas18(
         if (cuerpo != null) {
             val l = PaginaMas18Parser.leer(cuerpo)
             if (l is LecturaMas18.Bien) {
-                cache.edit().putString(clave(n), cuerpo).apply()
+                // Solo las primeras páginas: el archivo tiene decenas y SharedPreferences carga
+                // todo el fichero en memoria; lo que sirve sin red es el principio de la lista.
+                if (n <= PAGINAS_EN_CACHE) cache.edit().putString(clave(n), cuerpo).apply()
                 return ResultadoMas18(l, false)
             }
+            // Una versión nueva del contrato no se tapa con la copia guardada: la gente tiene que
+            // enterarse de que hay que actualizar (y la lista vieja saldría como "sin conexión").
+            if (l is LecturaMas18.Mal && l.version) return ResultadoMas18(l, false)
             guardada(n)?.let { return it }
             return ResultadoMas18(l, false)
         }
@@ -36,6 +41,7 @@ class DescargaMas18(
     }
 
     private fun guardada(n: Int): ResultadoMas18? {
+        if (n > PAGINAS_EN_CACHE) return null
         val s = cache.getString(clave(n), null) ?: return null
         val l = PaginaMas18Parser.leer(s)
         return if (l is LecturaMas18.Bien) ResultadoMas18(l, true) else null
@@ -45,6 +51,7 @@ class DescargaMas18(
 
     companion object {
         const val PREFS = "mas18_cache"
+        const val PAGINAS_EN_CACHE = 3
 
         fun bajarHttp(url: String): String? {
             val c = URL(url).openConnection() as HttpURLConnection

@@ -608,6 +608,7 @@ class MainActivity : AppCompatActivity() {
         /** Marca de la pestaña del Popurrí; ningún subforo real tiene este fid. */
         private const val TAG_POPURRI = -1
         private const val TAG_MAS18 = -2
+        private val LISTAS_DE_SUBFORO = setOf("home", "top", "popurri")
     }
 
     private fun buildListUrl(page: Int): String {
@@ -845,7 +846,10 @@ class MainActivity : AppCompatActivity() {
     /** Inicio: la lista nativa vuelve al modo foro (pestañas de subforos visibles). */
     private fun showHomeList() {
         val wasOther = listSource != "home"
+        val veniaDeSeccion = listSource == "mas18" || listSource == "popurri"
         listSource = "home"
+        // Que la pestaña marcada sea la del subforo y no la +18/Popurrí de la que se sale.
+        if (veniaDeSeccion) pintarPestanas()
         forumTabs.visibility = View.VISIBLE
         nativeHeader.text = "ForoPlus"
         pintarBotonTop()
@@ -1002,7 +1006,17 @@ class MainActivity : AppCompatActivity() {
 
     /** Descarga fuera del hilo de la UI: DescargaMas18 es bloqueante. */
     private fun pedirMas18(page: Int) {
-        val cfg = configMas18() ?: run { loadingPage = false; return }
+        val cfg = configMas18() ?: run {
+            // Interruptor remoto apagado (o config sin bloque): requestThreadList ya había
+            // enseñado el spinner, así que se apaga y se vuelve a Inicio en vez de dejar la
+            // pantalla muerta con una pestaña que ya no existe.
+            loadingPage = false
+            listLoading.visibility = View.GONE
+            listRefresh.isRefreshing = false
+            pintarPestanas()
+            showHomeList()
+            return
+        }
         // La página 1 abre una lista nueva (otra generación); las siguientes llevan la actual.
         if (page <= 1) { mas18Gen++; mas18Auto = 0 }
         val gen = mas18Gen
@@ -1073,15 +1087,18 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun pintarEstadoMas18(p: PaginaMas18, deCache: Boolean) {
-        val min = ((System.currentTimeMillis() - p.generado) / 60_000).coerceAtLeast(0)
+        // Sin "generado" (0) no se sabe cuando se hizo: ni "hace 490000 h" ni el aviso de rancia.
+        val sabeCuando = p.generado > 0
+        val min = if (sabeCuando) ((System.currentTimeMillis() - p.generado) / 60_000).coerceAtLeast(0) else 0
         val hace = when { min < 1 -> "ahora mismo"; min < 60 -> "hace $min min"; else -> "hace ${min / 60} h" }
-        val partes = mutableListOf("Actualizado $hace")
+        val partes = mutableListOf<String>()
+        if (sabeCuando) partes += "Actualizado $hace"
         val hasta = PaginaMas18Parser.mesLegible(p.historicoHasta)
         if (hasta.isNotEmpty()) partes += "histórico hasta $hasta"
         var texto = partes.joinToString(" · ")
         if (min >= 60) texto += "\nPuede que la lista no esté al día"
         if (deCache) texto += "\nSin conexión: es la última lista guardada"
-        mas18Estado.text = texto
+        mas18Estado.text = texto.trim()
     }
 
     private fun pintarChipsMas18() {
@@ -3693,6 +3710,7 @@ class MainActivity : AppCompatActivity() {
             onTemaChanged = { recreate() },
             hilosIgnorados = { hilosIgnorados() },
             onDesignorarHilo = { tid -> designorarHilo(tid) },
+            mas18Disponible = { ConfigMas18Parser.de(RemoteConfig.cached(this)) != null },
             onMas18Changed = {
                 listLoaded = false
                 pintarPestanas()
@@ -3794,7 +3812,16 @@ class MainActivity : AppCompatActivity() {
                 requestThreadList(1)
             }
             override fun onTabUnselected(tab: TabLayout.Tab) {}
-            override fun onTabReselected(tab: TabLayout.Tab) { requestThreadList(1) }
+            override fun onTabReselected(tab: TabLayout.Tab) {
+                // Tocar Inicio estando en +18/Popurrí deja la pestaña marcada pero la lista es de
+                // otra fuente: tocarla de nuevo tiene que ENTRAR en su sección, no recargar la lista
+                // que haya (General). Se reparte según la etiqueta de la pestaña.
+                when (tab.tag as? Int) {
+                    TAG_MAS18 -> if (listSource != "mas18") showMas18() else requestThreadList(1)
+                    TAG_POPURRI -> if (listSource != "popurri") showPopurri() else requestThreadList(1)
+                    else -> requestThreadList(1)
+                }
+            }
         })
     }
 
@@ -3821,6 +3848,7 @@ class MainActivity : AppCompatActivity() {
 
     /** Rehace la barra de subforos. Sin argumento, con los que ya conocíamos. */
     private fun pintarPestanas(lista: List<ForumTab>? = null) {
+        var vueltaAInicio = false
         val crudos = lista ?: subforosConocidos.map { ForumTab(it.first, it.second) }
         if (crudos.isEmpty()) return
         // El orden que da el índice de FC pone Ayuda la primera y General la segunda, que no
@@ -3850,6 +3878,13 @@ class MainActivity : AppCompatActivity() {
             pintarBotonTop()
             listLoaded = false
             adapter.submit(emptyList())
+            // Una descarga +18 en vuelo se tirará (otra generación, otra fuente) y no apagaría
+            // loadingPage: sin esto la petición de Inicio se descartaría por "ya hay una".
+            mas18Gen++
+            loadingPage = false
+            listLoading.visibility = View.GONE
+            listRefresh.isRefreshing = false
+            vueltaAInicio = true
         }
         val saltar = listSource == "home" && visibles.isNotEmpty() &&
             visibles.none { it.fid == currentForumId }
@@ -3887,6 +3922,9 @@ class MainActivity : AppCompatActivity() {
         if (listSource == "popurri" && popurriFids().isNotEmpty()) selectIdx = desplazamiento - 1
         forumTabs.getTabAt(selectIdx)?.select()
         populatingTabs = false
+        // La lista se vació arriba (sección +18 apagada estando dentro): se pide la de Inicio. Va
+        // aquí y no antes porque requestThreadList no repinta pestañas, así que no hay recursión.
+        if (vueltaAInicio) { showNative(); requestThreadList(1) }
         // Y que la pestaña marcada se VEA.
         //
         // `select()` le pide a TabLayout que se desplace hasta ella, pero aquí no sirve: la
@@ -6170,7 +6208,7 @@ class MainActivity : AppCompatActivity() {
                 configMas18() == null -> showHomeList()
                 // Si la lista sigue cargada se enseña tal cual: recargar tiraba páginas y scroll.
                 listSource == "mas18" && listLoaded -> { showNative(); setSelectedNav(R.id.nav_home) }
-                else -> showMas18()
+                else -> { showMas18(); pintarPestanas() }   // que +18 sea la pestaña marcada
             }
             // La búsqueda se REHACE si lo cargado ya no son esos resultados (p. ej. volviste
             // pasando por Inicio). Si siguen ahí no se pide nada: repetir la consulta por
@@ -7241,7 +7279,8 @@ class MainActivity : AppCompatActivity() {
             // (Márquez, 2026-09-16). La regla y su porqué, en [FiltroPalabras].
             if (FiltroPalabras.hayQueOcultar(t.title, keywords)) return@filter false
             // Los +18/+16 se esconden en las listas normales, pero no dentro de su propia sección.
-            if (ocultarMas18 && listSource != "mas18" && EtiquetasHilo.esMas18o16(t.title)) return@filter false
+            // Solo en listas de subforo: favoritos, mis hilos, búsquedas... son cosa del usuario.
+            if (ocultarMas18 && listSource in LISTAS_DE_SUBFORO && EtiquetasHilo.esMas18o16(t.title)) return@filter false
             true
         }
     }
@@ -7677,7 +7716,7 @@ class MainActivity : AppCompatActivity() {
         // gente ya habría actualizado y no vería las notas nunca. Con tope, para que un remoto
         // caído no retrase nada.
         RemoteConfig.cuandoEsteFresca(3_000, skinHandler) {
-            runOnUiThread { pintarAviso() }
+            runOnUiThread { pintarAviso(); pintarPestanas() }   // la config fresca puede traer/quitar +18
             actualizador.comprobar { nueva ->
                 if (nueva == null) return@comprobar
                 runOnUiThread { mostrarDialogoActualizacion(nueva) }

@@ -36,6 +36,9 @@ class FiltroMas18Test {
     @Test fun `con todo apagado el vacio lo dice`() {
         assertEquals("Enciende algún filtro para ver hilos", FiltroMas18.textoVacio(EtiquetasHilo.TODAS.toSet()))
         assertEquals("No hay hilos que mostrar", FiltroMas18.textoVacio(emptySet()))
+        // Con todas las de puntuación apagadas y Peñas encendida tampoco sale nada.
+        assertEquals("Enciende algún filtro para ver hilos",
+            FiltroMas18.textoVacio(EtiquetasHilo.TODAS.filter { it != "peña" }.toSet()))
     }
 
     @Test fun `peña - +18 con solo peña apagada - no visible`() {

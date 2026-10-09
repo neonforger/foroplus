@@ -27,6 +27,8 @@ object FiltroMas18 {
     }
 
     fun textoVacio(apagadas: Set<String>): String =
-        if (EtiquetasHilo.TODAS.all { it in apagadas }) "Enciende algún filtro para ver hilos"
+        // Basta con que todas las de puntuación estén apagadas: Peñas solo es un veto y nunca
+        // hace visible un hilo, así que con ella encendida seguiría sin salir nada.
+        if (EtiquetasHilo.TODAS.filter { it != "peña" }.all { it in apagadas }) "Enciende algún filtro para ver hilos"
         else "No hay hilos que mostrar"
 }
