@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Chip de filtro de la sección +18. Encendido: el tinte rojo suave (fc_resaltado, que ya
+     existe en claro y oscuro) con borde rojo. Apagado: gris de chip, sin borde. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_selected="true">
+        <shape android:shape="rectangle">
+            <solid android:color="@color/fc_resaltado" />
+            <stroke android:width="1dp" android:color="@color/fc_rojo" />
+            <corners android:radius="16dp" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@color/fc_chip" />
+            <stroke android:width="1dp" android:color="@color/fc_chip" />
+            <corners android:radius="16dp" />
+        </shape>
+    </item>
+</selector>

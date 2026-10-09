@@ -51,6 +51,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var threadList: RecyclerView
     private lateinit var listLoading: ProgressBar
     private lateinit var listEmpty: TextView
+    private lateinit var mas18Cabecera: View
+    private lateinit var mas18Estado: TextView
+    private lateinit var mas18Chips: LinearLayout
     // Barra inferior PROPIA: BarraAbajo.HUECOS botones abajo y el resto en el panel del avatar.
     private lateinit var bottomNav: View
     private var selectedNavId = R.id.nav_home
@@ -351,7 +354,25 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var nativeHeader: TextView
     private lateinit var fabNewThread: View
-    private var listSource = "home"        // home | top | popurri | favs | mine (qué alimenta la lista)
+    // home | top | popurri | mas18 | favs | mine (qué alimenta la lista)
+    private var listSource = "home"
+        set(valor) {
+            field = valor
+            // La cabecera de la sección +18 (estado y chips) solo existe sobre SU lista: atada
+            // al setter, ninguna de las rutas que cambian de fuente la deja colgada.
+            if (::mas18Cabecera.isInitialized)
+                mas18Cabecera.visibility = if (valor == "mas18") View.VISIBLE else View.GONE
+        }
+    /** Sección +18: lo ya pintado, sin filtrar por chips (para refiltrar sin volver a bajar). */
+    private var mas18Hilos: List<HiloMas18> = emptyList()
+    private var mas18Total = 1
+    private val descargaMas18 by lazy {
+        DescargaMas18(getSharedPreferences(DescargaMas18.PREFS, MODE_PRIVATE))
+    }
+    private fun configMas18(): ConfigMas18? =
+        if (OptionsController.mas18Activa(shellPrefs)) ConfigMas18Parser.de(RemoteConfig.cached(this)) else null
+    private fun mas18Apagadas(): Set<String> =
+        FiltroMas18.apagadas(shellPrefs.getString(FiltroMas18.PREF, "") ?: "")
     private var myThreadsBase = ""         // search.php?searchid=N para paginar Mis hilos
     /** Usuario y modo de la pantalla de actividad ajena que se está viendo. */
     private var actividadUsuario = ""
@@ -580,6 +601,7 @@ class MainActivity : AppCompatActivity() {
 
         /** Marca de la pestaña del Popurrí; ningún subforo real tiene este fid. */
         private const val TAG_POPURRI = -1
+        private const val TAG_MAS18 = -2
     }
 
     private fun buildListUrl(page: Int): String {
@@ -949,6 +971,107 @@ class MainActivity : AppCompatActivity() {
         adapter.submit(filtrarLista(mezcla))
         listEmpty.visibility = if (adapter.itemCount == 0) View.VISIBLE else View.GONE
         listEmpty.text = skinWarning() ?: "No hay hilos que mostrar"
+    }
+
+    /** La sección +18: el archivo que publica el lector, paginado como un subforo. */
+    private fun showMas18() {
+        listSource = "mas18"
+        forumTabs.visibility = View.VISIBLE
+        nativeHeader.text = "+18"
+        pintarBotonTop()
+        showNative()
+        setSelectedNav(R.id.nav_home)
+        listLoaded = false
+        mas18Hilos = emptyList()
+        adapter.submit(emptyList())
+        pintarChipsMas18()
+        anotarListaEnPila()
+        requestThreadList(1)
+    }
+
+    /** Descarga fuera del hilo de la UI: DescargaMas18 es bloqueante. */
+    private fun pedirMas18(page: Int) {
+        val cfg = configMas18() ?: run { loadingPage = false; return }
+        Thread {
+            val r = descargaMas18.pagina(cfg, page)
+            runOnUiThread { onMas18(page, r) }
+        }.start()
+    }
+
+    private fun onMas18(page: Int, r: ResultadoMas18) {
+        loadingPage = false
+        listLoading.visibility = View.GONE
+        listRefresh.isRefreshing = false
+        if (listSource != "mas18") return          // el usuario ya se ha ido a otro sitio
+        when (val l = r.lectura) {
+            is LecturaMas18.Mal -> {
+                if (page == 1) {
+                    adapter.submit(emptyList())
+                    listEmpty.visibility = View.VISIBLE
+                    listEmpty.text = l.motivo
+                }
+                listaAgotada = true
+            }
+            is LecturaMas18.Bien -> {
+                val p = l.pagina
+                mas18Total = p.totalPaginas
+                mas18Hilos = if (page == 1) p.hilos else FiltroMas18.unir(mas18Hilos, p.hilos)
+                // Quien escribió lo último ya viene en la lista: se apunta para no preguntarlo a FC.
+                p.hilos.forEach {
+                    if (it.ultimoPid > 0 && it.ultimoAutor.isNotEmpty())
+                        ultimosPosteadores.llego(it.ultimoPid.toString(), it.ultimoAutor)
+                }
+                listLoaded = true
+                currentPage = page
+                listaAgotada = page >= p.totalPaginas
+                pintarEstadoMas18(p, r.deCache)
+                repintarMas18()
+            }
+        }
+    }
+
+    private fun repintarMas18() {
+        val ahora = System.currentTimeMillis()
+        val apagadas = mas18Apagadas()
+        val items = mas18Hilos.filter { FiltroMas18.visible(it, apagadas) }
+            .map { PaginaMas18Parser.aThreadItem(it, ahora) }
+        adapter.submit(filtrarLista(items))
+        listEmpty.visibility = if (adapter.itemCount == 0) View.VISIBLE else View.GONE
+        listEmpty.text = FiltroMas18.textoVacio(apagadas)
+    }
+
+    private fun pintarEstadoMas18(p: PaginaMas18, deCache: Boolean) {
+        val min = ((System.currentTimeMillis() - p.generado) / 60_000).coerceAtLeast(0)
+        val hace = when { min < 1 -> "ahora mismo"; min < 60 -> "hace $min min"; else -> "hace ${min / 60} h" }
+        val partes = mutableListOf("Actualizado $hace")
+        val hasta = PaginaMas18Parser.mesLegible(p.historicoHasta)
+        if (hasta.isNotEmpty()) partes += "histórico hasta $hasta"
+        var texto = partes.joinToString(" · ")
+        if (min >= 60) texto += "\nPuede que la lista no esté al día"
+        if (deCache) texto += "\nSin conexión: es la última lista guardada"
+        mas18Estado.text = texto
+    }
+
+    private fun pintarChipsMas18() {
+        mas18Cabecera.visibility = View.VISIBLE
+        mas18Chips.removeAllViews()
+        val apagadas = mas18Apagadas()
+        EtiquetasHilo.TODAS.forEach { et ->
+            val chip = layoutInflater.inflate(R.layout.item_chip_mas18, mas18Chips, false) as TextView
+            chip.text = if (et == "peña") "Peñas" else et
+            val encendida = et !in apagadas
+            chip.isSelected = encendida
+            chip.paintFlags = if (encendida) chip.paintFlags and android.graphics.Paint.STRIKE_THRU_TEXT_FLAG.inv()
+                else chip.paintFlags or android.graphics.Paint.STRIKE_THRU_TEXT_FLAG
+            chip.setOnClickListener {
+                val ahora = mas18Apagadas().toMutableSet()
+                if (!ahora.remove(et)) ahora.add(et)
+                shellPrefs.edit().putString(FiltroMas18.PREF, FiltroMas18.guardar(ahora)).apply()
+                pintarChipsMas18()
+                repintarMas18()
+            }
+            mas18Chips.addView(chip)
+        }
     }
 
     /** El botón TOP encendido (rojo) o apagado. Se pinta SIEMPRE que cambia la fuente. */
@@ -3206,6 +3329,9 @@ class MainActivity : AppCompatActivity() {
         threadList = findViewById(R.id.thread_list)
         listLoading = findViewById(R.id.list_loading)
         listEmpty = findViewById(R.id.list_empty)
+        mas18Cabecera = findViewById(R.id.mas18_cabecera)
+        mas18Estado = findViewById(R.id.mas18_estado)
+        mas18Chips = findViewById(R.id.mas18_chips)
         bottomNav = findViewById(R.id.bottom_nav)
         forumTabs = findViewById(R.id.forum_tabs)
         navTop = findViewById(R.id.native_top)
@@ -3615,9 +3741,11 @@ class MainActivity : AppCompatActivity() {
             override fun onTabSelected(tab: TabLayout.Tab) {
                 if (populatingTabs) return
                 val fid = tab.tag as? Int ?: return
+                if (fid == TAG_MAS18) { showMas18(); return }
                 if (fid == TAG_POPURRI) { showPopurri(); return }
-                // Salir del Popurrí a un subforo devuelve la lista a su modo normal.
-                if (listSource == "popurri") {
+                // Salir del Popurrí o de +18 a un subforo devuelve la lista a su modo normal
+                // (al cambiar listSource, el setter apaga la cabecera de +18).
+                if (listSource == "popurri" || listSource == "mas18") {
                     listSource = "home"
                     nativeHeader.text = "ForoPlus"
                     pintarBotonTop()
@@ -3679,6 +3807,15 @@ class MainActivity : AppCompatActivity() {
         // que ya no existe: se salta al primero que sí se ve. Se decide ANTES de pintar, o el
         // marcado se calcularía con un subforo ausente y la barra acabaría sin nada marcado
         // enseñando los hilos de otro (medido en el dispositivo el 2026-08-28).
+        // La sección +18 apagada (Opciones o config remota) estando dentro: no hay pestaña a la
+        // que volver, así que la lista pasa a Inicio ANTES de pintar.
+        if (listSource == "mas18" && configMas18() == null) {
+            listSource = "home"
+            nativeHeader.text = "ForoPlus"
+            pintarBotonTop()
+            listLoaded = false
+            adapter.submit(emptyList())
+        }
         val saltar = listSource == "home" && visibles.isNotEmpty() &&
             visibles.none { it.fid == currentForumId }
         if (saltar) {
@@ -3692,19 +3829,27 @@ class MainActivity : AppCompatActivity() {
         // configurado nada" no es un atajo, es un obstáculo.
         var selectIdx = 0
         var desplazamiento = 0
+        // +18 va la primera y el Popurrí detrás: el Popurrí queda en desplazamiento - 1.
+        if (configMas18() != null) {
+            val tab = forumTabs.newTab().setText("+18")
+            tab.tag = TAG_MAS18
+            forumTabs.addTab(tab, false)
+            desplazamiento += 1
+        }
         if (popurriFids().isNotEmpty()) {
             val tab = forumTabs.newTab().setText("Popurrí")
             tab.tag = TAG_POPURRI
             forumTabs.addTab(tab, false)
-            desplazamiento = 1
+            desplazamiento += 1
         }
         visibles.forEachIndexed { idx, f ->
             val tab = forumTabs.newTab().setText(f.name)
             tab.tag = f.fid
             forumTabs.addTab(tab, false)
-            if (f.fid == currentForumId && listSource != "popurri") selectIdx = idx + desplazamiento
+            if (f.fid == currentForumId && listSource != "popurri" && listSource != "mas18") selectIdx = idx + desplazamiento
         }
-        if (listSource == "popurri" && desplazamiento == 1) selectIdx = 0
+        if (listSource == "mas18") selectIdx = 0
+        if (listSource == "popurri" && popurriFids().isNotEmpty()) selectIdx = desplazamiento - 1
         forumTabs.getTabAt(selectIdx)?.select()
         populatingTabs = false
         // Y que la pestaña marcada se VEA.
@@ -5985,6 +6130,8 @@ class MainActivity : AppCompatActivity() {
             "mine" -> showMyThreadsList()
             "participated" -> showParticipatedList()
             "home", "top", "popurri" -> restaurarListaDeSubforo(s)
+            // La sección +18 no usa el motor ni el subforo: se rehace entera. Apagada, a Inicio.
+            "mas18" -> if (configMas18() != null) showMas18() else showHomeList()
             // La búsqueda se REHACE si lo cargado ya no son esos resultados (p. ej. volviste
             // pasando por Inicio). Si siguen ahí no se pide nada: repetir la consulta por
             // gusto es lento y además la búsqueda de FC va justa.
@@ -6937,7 +7084,8 @@ class MainActivity : AppCompatActivity() {
         // cante nadie.
         android.util.Log.i("FC_LIST", "pedir $listSource pagina=$page" +
             (if (listaAgotada) " (AGOTADA)" else ""))
-        if (!engineReady || !PeticionLista.hayQuePedir(page, loadingPage) ||
+        // La sección +18 no pasa por el motor: baja su JSON de GitHub, así que no espera al WebView.
+        if ((!engineReady && listSource != "mas18") || !PeticionLista.hayQuePedir(page, loadingPage) ||
             (page > 1 && listaAgotada)) return
         if (page <= 1) {
             listaAgotada = false
@@ -6974,6 +7122,7 @@ class MainActivity : AppCompatActivity() {
             // El trending NO sale del motor: solo existe en el diseño de escritorio y con el
             // UA de móvil llega vacío. Ver [Trending].
             "top" -> { pedirTrending(); return }
+            "mas18" -> { pedirMas18(page); return }
             else -> {
                 val url = buildListUrl(page)
                 listaEsperada = url
@@ -7043,6 +7192,7 @@ class MainActivity : AppCompatActivity() {
         val keywords = if (keywordRepo.isEnabled())
             keywordRepo.getKeywords().toList() else emptyList()
         val hilosCallados = hilosIgnorados()
+        val ocultarMas18 = OptionsController.ocultarMas18(shellPrefs)
         return hilos.filter { t ->
             if (HilosIgnorados.estaIgnorado(hilosCallados, t.tid)) return@filter false
             if (t.author.isNotEmpty() && ignored.contains(t.author.lowercase())) return@filter false
@@ -7050,6 +7200,8 @@ class MainActivity : AppCompatActivity() {
             // con `contains` a secas, el "PP" de fábrica escondía "apple", "app" y "WhatsApp"
             // (Márquez, 2026-09-16). La regla y su porqué, en [FiltroPalabras].
             if (FiltroPalabras.hayQueOcultar(t.title, keywords)) return@filter false
+            // Los +18/+16 se esconden en las listas normales, pero no dentro de su propia sección.
+            if (ocultarMas18 && listSource != "mas18" && EtiquetasHilo.esMas18o16(t.title)) return@filter false
             true
         }
     }

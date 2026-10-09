@@ -161,6 +161,42 @@
                 android:visibility="gone"
                 android:background="@color/fc_aviso_linea" />
 
+            <!-- Sección +18: línea de estado y chips de filtro, encima de la lista. Solo se ve
+                 con listSource == "mas18" (lo apaga el setter de listSource). -->
+            <LinearLayout
+                android:id="@+id/mas18_cabecera"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <TextView
+                    android:id="@+id/mas18_estado"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:paddingStart="14dp"
+                    android:paddingEnd="14dp"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="8dp"
+                    android:textColor="@color/fc_texto_3"
+                    android:textSize="12sp" />
+
+                <HorizontalScrollView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:scrollbars="none">
+
+                    <LinearLayout
+                        android:id="@+id/mas18_chips"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="14dp"
+                        android:paddingBottom="8dp" />
+                </HorizontalScrollView>
+            </LinearLayout>
+
             <FrameLayout
                 android:layout_width="match_parent"
                 android:layout_height="match_parent">
