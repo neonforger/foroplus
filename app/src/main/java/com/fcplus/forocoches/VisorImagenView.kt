@@ -25,6 +25,9 @@ class VisorImagenView @JvmOverloads constructor(
     /** Un toque simple cierra, como en cualquier galería. */
     var onCerrar: () -> Unit = {}
 
+    /** Mantener pulsada la foto: el visor ofrece guardarla o compartirla. */
+    var onPulsacionLarga: () -> Unit = {}
+
     private val matriz = Matrix()
     private var ajuste = 1f      // escala a la que la foto se ve entera
     private var escala = 1f
@@ -47,6 +50,14 @@ class VisorImagenView @JvmOverloads constructor(
             // Confirmado = no era la primera mitad de un doble toque.
             override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
                 onCerrar(); return true
+            }
+
+            // Mantener pulsada la foto es lo que la gente prueba para guardarla (lo dijo un
+            // tester tal cual). Al poner el segundo dedo para la pinza, GestureDetector ya
+            // cancela la pulsación larga: no salta a mitad de un zoom.
+            override fun onLongPress(e: MotionEvent) {
+                performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+                onPulsacionLarga()
             }
 
             override fun onDoubleTap(e: MotionEvent): Boolean {

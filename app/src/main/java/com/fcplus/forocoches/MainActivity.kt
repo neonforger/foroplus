@@ -26,8 +26,10 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.google.android.material.tabs.TabLayout
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.math.abs
 
 class MainActivity : AppCompatActivity() {
@@ -539,6 +541,11 @@ class MainActivity : AppCompatActivity() {
         private const val PLAZO_TARJETA = 12_000L
         /** Tope de la foto de una tarjeta: un GIF del foro llegó a pesar 53 MB. */
         private const val MAX_BYTES_FOTO_TARJETA = 8L * 1024 * 1024
+        /**
+         * Tope al guardar o compartir una foto. Aquí SÍ se quiere el fichero entero (el GIF de
+         * 53 MB del foro cabe), solo se evita meter en memoria algo desmesurado.
+         */
+        private const val MAX_BYTES_GUARDAR_IMAGEN = 64L * 1024 * 1024
         private const val PREFS = "shell_prefs"
         /**
          * Por encima, "sus mensajes" usa el buscador de FC en vez de recorrer el hilo. Estaba en
@@ -8074,7 +8081,33 @@ class MainActivity : AppCompatActivity() {
             gravity = android.view.Gravity.TOP or android.view.Gravity.END
         })
 
+        // Guardar y compartir, a la vista y también con la pulsación larga: los botones son para
+        // quien no la prueba, y la pulsación larga para quien la prueba (lo primero que hizo el
+        // tester que pidió esto).
+        visor.onPulsacionLarga = { elegirAccionImagen(url) }
+        val acciones = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.HORIZONTAL
+            addView(botonVisor("Guardar", R.drawable.ic_descargar) { guardarImagen(url) })
+            addView(botonVisor("Compartir", R.drawable.ic_share) { compartirImagen(url) })
+        }
+        capa.addView(acciones, android.widget.FrameLayout.LayoutParams(-2, -2).apply {
+            gravity = android.view.Gravity.BOTTOM or android.view.Gravity.CENTER_HORIZONTAL
+        })
+
+        // La capa va de borde a borde: sin esto los botones caen sobre la barra de gestos y la ✕
+        // debajo de la de estado. Mismo cálculo que la raíz (applyWindowInsets).
+        ViewCompat.setOnApplyWindowInsetsListener(capa) { _, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            (cerrar.layoutParams as android.view.ViewGroup.MarginLayoutParams).topMargin = bars.top
+            (acciones.layoutParams as android.view.ViewGroup.MarginLayoutParams).bottomMargin =
+                bars.bottom + (20 * dp).toInt()
+            cerrar.requestLayout()
+            acciones.requestLayout()
+            insets
+        }
+
         root.addView(capa, android.view.ViewGroup.LayoutParams(-1, -1))
+        ViewCompat.requestApplyInsets(capa)
         visorOverlay = capa
 
         // Se enseña YA la versión que hay en la lista para que no haya un fogonazo negro, y se
@@ -8099,6 +8132,112 @@ class MainActivity : AppCompatActivity() {
         // Se suelta la referencia y ya: el bitmap grande (~20 MB) lo recoge el GC. NO se llama a
         // recycle() porque la versión pequeña la comparte la caché de la lista.
         visorOverlay = null
+    }
+
+    /** Botón redondeado y semitransparente del visor: se lee sobre una foto clara y oscura. */
+    private fun botonVisor(texto: String, icono: Int, alPulsar: () -> Unit): View {
+        val dp = resources.displayMetrics.density
+        return android.widget.TextView(this).apply {
+            text = texto
+            textSize = 15f
+            setTextColor(0xFFFFFFFF.toInt())
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            setCompoundDrawablesRelativeWithIntrinsicBounds(icono, 0, 0, 0)
+            compoundDrawablePadding = (8 * dp).toInt()
+            compoundDrawableTintList = android.content.res.ColorStateList.valueOf(0xFFFFFFFF.toInt())
+            background = android.graphics.drawable.GradientDrawable().apply {
+                cornerRadius = 24 * dp
+                setColor(0x99000000.toInt())
+            }
+            setPadding((16 * dp).toInt(), (12 * dp).toInt(), (20 * dp).toInt(), (12 * dp).toInt())
+            layoutParams = android.widget.LinearLayout.LayoutParams(-2, -2).apply {
+                marginStart = (6 * dp).toInt(); marginEnd = (6 * dp).toInt()
+            }
+            setOnClickListener { alPulsar() }
+        }
+    }
+
+    private fun elegirAccionImagen(url: String) {
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setItems(arrayOf("Guardar en el móvil", "Compartir")) { _, i ->
+                if (i == 0) guardarImagen(url) else compartirImagen(url)
+            }
+            .show()
+    }
+
+    /** Una sola descarga a la vez: un segundo toque mientras baja no lanza otra. */
+    private var imagenEnCurso = false
+
+    /** Bytes que esperan a que la persona elija dónde guardar (Android 7-9, "guardar como"). */
+    private var imagenPorGuardar: ByteArray? = null
+
+    private val guardarComo = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.CreateDocument("image/*")
+    ) { destino ->
+        val bytes = imagenPorGuardar ?: return@registerForActivityResult
+        imagenPorGuardar = null
+        if (destino == null) return@registerForActivityResult   // cancelado: no es un error
+        toast(if (GuardarImagen.escribirEn(this, destino, bytes)) "Imagen guardada" else "No se pudo guardar la imagen")
+    }
+
+    /**
+     * Los bytes ORIGINALES de la foto, no el bitmap del visor (ver [GuardarImagen]). Un GIF que
+     * ya se está animando tiene sus bytes en memoria; lo demás se vuelve a pedir, por el único
+     * sitio que sabe pedirle una imagen a FC con su cookie ([PostImages.descargar]) — y que,
+     * leyendo un hilo descargado, la saca del disco sin internet.
+     */
+    private fun conImagen(url: String, alTener: (ByteArray, TipoImagen) -> Unit) {
+        if (imagenEnCurso) return
+        PostImages.gif(url)?.let { b -> TipoImagen.de(b)?.let { alTener(b, it); return } }
+        imagenEnCurso = true
+        lifecycleScope.launch {
+            // Solo se avisa si tarda: una foto normal llega antes y el aviso sobraría.
+            val aviso = launch { delay(700); toast("Bajando la imagen…") }
+            val bytes = withContext(Dispatchers.IO) {
+                try { PostImages.descargar(url, MAX_BYTES_GUARDAR_IMAGEN) } catch (_: Exception) { null }
+            }
+            aviso.cancel()
+            imagenEnCurso = false
+            val tipo = bytes?.let { TipoImagen.de(it) }
+            if (bytes == null || tipo == null) toast("No se pudo bajar la imagen")
+            else alTener(bytes, tipo)
+        }
+    }
+
+    private fun guardarImagen(url: String) = conImagen(url) { bytes, tipo ->
+        val nombre = tipo.nombre(System.currentTimeMillis())
+        if (GuardarImagen.directoEnGaleria) {
+            lifecycleScope.launch {
+                val ok = withContext(Dispatchers.IO) {
+                    GuardarImagen.enGaleria(this@MainActivity, bytes, tipo, nombre)
+                }
+                toast(if (ok) "Guardada en Imágenes › ${GuardarImagen.CARPETA}" else "No se pudo guardar la imagen")
+            }
+        } else {
+            imagenPorGuardar = bytes
+            try {
+                guardarComo.launch(nombre)
+            } catch (_: Exception) {
+                imagenPorGuardar = null
+                toast("No hay ninguna aplicación para guardar archivos")
+            }
+        }
+    }
+
+    private fun compartirImagen(url: String) = conImagen(url) { bytes, tipo ->
+        lifecycleScope.launch {
+            val uri = withContext(Dispatchers.IO) { GuardarImagen.paraCompartir(this@MainActivity, bytes, tipo) }
+            if (uri == null) { toast("No se pudo preparar la imagen"); return@launch }
+            val envio = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                type = tipo.mime
+                putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                // Con ClipData el permiso de lectura llega también a la app que se elija en el
+                // selector, no solo al selector.
+                clipData = android.content.ClipData.newRawUri(null, uri)
+                addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            startActivity(android.content.Intent.createChooser(envio, "Compartir imagen"))
+        }
     }
 
     private fun goBack() {
