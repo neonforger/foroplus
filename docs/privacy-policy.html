@@ -14,7 +14,7 @@
 <body>
 <h1>Política de privacidad</h1>
 <p class="muted">Aplicación: <strong>ForoPlus</strong> (cliente <strong>no oficial</strong> para el foro forocoches.com)<br>
-Última actualización: 4 de octubre de 2026</p>
+Última actualización: 9 de octubre de 2026</p>
 
 <p>ForoPlus es una aplicación Android <strong>no oficial</strong> e independiente para el foro
 <em>forocoches.com</em>. No está afiliada, asociada, autorizada ni respaldada por Forocoches ni por
@@ -26,7 +26,8 @@ donde se guardan las cookies de tu sesión—, no como la pantalla que ves. El c
 <h2>1. Resumen</h2>
 <p>La aplicación <strong>no recopila, no almacena en servidores y no comparte</strong> datos
 personales con el desarrollador ni con terceros. No incluye analítica, ni publicidad, ni
-rastreadores, ni servidor propio. Toda la información se procesa <strong>en tu dispositivo</strong>.
+rastreadores, y <strong>no se conecta a ningún servidor del desarrollador</strong>: lo que necesita lo pide al
+foro o lo descarga de GitHub. Toda la información se procesa <strong>en tu dispositivo</strong>.
 La única excepción es la subida de fotos, que solo ocurre si tú adjuntas una (ver punto 3).</p>
 
 <h2>2. Datos que se manejan en el dispositivo</h2>
@@ -55,6 +56,12 @@ conecta mientras la estás usando.</p>
   <li><strong>GitHub</strong> — para descargar un fichero público de configuración (ajustes de
   lectura del foro, avisos para los usuarios y notas de las actualizaciones). Esa petición
   <strong>no envía datos personales tuyos</strong>.</li>
+  <li><strong>GitHub, sección +18</strong> — <strong>solo si activas la sección +18</strong> en Opciones
+  (viene apagada): la aplicación descarga de <code>raw.githubusercontent.com/neonforger/foroplus-mas18</code>
+  una lista pública de hilos del foro (título, autor, número de respuestas y etiquetas). La prepara un
+  servidor de ForoPlus leyendo el foro <strong>como invitado</strong>; ese servidor <strong>no recibe nada
+  de la aplicación</strong> y la descarga <strong>no envía datos personales tuyos</strong>. La aplicación
+  solo acepta descargarla de esa dirección, fijada en su código.</li>
   <li><strong>catbox.moe</strong> — <strong>solo si adjuntas una foto</strong> a un mensaje: la foto se
   sube a ese servicio de alojamiento de imágenes para poder insertar su enlace en el mensaje,
   porque el foro no aloja imágenes. La foto queda <strong>pública</strong> en ese enlace, como

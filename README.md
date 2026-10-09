@@ -28,16 +28,25 @@ Cliente **no oficial** de ForoCoches para Android. Gratis, sin anuncios y con in
   OP, hilos para leer sin conexión, varias cuentas, compartir un mensaje como imagen.
 - Tuits, Instagram, TikTok, YouTube y Vocaroo se ven dentro del hilo, con vídeo flotante.
 - Responder, citar y multicitar, crear y editar hilos, privados, suscripciones, buscador y encuestas.
+- **Sección +18** (opcional, viene apagada): una pestaña con los hilos etiquetados `+18`, `+16`,
+  `+14`, `+prv` y `+hd`, con su histórico, filtros por etiqueta y la opción de ocultarlos en las
+  listas normales.
 
 ## Privacidad
 
-- **No hay servidor propio.** La app habla directamente con forocoches.com desde tu móvil, con tu
-  cuenta de siempre. Nadie más ve lo que lees ni lo que escribes.
+- **La app no se conecta a ningún servidor nuestro.** Habla directamente con forocoches.com desde
+  tu móvil, con tu cuenta de siempre. Nadie más ve lo que lees ni lo que escribes.
 - La sesión se guarda **solo en tu móvil**.
 - Lo único que la app consulta fuera del foro: las imágenes y los contenidos incrustados de los
   mensajes (en sus propias webs) y un fichero público de configuración en GitHub
   ([`RemoteConfig.kt`](app/src/main/java/com/fcplus/forocoches/RemoteConfig.kt)) que sirve para
   avisar de actualizaciones o de problemas. Ese fichero no recibe ningún dato tuyo.
+- **La sección +18**, solo si la activas, descarga una lista pública de hilos de
+  [`neonforger/foroplus-mas18`](https://github.com/neonforger/foroplus-mas18) en GitHub. La prepara
+  un servidor de ForoPlus que lee el foro **como invitado**; la app no habla con ese servidor ni le
+  manda nada, y solo acepta descargar la lista de esa dirección
+  ([`FuentesPermitidas.kt`](app/src/main/java/com/fcplus/forocoches/FuentesPermitidas.kt)). Lo que
+  hace el servidor no se puede comprobar desde fuera, y no hace falta: no recibe nada de nadie.
 - [Política de privacidad](docs/privacy-policy.html).
 
 ## Descargar y verificar
