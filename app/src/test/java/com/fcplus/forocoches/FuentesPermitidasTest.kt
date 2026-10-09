@@ -20,6 +20,18 @@ class FuentesPermitidasTest {
     @Test fun `un repo que empieza igual no`() =
         assertFalse(FuentesPermitidas.aceptada("https://raw.githubusercontent.com/neonforger/foroplus-mas18-falso/x"))
     @Test fun `vacia no`() = assertFalse(FuentesPermitidas.aceptada(""))
+    @Test fun `rechazo de doble punto`() =
+        assertFalse(FuentesPermitidas.aceptada("https://raw.githubusercontent.com/neonforger/foroplus-mas18/../../otro/repo/main/"))
+    @Test fun `rechazo de doble punto codificado`() =
+        assertFalse(FuentesPermitidas.aceptada("https://raw.githubusercontent.com/neonforger/foroplus-mas18/%2e%2e/%2e%2e/otro/"))
+    @Test fun `rechazo de barra invertida`() =
+        assertFalse(FuentesPermitidas.aceptada("https://raw.githubusercontent.com/neonforger/foroplus-mas18\\datos"))
+    @Test fun `rechazo de espacio en URL`() =
+        assertFalse(FuentesPermitidas.aceptada("https://raw.githubusercontent.com/neonforger/foroplus-mas18/ datos"))
+    @Test fun `rechazo de salto de línea`() =
+        assertFalse(FuentesPermitidas.aceptada("https://raw.githubusercontent.com/neonforger/foroplus-mas18/datos\n"))
+    @Test fun `rechazo de interrogante`() =
+        assertFalse(FuentesPermitidas.aceptada("https://raw.githubusercontent.com/neonforger/foroplus-mas18/datos?x=1"))
 
     private fun cfg(s: String) = JSONObject(s)
 
@@ -29,6 +41,8 @@ class FuentesPermitidasTest {
         assertNull(ConfigMas18Parser.de(cfg("""{"mas18":{"activo":false,"url":"$BUENA"}}""")))
     @Test fun `url no permitida no hay seccion`() =
         assertNull(ConfigMas18Parser.de(cfg("""{"mas18":{"activo":true,"url":"https://mi-servidor.com/p/"}}""")))
+    @Test fun `activa pero sin url no hay seccion`() =
+        assertNull(ConfigMas18Parser.de(cfg("""{"mas18":{"activo":true}}""")))
 
     @Test fun `activa y permitida, y la pagina se compone bien con o sin barra final`() {
         val c = ConfigMas18Parser.de(cfg("""{"mas18":{"activo":true,"url":"$BUENA"}}"""))!!
