@@ -37,4 +37,20 @@ class FiltroMas18Test {
         assertEquals("Enciende algún filtro para ver hilos", FiltroMas18.textoVacio(EtiquetasHilo.TODAS.toSet()))
         assertEquals("No hay hilos que mostrar", FiltroMas18.textoVacio(emptySet()))
     }
+
+    @Test fun `peña - +18 con solo peña apagada - no visible`() {
+        assertFalse(FiltroMas18.visible(h(4, "peña", "+18"), setOf("peña")))
+    }
+
+    @Test fun `peña - +18 con todo encendido - visible`() {
+        assertTrue(FiltroMas18.visible(h(5, "peña", "+18"), emptySet()))
+    }
+
+    @Test fun `solo peña con todo encendido - no visible`() {
+        assertFalse(FiltroMas18.visible(h(6, "peña"), emptySet()))
+    }
+
+    @Test fun `+18 con todo apagado - no visible`() {
+        assertFalse(FiltroMas18.visible(h(7, "+18"), EtiquetasHilo.TODAS.toSet()))
+    }
 }

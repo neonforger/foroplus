@@ -3,7 +3,9 @@ package com.fcplus.forocoches
 /**
  * Los chips de la sección +18. Cada usuario ve lo que quiera (dueño, 2026-10-09): la primera vez,
  * todo encendido. Se guardan las APAGADAS, no las encendidas, para que una etiqueta nueva salga
- * encendida sin migrar nada. La peña no hace entrar a nadie por sí sola: solo cuenta junto a otra.
+ * encendida sin migrar nada. El chip "Peñas" es un veto (apagado esconde los hilos de peña aunque
+ * lleven +18) y nunca hace visible un hilo por sí solo; un hilo que solo sea de peña no entra en
+ * la sección.
  */
 object FiltroMas18 {
     const val PREF = "mas18_apagadas"
