@@ -1607,6 +1607,63 @@
                             android:layout_height="wrap_content"
                             android:orientation="vertical"
                             android:layout_marginTop="6dp" />
+                        <!-- Sección +18 (spec del lector +18). Apagada por defecto. La lista la
+                             prepara el lector y se baja de GitHub: la app no envía nada. -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:layout_marginTop="22dp">
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="Sección +18"
+                                android:textSize="13sp"
+                                android:textStyle="bold"
+                                android:textColor="@color/fc_rojo"
+                                android:letterSpacing="0.03" />
+                            <androidx.appcompat.widget.SwitchCompat
+                                android:id="@+id/opt_mas18_switch"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content" />
+                        </LinearLayout>
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="Una pestaña con los hilos +18, +16, +14, +prv y +hd. La lista la prepara un servidor de ForoPlus leyendo el foro como invitado. La app solo descarga la lista: no envía nada."
+                            android:textSize="12sp"
+                            android:textColor="@color/fc_texto_3" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:layout_marginTop="22dp">
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="Ocultar hilos +18/+16 en las listas"
+                                android:textSize="13sp"
+                                android:textStyle="bold"
+                                android:textColor="@color/fc_rojo"
+                                android:letterSpacing="0.03" />
+                            <androidx.appcompat.widget.SwitchCompat
+                                android:id="@+id/opt_ocultar_mas18_switch"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content" />
+                        </LinearLayout>
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="En General y el resto de subforos, esconde los hilos que llevan +18 o +16 en el título."
+                            android:textSize="12sp"
+                            android:textColor="@color/fc_texto_3" />
                     </LinearLayout>
 
                     <LinearLayout

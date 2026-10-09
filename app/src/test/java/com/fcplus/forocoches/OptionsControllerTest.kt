@@ -107,4 +107,14 @@ class OptionsControllerTest {
         shellPrefs.edit().putInt(OptionsController.PREF_TITLE_FONT_IDX, 2).commit()
         assertEquals(18f, OptionsController.tituloSp(shellPrefs))
     }
+
+    @Test
+    fun `la seccion +18 y ocultar en listas vienen APAGADAS`() {
+        val prefs = ApplicationProvider.getApplicationContext<Context>()
+            .getSharedPreferences("t_opts_mas18", Context.MODE_PRIVATE).also { it.edit().clear().commit() }
+        assertFalse(OptionsController.mas18Activa(prefs))
+        assertFalse(OptionsController.ocultarMas18(prefs))
+        prefs.edit().putBoolean(OptionsController.PREF_MAS18, true).commit()
+        assertTrue(OptionsController.mas18Activa(prefs))
+    }
 }

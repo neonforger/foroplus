@@ -44,7 +44,9 @@ class OptionsController(
     /** La selección del Popurrí ha cambiado: hay que rehacer las pestañas y la lista. */
     private val onPopurriChanged: () -> Unit = {},
     /** Se ha encendido o apagado el "último que escribe" del listado: repintar las filas. */
-    private val onUltimoChanged: () -> Unit = {}
+    private val onUltimoChanged: () -> Unit = {},
+    /** Se ha tocado la sección +18 o el ocultar +18/+16 de las listas. */
+    private val onMas18Changed: () -> Unit = {}
 ) {
     companion object {
         const val PREF_FONT_IDX = "post_font_idx"
@@ -67,6 +69,12 @@ class OptionsController(
          */
         const val PREF_ULTIMO = "ultimo_en_lista"
         fun ultimoEnLista(prefs: SharedPreferences): Boolean = prefs.getBoolean(PREF_ULTIMO, true)
+
+        const val PREF_MAS18 = "mas18_seccion"
+        const val PREF_OCULTAR_MAS18 = "ocultar_mas18_listas"
+        /** Apagada por defecto: la sección +18 es opcional (spec, "2. La app"). */
+        fun mas18Activa(prefs: SharedPreferences): Boolean = prefs.getBoolean(PREF_MAS18, false)
+        fun ocultarMas18(prefs: SharedPreferences): Boolean = prefs.getBoolean(PREF_OCULTAR_MAS18, false)
 
         const val PREF_SIGNATURE = "post_signature"
         /**
@@ -107,6 +115,8 @@ class OptionsController(
     private val igChips: LinearLayout = panel.findViewById(R.id.opt_ig_chips)
     private val signSwitch: SwitchCompat = panel.findViewById(R.id.opt_sign_switch)
     private val ultimoSwitch: SwitchCompat = panel.findViewById(R.id.opt_ultimo_switch)
+    private val mas18Switch: SwitchCompat = panel.findViewById(R.id.opt_mas18_switch)
+    private val ocultarMas18Switch: SwitchCompat = panel.findViewById(R.id.opt_ocultar_mas18_switch)
     private val popurriChips: LinearLayout = panel.findViewById(R.id.opt_popurri_chips)
     private val kwToggle: TextView = panel.findViewById(R.id.opt_kw_toggle)
     private val hilosToggle: TextView = panel.findViewById(R.id.opt_hilos_toggle)
@@ -145,6 +155,16 @@ class OptionsController(
             if (checked == ultimoEnLista(prefs)) return@setOnCheckedChangeListener   // lo pinta bind()
             prefs.edit().putBoolean(PREF_ULTIMO, checked).apply()
             onUltimoChanged()
+        }
+        mas18Switch.setOnCheckedChangeListener { _, checked ->
+            if (checked == mas18Activa(prefs)) return@setOnCheckedChangeListener   // lo pinta bind()
+            prefs.edit().putBoolean(PREF_MAS18, checked).apply()
+            onMas18Changed()
+        }
+        ocultarMas18Switch.setOnCheckedChangeListener { _, checked ->
+            if (checked == ocultarMas18(prefs)) return@setOnCheckedChangeListener
+            prefs.edit().putBoolean(PREF_OCULTAR_MAS18, checked).apply()
+            onMas18Changed()
         }
         fontSmall.setOnClickListener { setFont(0) }
         fontNormal.setOnClickListener { setFont(1) }
@@ -261,6 +281,8 @@ class OptionsController(
         paintChips(listOf(titleSmall, titleNormal, titleLarge), prefs.getInt(PREF_TITLE_FONT_IDX, 1))
         signSwitch.isChecked = signatureEnabled(prefs)
         ultimoSwitch.isChecked = ultimoEnLista(prefs)
+        mas18Switch.isChecked = mas18Activa(prefs)
+        ocultarMas18Switch.isChecked = ocultarMas18(prefs)
         kwSwitch.isChecked = keywordRepo.isEnabled()
         renderKeywords()
         renderHilos()

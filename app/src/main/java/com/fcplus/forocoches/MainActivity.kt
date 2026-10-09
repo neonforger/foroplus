@@ -3532,7 +3532,12 @@ class MainActivity : AppCompatActivity() {
             onIgnoreWrite = { accion, usuario -> escribirIgnorado(accion, usuario) },
             onTemaChanged = { recreate() },
             hilosIgnorados = { hilosIgnorados() },
-            onDesignorarHilo = { tid -> designorarHilo(tid) }
+            onDesignorarHilo = { tid -> designorarHilo(tid) },
+            onMas18Changed = {
+                listLoaded = false
+                pintarPestanas()
+                recargarListaPorFiltros()
+            }
         )
         // Comunidad y apoyo: enlaces EXTERNOS (Telegram / navegador), nunca la capa web.
         optionsPanel.findViewById<View>(R.id.opt_telegram).setOnClickListener {
