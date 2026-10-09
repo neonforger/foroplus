@@ -366,6 +366,12 @@ class MainActivity : AppCompatActivity() {
     /** Sección +18: lo ya pintado, sin filtrar por chips (para refiltrar sin volver a bajar). */
     private var mas18Hilos: List<HiloMas18> = emptyList()
     private var mas18Total = 1
+    /** Generación de la descarga: una respuesta de otra generación (lista ya abandonada) se tira. */
+    private var mas18Gen = 0
+    /** Páginas pedidas solas para llenar una lista corta por los chips; se pone a 0 con cualquier acción del usuario. */
+    private var mas18Auto = 0
+    /** Motivo del último fallo de la página 1, para que un chip no lo pise con "No hay hilos". */
+    private var mas18Error: String? = null
     private val descargaMas18 by lazy {
         DescargaMas18(getSharedPreferences(DescargaMas18.PREFS, MODE_PRIVATE))
     }
@@ -795,10 +801,11 @@ class MainActivity : AppCompatActivity() {
      * Existe como función y no como una cadena de `||` sueltos porque ya son tres modos
      * (Inicio, lo más movido y el Popurrí) y **al añadir el tercero se me olvidó uno de los
      * sitios**: en el Popurrí no se podía deslizar para cambiar de subforo y había que tocar
-     * las pestañas a mano. Un cuarto modo volvería a olvidarse.
+     * las pestañas a mano. Un cuarto modo volvería a olvidarse. El cuarto fue la sección +18:
+     * sin ella aquí, la pila no la anotaba y volver de un hilo te sacaba de +18.
      */
     private fun conPestanasDeSubforo(): Boolean =
-        listSource == "home" || listSource == "top" || listSource == "popurri"
+        listSource == "home" || listSource == "top" || listSource == "popurri" || listSource == "mas18"
 
     /**
      * ¿Lo que se está mirando es UN subforo concreto?
@@ -983,6 +990,10 @@ class MainActivity : AppCompatActivity() {
         setSelectedNav(R.id.nav_home)
         listLoaded = false
         mas18Hilos = emptyList()
+        mas18Error = null
+        mas18Estado.text = ""
+        mas18Gen++
+        mas18Auto = 0
         adapter.submit(emptyList())
         pintarChipsMas18()
         anotarListaEnPila()
@@ -992,20 +1003,27 @@ class MainActivity : AppCompatActivity() {
     /** Descarga fuera del hilo de la UI: DescargaMas18 es bloqueante. */
     private fun pedirMas18(page: Int) {
         val cfg = configMas18() ?: run { loadingPage = false; return }
+        // La página 1 abre una lista nueva (otra generación); las siguientes llevan la actual.
+        if (page <= 1) { mas18Gen++; mas18Auto = 0 }
+        val gen = mas18Gen
         Thread {
             val r = descargaMas18.pagina(cfg, page)
-            runOnUiThread { onMas18(page, r) }
+            runOnUiThread { onMas18(page, r, gen) }
         }.start()
     }
 
-    private fun onMas18(page: Int, r: ResultadoMas18) {
+    private fun onMas18(page: Int, r: ResultadoMas18, gen: Int) {
+        // Antes de tocar NINGUNA bandera: una descarga lenta que acaba cuando ya estás en otro
+        // subforo no puede apagarle el spinner a ese subforo.
+        if (gen != mas18Gen || listSource != "mas18") return
         loadingPage = false
         listLoading.visibility = View.GONE
         listRefresh.isRefreshing = false
-        if (listSource != "mas18") return          // el usuario ya se ha ido a otro sitio
         when (val l = r.lectura) {
             is LecturaMas18.Mal -> {
                 if (page == 1) {
+                    mas18Error = l.motivo
+                    mas18Estado.text = ""
                     adapter.submit(emptyList())
                     listEmpty.visibility = View.VISIBLE
                     listEmpty.text = l.motivo
@@ -1015,6 +1033,7 @@ class MainActivity : AppCompatActivity() {
             is LecturaMas18.Bien -> {
                 val p = l.pagina
                 mas18Total = p.totalPaginas
+                mas18Error = null
                 mas18Hilos = if (page == 1) p.hilos else FiltroMas18.unir(mas18Hilos, p.hilos)
                 // Quien escribió lo último ya viene en la lista: se apunta para no preguntarlo a FC.
                 p.hilos.forEach {
@@ -1026,8 +1045,21 @@ class MainActivity : AppCompatActivity() {
                 listaAgotada = page >= p.totalPaginas
                 pintarEstadoMas18(p, r.deCache)
                 repintarMas18()
+                completarMas18()
             }
         }
+    }
+
+    /**
+     * Con chips apagados la lista puede quedarse corta y sin poder desplazarse, y entonces
+     * nadie pide la página siguiente. Se piden solas, con tope de 10 por acción del usuario
+     * (para no encadenar descargas sin fin) y hasta total_paginas.
+     */
+    private fun completarMas18() {
+        if (listSource != "mas18" || adapter.itemCount >= 8 || listaAgotada || loadingPage) return
+        if (mas18Auto >= 10) return
+        mas18Auto++
+        requestThreadList(currentPage + 1)
     }
 
     private fun repintarMas18() {
@@ -1037,7 +1069,7 @@ class MainActivity : AppCompatActivity() {
             .map { PaginaMas18Parser.aThreadItem(it, ahora) }
         adapter.submit(filtrarLista(items))
         listEmpty.visibility = if (adapter.itemCount == 0) View.VISIBLE else View.GONE
-        listEmpty.text = FiltroMas18.textoVacio(apagadas)
+        listEmpty.text = mas18Error?.takeIf { adapter.itemCount == 0 } ?: FiltroMas18.textoVacio(apagadas)
     }
 
     private fun pintarEstadoMas18(p: PaginaMas18, deCache: Boolean) {
@@ -1069,6 +1101,8 @@ class MainActivity : AppCompatActivity() {
                 shellPrefs.edit().putString(FiltroMas18.PREF, FiltroMas18.guardar(ahora)).apply()
                 pintarChipsMas18()
                 repintarMas18()
+                mas18Auto = 0
+                completarMas18()
             }
             mas18Chips.addView(chip)
         }
@@ -3729,6 +3763,7 @@ class MainActivity : AppCompatActivity() {
                 if (dy <= 0 || loadingPage || !listLoaded || listaAgotada) return
                 val last = layoutManager.findLastVisibleItemPosition()
                 if (adapter.itemCount > 0 && last >= adapter.itemCount - 8) {
+                    if (listSource == "mas18") mas18Auto = 0
                     requestThreadList(currentPage + 1)
                 }
             }
@@ -6131,7 +6166,12 @@ class MainActivity : AppCompatActivity() {
             "participated" -> showParticipatedList()
             "home", "top", "popurri" -> restaurarListaDeSubforo(s)
             // La sección +18 no usa el motor ni el subforo: se rehace entera. Apagada, a Inicio.
-            "mas18" -> if (configMas18() != null) showMas18() else showHomeList()
+            "mas18" -> when {
+                configMas18() == null -> showHomeList()
+                // Si la lista sigue cargada se enseña tal cual: recargar tiraba páginas y scroll.
+                listSource == "mas18" && listLoaded -> { showNative(); setSelectedNav(R.id.nav_home) }
+                else -> showMas18()
+            }
             // La búsqueda se REHACE si lo cargado ya no son esos resultados (p. ej. volviste
             // pasando por Inicio). Si siguen ahí no se pide nada: repetir la consulta por
             // gusto es lento y además la búsqueda de FC va justa.
