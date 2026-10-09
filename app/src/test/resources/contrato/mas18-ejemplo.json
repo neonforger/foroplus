@@ -1,0 +1,31 @@
+{
+  "v": 1,
+  "generado": "2026-10-08T18:00:05Z",
+  "commit": "abc1234",
+  "pagina": 1,
+  "total_paginas": 87,
+  "por_pagina": 50,
+  "historico_hasta": "2025-04",
+  "campo_futuro": {"lo": "ignora"},
+  "hilos": [
+    {
+      "tid": 10829267,
+      "titulo": "Título del hilo +18",
+      "etiquetas": ["+18"],
+      "autor": "Nombre",
+      "respuestas": 49,
+      "ultimo": {"fecha": "2026-10-08T17:55:00Z", "autor": "Otro", "pid": 520320626},
+      "creado_aprox": "2026-10",
+      "visto_desde": "2026-10-06T21:10:00Z"
+    },
+    {
+      "tid": 9876543,
+      "titulo": "Hilo viejo del histórico +16 +hd",
+      "etiquetas": ["+16", "+hd"],
+      "autor": "Antiguo",
+      "respuestas": 12,
+      "ultimo": null,
+      "creado_aprox": "2024-04"
+    }
+  ]
+}
