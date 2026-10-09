@@ -1,6 +1,18 @@
 {
   "versiones": [
     {
+      "code": 50,
+      "nombre": "1.12.0",
+      "fecha": "2026-10-10",
+      "notas": [
+        "Nueva sección +18, opcional y apagada de salida: los hilos etiquetados del foro en su propia pestaña, con filtros. Se activa en Opciones",
+        "Guarda o comparte cualquier foto o GIF del foro: botones en el visor, o mantén pulsada la imagen",
+        "Busca los mensajes de un usuario, con sugerencias de nombres como en la web",
+        "Puedes ocultar los hilos +18 y +16 de las listas normales desde Opciones",
+        "Punto verde en el avatar de quien está conectado, y en Popurrí cada hilo dice de qué subforo es"
+      ]
+    },
+    {
       "code": 49,
       "nombre": "1.11.2",
       "fecha": "2026-10-06",
