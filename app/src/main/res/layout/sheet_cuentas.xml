@@ -4,8 +4,10 @@
     android:layout_height="wrap_content"
     android:orientation="vertical"
     android:paddingTop="18dp"
-    android:paddingBottom="10dp"
-    android:background="@color/fc_fondo">
+    android:paddingBottom="10dp">
+
+    <View style="@style/Asa" />
+
 
     <TextView
         android:layout_width="match_parent"

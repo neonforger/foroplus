@@ -17,6 +17,9 @@
              applyWindowInsets, que es lo unico que sabe si estamos en claro o en oscuro. -->
         <item name="android:statusBarColor">@color/fc_fondo</item>
         <item name="android:navigationBarColor">@color/fc_fondo</item>
+        <!-- Hojas inferiores con esquinas redondeadas (fase 3); su fondo lo pone la hoja, no el
+             layout (si el layout se pinta el suyo, tapa las esquinas). -->
+        <item name="bottomSheetDialogTheme">@style/FC.Hoja</item>
 
         <!-- Estilo Compacta (EstiloApp): los valores de siempre. Ver attrs.xml. -->
         <item name="fcFondoLista">@android:color/transparent</item>
@@ -198,6 +201,61 @@
         <item name="android:layout_marginEnd">4dp</item>
         <!-- fc_texto_off y no fc_divisoria: la divisoria sobre el gris de la barra no se ve. -->
         <item name="android:background">@color/fc_texto_off</item>
+    </style>
+
+    <!-- Hoja inferior (fase 3): esquinas de arriba redondeadas, fondo de la app. -->
+    <style name="FC.Hoja" parent="ThemeOverlay.MaterialComponents.BottomSheetDialog">
+        <item name="bottomSheetStyle">@style/FC.Hoja.Modal</item>
+    </style>
+
+    <style name="FC.Hoja.Modal" parent="Widget.MaterialComponents.BottomSheet.Modal">
+        <item name="backgroundTint">@color/fc_fondo</item>
+        <item name="shapeAppearanceOverlay">@style/FC.Hoja.Forma</item>
+    </style>
+
+    <style name="FC.Hoja.Forma" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSizeTopLeft">24dp</item>
+        <item name="cornerSizeTopRight">24dp</item>
+        <item name="cornerSizeBottomLeft">0dp</item>
+        <item name="cornerSizeBottomRight">0dp</item>
+    </style>
+
+    <style name="Asa">
+        <item name="android:layout_width">32dp</item>
+        <item name="android:layout_height">4dp</item>
+        <item name="android:layout_gravity">center_horizontal</item>
+        <item name="android:layout_marginBottom">10dp</item>
+        <item name="android:background">@drawable/bg_asa</item>
+    </style>
+
+    <!-- Botones (fase 3): principal en pastilla roja, secundario contorneado. 48dp de alto. -->
+    <style name="BotonPrimario">
+        <item name="android:layout_height">48dp</item>
+        <item name="android:gravity">center</item>
+        <item name="android:paddingStart">24dp</item>
+        <item name="android:paddingEnd">24dp</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textColor">@color/fc_sobre_rojo</item>
+        <item name="android:background">@drawable/bg_boton_primario</item>
+    </style>
+
+    <style name="BotonSecundario" parent="BotonPrimario">
+        <item name="android:textColor">@color/fc_rojo</item>
+        <item name="android:background">@drawable/bg_boton_secundario</item>
+    </style>
+
+    <!-- Campo de texto (fase 3): relleno, redondeado y con borde rojo al tener el foco. -->
+    <style name="Campo">
+        <item name="android:background">@drawable/bg_campo</item>
+        <item name="android:paddingStart">14dp</item>
+        <item name="android:paddingEnd">14dp</item>
+        <item name="android:paddingTop">12dp</item>
+        <item name="android:paddingBottom">12dp</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:textColor">@color/fc_texto</item>
+        <item name="android:textColorHint">@color/fc_texto_3</item>
     </style>
 
     <!-- Control segmentado (Segmentado): la cápsula y cada opción. -->

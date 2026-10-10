@@ -6,11 +6,13 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:background="@color/fc_fondo"
     android:paddingStart="20dp"
     android:paddingEnd="20dp"
     android:paddingTop="18dp"
     android:paddingBottom="24dp">
+
+    <View style="@style/Asa" />
+
 
     <TextView
         android:id="@+id/jump_header"
@@ -55,6 +57,7 @@
 
         <EditText
             android:id="@+id/jump_input"
+            style="@style/Campo"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"

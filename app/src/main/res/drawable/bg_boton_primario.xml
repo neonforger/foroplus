@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Botón principal (fase 3): pastilla roja de 48dp en vez de las franjas a todo el ancho. -->
+<ripple xmlns:android="http://schemas.android.com/apk/res/android" android:color="@color/fc_ripple">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@color/fc_rojo" />
+            <corners android:radius="24dp" />
+        </shape>
+    </item>
+</ripple>

@@ -612,17 +612,11 @@
 
                     <TextView
                         android:id="@+id/restricted_login"
+                        style="@style/BotonPrimario"
+                        android:layout_height="48dp"
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
                         android:layout_marginTop="22dp"
-                        android:paddingTop="12dp"
-                        android:paddingBottom="12dp"
-                        android:gravity="center"
-                        android:text="Iniciar sesión"
-                        android:textSize="15sp"
-                        android:textStyle="bold"
-                        android:textColor="@color/fc_sobre_rojo"
-                        android:background="@color/fc_rojo" />
+                        android:text="Iniciar sesión" />
 
                     <TextView
                         android:id="@+id/restricted_invite"
@@ -914,6 +908,7 @@
 
                             <EditText
                                 android:id="@+id/reply_poll_question"
+                                style="@style/Campo"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:hint="Pregunta de la encuesta"
@@ -960,6 +955,7 @@
 
                             <EditText
                                 android:id="@+id/reply_poll_days"
+                                style="@style/Campo"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:hint="Días que dura (vacío = no se cierra)"
@@ -1302,17 +1298,11 @@
 
             <TextView
                 android:id="@+id/profile_pms"
+                style="@style/BotonPrimario"
+                android:layout_height="48dp"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
                 android:layout_marginTop="36dp"
-                android:paddingTop="14dp"
-                android:paddingBottom="14dp"
-                android:gravity="center"
-                android:text="Mensajes privados"
-                android:textSize="15sp"
-                android:textStyle="bold"
-                android:textColor="@color/fc_sobre_rojo"
-                android:background="@color/fc_rojo" />
+                android:text="Mensajes privados" />
 
             <!-- Tus mensajes uno a uno, la misma búsqueda que "Sus mensajes" de una ficha ajena.
                  "Mis hilos" y "Participados" ya están en la barra de abajo; esto era lo que
@@ -1353,17 +1343,11 @@
 
             <TextView
                 android:id="@+id/profile_logout"
+                style="@style/BotonSecundario"
+                android:layout_height="48dp"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
-                android:paddingTop="13dp"
-                android:paddingBottom="13dp"
-                android:gravity="center"
-                android:text="Cerrar sesión"
-                android:textSize="15sp"
-                android:textStyle="bold"
-                android:textColor="@color/fc_sobre_rojo"
-                android:background="@color/fc_rojo" />
+                android:text="Cerrar sesión" />
         </LinearLayout>
         </ScrollView>
 
@@ -1388,17 +1372,11 @@
                 android:paddingTop="6dp"
                 android:paddingBottom="6dp">
 
-                <TextView
+                <ImageButton
                     android:id="@+id/options_back"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:paddingStart="12dp"
-                    android:paddingEnd="12dp"
-                    android:paddingTop="10dp"
-                    android:paddingBottom="10dp"
-                    android:text="←"
-                    android:textSize="20sp"
-                    android:textColor="@color/fc_texto_2"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:src="@drawable/ic_atras"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:contentDescription="Volver" />
 
@@ -1409,7 +1387,7 @@
                     android:id="@+id/options_title"
                     android:layout_marginStart="4dp"
                     android:text="Opciones"
-                    android:textSize="18sp"
+                    android:textSize="20sp"
                     android:textStyle="bold"
                     android:textColor="@color/fc_texto" />
             </LinearLayout>
@@ -1754,6 +1732,7 @@
 
                             <EditText
                                 android:id="@+id/opt_ig_input"
+                                style="@style/Campo"
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
@@ -1823,6 +1802,7 @@
 
                             <EditText
                                 android:id="@+id/opt_kw_input"
+                                style="@style/Campo"
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
@@ -2069,17 +2049,11 @@
                 android:paddingTop="10dp"
                 android:paddingBottom="10dp">
 
-                <TextView
+                <ImageButton
                     android:id="@+id/org_back"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:paddingStart="12dp"
-                    android:paddingEnd="12dp"
-                    android:paddingTop="10dp"
-                    android:paddingBottom="10dp"
-                    android:text="←"
-                    android:textSize="20sp"
-                    android:textColor="@color/fc_texto_2"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:src="@drawable/ic_atras"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:contentDescription="Volver" />
 
@@ -2089,7 +2063,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:layout_marginStart="4dp"
-                    android:textSize="18sp"
+                    android:textSize="20sp"
                     android:textStyle="bold"
                     android:textColor="@color/fc_texto" />
 
@@ -2151,17 +2125,11 @@
                 android:paddingTop="10dp"
                 android:paddingBottom="10dp">
 
-                <TextView
+                <ImageButton
                     android:id="@+id/novedades_back"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:paddingStart="12dp"
-                    android:paddingEnd="12dp"
-                    android:paddingTop="10dp"
-                    android:paddingBottom="10dp"
-                    android:text="←"
-                    android:textSize="20sp"
-                    android:textColor="@color/fc_texto_2"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:src="@drawable/ic_atras"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:contentDescription="Volver" />
 
@@ -2171,7 +2139,7 @@
                     android:layout_weight="1"
                     android:layout_marginStart="4dp"
                     android:text="Novedades"
-                    android:textSize="18sp"
+                    android:textSize="20sp"
                     android:textStyle="bold"
                     android:textColor="@color/fc_texto" />
             </LinearLayout>
@@ -2219,17 +2187,11 @@
                 android:paddingTop="6dp"
                 android:paddingBottom="6dp">
 
-                <TextView
+                <ImageButton
                     android:id="@+id/pm_back"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:paddingStart="12dp"
-                    android:paddingEnd="12dp"
-                    android:paddingTop="10dp"
-                    android:paddingBottom="10dp"
-                    android:text="←"
-                    android:textSize="20sp"
-                    android:textColor="@color/fc_texto_2"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:src="@drawable/ic_atras"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:contentDescription="Volver" />
 
@@ -2239,7 +2201,7 @@
                     android:layout_weight="1"
                     android:layout_marginStart="4dp"
                     android:text="Mensajes privados"
-                    android:textSize="18sp"
+                    android:textSize="20sp"
                     android:textStyle="bold"
                     android:textColor="@color/fc_texto" />
 
@@ -2341,17 +2303,11 @@
                 android:paddingTop="6dp"
                 android:paddingBottom="6dp">
 
-                <TextView
+                <ImageButton
                     android:id="@+id/pm_detail_back"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:paddingStart="12dp"
-                    android:paddingEnd="12dp"
-                    android:paddingTop="10dp"
-                    android:paddingBottom="10dp"
-                    android:text="←"
-                    android:textSize="20sp"
-                    android:textColor="@color/fc_texto_2"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:src="@drawable/ic_atras"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:contentDescription="Volver" />
 
@@ -2400,16 +2356,10 @@
 
             <TextView
                 android:id="@+id/pm_detail_reply"
+                style="@style/BotonPrimario"
+                android:layout_height="48dp"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:paddingTop="14dp"
-                android:paddingBottom="14dp"
-                android:gravity="center"
-                android:text="Responder"
-                android:textSize="15sp"
-                android:textStyle="bold"
-                android:textColor="@color/fc_sobre_rojo"
-                android:background="@color/fc_rojo" />
+                android:text="Responder" />
         </LinearLayout>
 
         <!-- Hilos descargados: la lista de copias guardadas en este móvil. -->
@@ -2554,6 +2504,7 @@
 
                     <EditText
                         android:id="@+id/pm_compose_to"
+                        style="@style/Campo"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:inputType="text"
@@ -2566,6 +2517,7 @@
 
                     <EditText
                         android:id="@+id/pm_compose_subject"
+                        style="@style/Campo"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
@@ -2588,6 +2540,7 @@
 
                     <EditText
                         android:id="@+id/pm_compose_message"
+                        style="@style/Campo"
                         android:layout_width="match_parent"
                         android:layout_height="0dp"
                         android:layout_weight="1"
@@ -2625,17 +2578,11 @@
                 android:paddingTop="6dp"
                 android:paddingBottom="6dp">
 
-                <TextView
+                <ImageButton
                     android:id="@+id/member_back"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:paddingStart="12dp"
-                    android:paddingEnd="12dp"
-                    android:paddingTop="10dp"
-                    android:paddingBottom="10dp"
-                    android:text="←"
-                    android:textSize="20sp"
-                    android:textColor="@color/fc_texto_2"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:src="@drawable/ic_atras"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:contentDescription="Volver" />
 
@@ -2645,7 +2592,7 @@
                     android:layout_weight="1"
                     android:layout_marginStart="4dp"
                     android:text="Perfil"
-                    android:textSize="18sp"
+                    android:textSize="20sp"
                     android:textStyle="bold"
                     android:textColor="@color/fc_texto" />
             </LinearLayout>
@@ -2760,17 +2707,11 @@
 
                 <TextView
                     android:id="@+id/member_pm"
+                    style="@style/BotonPrimario"
+                    android:layout_height="48dp"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
                     android:layout_marginTop="36dp"
-                    android:paddingTop="14dp"
-                    android:paddingBottom="14dp"
-                    android:gravity="center"
-                    android:text="Enviar mensaje privado"
-                    android:textSize="15sp"
-                    android:textStyle="bold"
-                    android:textColor="@color/fc_sobre_rojo"
-                    android:background="@color/fc_rojo" />
+                    android:text="Enviar mensaje privado" />
 
                 <!-- Su actividad. Son las tres consultas que el propio FC enlaza desde la
                      ficha (sondeadas el 2026-08-28). Van detrás de un toque y NUNCA solas al
