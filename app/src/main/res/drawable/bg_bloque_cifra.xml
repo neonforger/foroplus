@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Un bloque de cifra del panel de tu cuenta (mensajes, hilos, al día). -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="@color/fc_chip" />
+    <corners android:radius="14dp" />
+</shape>

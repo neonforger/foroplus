@@ -81,6 +81,34 @@ object EstadisticasMiembro {
     }
 
     /**
+     * Las mismas cifras que [linea], por separado: los bloques del panel de tu cuenta (fase 2
+     * del rediseño). `("7.253", "mensajes")`, `("38", "hilos")`, `("0,9", "al día")`; lo que
+     * falte no sale.
+     */
+    fun cifras(mensajes: String, hilos: String, registro: String, hoyMillis: Long): List<Pair<String, String>> {
+        val bloques = ArrayList<Pair<String, String>>(3)
+        if (mensajes.isNotBlank()) bloques.add(mensajes.trim() to "mensajes")
+        if (hilos.isNotBlank()) bloques.add(hilos.trim() to "hilos")
+        val n = numero(mensajes)
+        val dias = diasDesde(registro, hoyMillis)
+        if (n != null && dias != null) {
+            bloques.add(String.format(Locale("es"), "%.1f", n.toDouble() / dias) to "al día")
+        }
+        return bloques
+    }
+
+    /** "Miembro desde 30-may-2026", o lo que haya de eso (bajo tu nombre en el panel). */
+    fun desde(rango: String, registro: String): String {
+        val r = rango.trim()
+        val fecha = registro.trim().takeIf { it.split("-").size == 3 }
+        return when {
+            r.isNotEmpty() && fecha != null -> "$r desde $fecha"
+            fecha != null -> "Desde $fecha"
+            else -> r
+        }
+    }
+
+    /**
      * El rango de FC delante de la línea: `Miembro · 7.253 mensajes · …`.
      *
      * Es lo único de la ficha de FC que la app no enseñaba (sondeado el 2026-09-24: "Miembro"

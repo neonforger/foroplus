@@ -26,6 +26,10 @@ class CuentaPanelController(
     private val pintarAvatar: () -> Unit,
     private val alVerFicha: () -> Unit,
     private val alSalir: () -> Unit,
+    /** "Miembro desde …" bajo tu nombre ([EstadisticasMiembro.desde]); vacío si aún no llegó. */
+    private val subtitulo: () -> String = { "" },
+    /** Tus cifras en bloques ([EstadisticasMiembro.cifras]); vacío si aún no llegaron. */
+    private val cifras: () -> List<Pair<String, String>> = { emptyList() },
     private val rellenar: Filas.() -> Unit
 ) {
 
@@ -33,6 +37,8 @@ class CuentaPanelController(
     interface Filas {
         fun fila(icono: Int, texto: String, insignia: Int = 0, alTocar: () -> Unit)
         fun separador()
+        /** Título de un grupo de filas ("TU ACTIVIDAD", "LA APP"). */
+        fun etiqueta(texto: String)
     }
 
     private lateinit var panelCuenta: View
@@ -41,6 +47,7 @@ class CuentaPanelController(
     private lateinit var cuentaFilas: LinearLayout
     private lateinit var cuentaNombre: TextView
     private lateinit var cuentaStats: TextView
+    private lateinit var cuentaCifras: LinearLayout
 
     /** El avatar del panel, para que MainActivity lo pinte junto al de la cabecera. */
     var avatar: android.widget.ImageView? = null
@@ -64,6 +71,7 @@ class CuentaPanelController(
         avatar = panelCuenta.findViewById(R.id.cuenta_avatar)
         cuentaNombre = panelCuenta.findViewById(R.id.cuenta_nombre)
         cuentaStats = panelCuenta.findViewById(R.id.cuenta_stats)
+        cuentaCifras = panelCuenta.findViewById(R.id.cuenta_cifras)
         panelCuenta.findViewById<android.widget.ImageView>(R.id.cuenta_salir_icono)
             .setColorFilter(color(R.color.fc_rojo))
         // Pantalla de borde a borde (targetSdk 35+): el cajón no puede meterse debajo de la barra
@@ -118,9 +126,18 @@ class CuentaPanelController(
     /** Las filas del panel: lo que no va en la barra, y luego lo de la cuenta y la app. */
     fun pintar() {
         cuentaNombre.text = nombre()
-        val linea = lineaPerfil()
-        cuentaStats.text = linea
-        cuentaStats.visibility = if (linea.isEmpty()) View.GONE else View.VISIBLE
+        val sub = subtitulo()
+        cuentaStats.text = sub
+        cuentaStats.visibility = if (sub.isEmpty()) View.GONE else View.VISIBLE
+        cuentaCifras.removeAllViews()
+        for ((valor, etiqueta) in cifras()) {
+            val b = activity.layoutInflater.inflate(R.layout.item_cifra_cuenta, cuentaCifras, false)
+            b.findViewById<TextView>(R.id.cifra_valor).text = valor
+            b.findViewById<TextView>(R.id.cifra_etiqueta).text = etiqueta
+            b.contentDescription = "$valor $etiqueta"
+            cuentaCifras.addView(b)
+        }
+        cuentaCifras.visibility = if (cuentaCifras.childCount == 0) View.GONE else View.VISIBLE
         pintarAvatar()
         cuentaFilas.removeAllViews()
         val filas = object : Filas {
@@ -137,6 +154,21 @@ class CuentaPanelController(
                 }
                 v.setOnClickListener { cerrar(animar = false); alTocar() }
                 cuentaFilas.addView(v)
+            }
+
+            override fun etiqueta(texto: String) {
+                val d = activity.resources.displayMetrics.density
+                cuentaFilas.addView(TextView(activity).apply {
+                    text = texto
+                    textSize = 12f
+                    letterSpacing = 0.06f
+                    setTypeface(typeface, android.graphics.Typeface.BOLD)
+                    setTextColor(color(R.color.fc_texto_3))
+                    setPadding((20 * d).toInt(), (10 * d).toInt(), (20 * d).toInt(), (4 * d).toInt())
+                    isFocusable = false
+                    importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
+                    contentDescription = texto.lowercase()
+                })
             }
 
             override fun separador() {

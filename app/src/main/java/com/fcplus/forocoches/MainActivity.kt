@@ -2366,6 +2366,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var nativeAvatarPunto: View
     /** La línea de tu ficha ("Usuario · 17 mensajes · …"), de la última vez que se pidió. */
     private var lineaPerfil = ""
+    /** "Miembro desde …" y tus cifras en bloques, para el panel del avatar (fase 2). */
+    private var desdePerfil = ""
+    private var cifrasPerfil: List<Pair<String, String>> = emptyList()
 
     /** El panel del avatar: vive en [CuentaPanelController]; aquí solo se dice qué filas lleva. */
     private lateinit var cuentaPanel: CuentaPanelController
@@ -2386,13 +2389,17 @@ class MainActivity : AppCompatActivity() {
             pintarAvatar = { pintarAvatarCuenta() },
             alVerFicha = { if (isLoggedIn()) { showProfile(); pestana(Screen.Profile) } else showLogin() },
             alSalir = { doLogout() },
+            subtitulo = { desdePerfil },
+            cifras = { cifrasPerfil },
             rellenar = {
                 val panel = repartoBarra().panel
+                if (panel.isNotEmpty()) etiqueta("TU ACTIVIDAD")
                 for (clave in panel) {
                     val id = navClaves.firstOrNull { it.first == clave }?.second ?: continue
                     fila(navIconos.getValue(clave), navNombres.getValue(clave), insigniaDe(clave)) { onNavClicked(id) }
                 }
                 if (panel.isNotEmpty()) separador()
+                etiqueta("LA APP")
                 fila(R.drawable.ic_cuentas,
                     if (cuentasGuardadas().size > 1) "Cambiar de cuenta" else "Añadir otra cuenta") { mostrarHojaCuentas() }
                 fila(R.drawable.ic_organizar, "Organizar barra") { showOptions(); showOrganizar(true) }
@@ -2500,6 +2507,8 @@ class MainActivity : AppCompatActivity() {
      */
     private fun olvidarIdentidadPintada() {
         lineaPerfil = ""
+        desdePerfil = ""
+        cifrasPerfil = emptyList()
         profileLogoutUrl = ""
         profileName.text = ""
         profileAvatar.setImageResource(R.drawable.ic_nav_person)
@@ -2523,6 +2532,11 @@ class MainActivity : AppCompatActivity() {
                     o.optString("registro").trim(), System.currentTimeMillis()
                 )
             ).takeIf { it.isNotEmpty() }?.let { profileSub.text = it; lineaPerfil = it }
+            desdePerfil = EstadisticasMiembro.desde(o.optString("rango"), o.optString("registro"))
+            cifrasPerfil = EstadisticasMiembro.cifras(
+                o.optString("mensajes"), o.optString("hilos"), o.optString("registro"),
+                System.currentTimeMillis()
+            )
             pintarFicha(o, profileFirma, profileSobreMi)
             if (isPanelCuentaVisible) cuentaPanel.pintar()
             val av = o.optString("avatar")

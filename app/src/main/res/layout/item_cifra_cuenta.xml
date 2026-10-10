@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Un bloque de cifra del panel de tu cuenta: el número grande y qué es debajo. Los pinta
+     CuentaPanelController con EstadisticasMiembro.cifras. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="0dp"
+    android:layout_height="wrap_content"
+    android:layout_weight="1"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:paddingTop="10dp"
+    android:paddingBottom="10dp"
+    android:background="@drawable/bg_bloque_cifra">
+
+    <TextView
+        android:id="@+id/cifra_valor"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="17sp"
+        android:textStyle="bold"
+        android:textColor="@color/fc_texto"
+        android:maxLines="1" />
+
+    <TextView
+        android:id="@+id/cifra_etiqueta"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="12sp"
+        android:textColor="@color/fc_texto_2"
+        android:maxLines="1" />
+</LinearLayout>

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- El cajón del panel de tu cuenta: redondeado del lado de la pantalla (fase 2). -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="@color/fc_fondo" />
+    <corners android:topLeftRadius="24dp" android:bottomLeftRadius="24dp" />
+</shape>
