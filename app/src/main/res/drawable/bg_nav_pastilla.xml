@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Tarjetas: pastilla detrás del icono activo de la barra de abajo (setSelectedNav). -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="@color/fc_rojo_suave" />
+    <corners android:radius="16dp" />
+</shape>

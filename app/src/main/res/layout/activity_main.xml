@@ -103,14 +103,12 @@
 
             <com.google.android.material.tabs.TabLayout
                 android:id="@+id/forum_tabs"
+                style="?attr/fcPestanas"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:background="@color/fc_fondo"
                 android:elevation="2dp"
-                app:tabMode="scrollable"
-                app:tabIndicatorColor="@color/fc_rojo"
-                app:tabSelectedTextColor="@color/fc_rojo"
-                app:tabTextColor="@color/fc_texto_2" />
+                app:tabMode="scrollable" />
 
             <!-- Aviso del autor de la app, servido por fc_config.json. Oculto salvo que la
                  config traiga uno. Es el único canal para hablarle a la gente sin publicar una

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Pestaña de subforo en Tarjetas (FC.Pestanas.Tarjetas): pastilla gris. El inset deja 8dp
+     entre pastillas y recorta el alto de la pestaña (48dp) a 36dp. -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:insetLeft="4dp" android:insetRight="4dp" android:insetTop="6dp" android:insetBottom="6dp">
+    <shape android:shape="rectangle">
+        <solid android:color="@color/fc_chip" />
+        <corners android:radius="18dp" />
+    </shape>
+</inset>

@@ -55,6 +55,29 @@
         <item name="tabTextColor">@color/fc_texto_2</item>
     </style>
 
+    <!-- Pestañas en pastilla (Tarjetas): el indicador ocupa toda la pestaña y es la pastilla
+         roja; el fondo de cada una es la gris. Sin onda: sobre una pastilla se vería cuadrada. -->
+    <style name="FC.Pestanas.Tarjetas">
+        <item name="tabIndicator">@drawable/bg_pestana_indicador</item>
+        <item name="tabIndicatorGravity">stretch</item>
+        <item name="tabIndicatorFullWidth">true</item>
+        <item name="tabSelectedTextColor">@color/fc_sobre_rojo</item>
+        <item name="tabBackground">@drawable/bg_pestana</item>
+        <item name="tabRippleColor">@null</item>
+        <item name="tabPaddingStart">18dp</item>
+        <item name="tabPaddingEnd">18dp</item>
+        <item name="tabContentStart">12dp</item>
+        <item name="tabTextAppearance">@style/FC.Pestanas.Texto</item>
+    </style>
+
+    <!-- El texto de las pastillas, sin MAYÚSCULAS ni el espaciado de letras de los botones de
+         Material (como en los mockups). -->
+    <style name="FC.Pestanas.Texto" parent="TextAppearance.MaterialComponents.Button">
+        <item name="textAllCaps">false</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:letterSpacing">0</item>
+    </style>
+
     <!-- Estilo Tarjetas (EstiloApp): solo redefine atributos fc*. Se aplica en
          MainActivity.onCreate con theme.applyStyle(…, true) antes de setContentView. -->
     <style name="ThemeOverlay.FC.Tarjetas" parent="">
@@ -80,6 +103,11 @@
         <item name="fcPostOpMargenH">12dp</item>
         <item name="fcPostOpMargenV">5dp</item>
         <item name="fcPostPaddingV">12dp</item>
+        <item name="fcPestanas">@style/FC.Pestanas.Tarjetas</item>
+        <item name="fcNavPastilla">@drawable/bg_nav_pastilla</item>
+        <item name="fcNavPastillaPadH">14dp</item>
+        <item name="fcNavPastillaPadV">2dp</item>
+        <item name="fcPaginaActual">@drawable/bg_pagina_actual</item>
     </style>
 
     <!-- Estilos del panel de Opciones. -->

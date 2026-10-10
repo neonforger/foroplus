@@ -800,6 +800,9 @@ class MainActivity : AppCompatActivity() {
             val c = if (nid == id) red else gray
             navIcons[nid]?.setColorFilter(c)
             navLabels[nid]?.setTextColor(c)
+            // Tarjetas: pastilla detrás del icono activo (en la Compacta el atributo es @null).
+            (navIcons[nid]?.parent as? View)?.background =
+                if (nid == id) AtributosTema.drawable(this, R.attr.fcNavPastilla) else null
         }
     }
 
@@ -4214,7 +4217,8 @@ class MainActivity : AppCompatActivity() {
                     else -> color(R.color.fc_texto_2)
                 }
             )
-            tv.setBackgroundColor(if (current) color(R.color.fc_rojo) else 0x00000000)
+            // Compacta: rectángulo rojo; Tarjetas: pastilla roja (fcPaginaActual).
+            tv.background = if (current) AtributosTema.drawable(this, R.attr.fcPaginaActual) else null
             if (current) tv.setTypeface(null, android.graphics.Typeface.BOLD)
             val pulsable = !current && enabled
             tv.isClickable = pulsable

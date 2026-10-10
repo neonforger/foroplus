@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Pastilla roja de la pestaña elegida en Tarjetas (FC.Pestanas.Tarjetas). Mismo inset que
+     bg_pestana para caer justo encima de la gris. -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:insetLeft="4dp" android:insetRight="4dp" android:insetTop="6dp" android:insetBottom="6dp">
+    <shape android:shape="rectangle">
+        <solid android:color="@color/fc_rojo" />
+        <corners android:radius="18dp" />
+    </shape>
+</inset>

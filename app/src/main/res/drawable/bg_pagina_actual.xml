@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Tarjetas: la página en la que estás, en la barra de páginas del hilo (updatePageBar). -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="@color/fc_rojo" />
+    <corners android:radius="18dp" />
+</shape>

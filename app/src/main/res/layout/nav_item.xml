@@ -18,9 +18,15 @@
     android:clipToPadding="false"
     android:background="?attr/selectableItemBackgroundBorderless">
 
+    <!-- En Tarjetas lleva aire alrededor del icono y, en el activo, una pastilla de fondo
+         (atributos fcNavPastilla*, ver EstiloApp y setSelectedNav). -->
     <FrameLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:paddingStart="?attr/fcNavPastillaPadH"
+        android:paddingEnd="?attr/fcNavPastillaPadH"
+        android:paddingTop="?attr/fcNavPastillaPadV"
+        android:paddingBottom="?attr/fcNavPastillaPadV"
         android:clipChildren="false"
         android:clipToPadding="false">
 

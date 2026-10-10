@@ -115,6 +115,33 @@ class EstiloTemaTest {
     }
 
     @Test
+    fun `barra de abajo compacta sin aire alrededor del icono`() {
+        val v = inflar(R.layout.nav_item, tarjetas = false)
+        assertEquals(0, (v.findViewById<View>(R.id.nav_icon).parent as View).paddingLeft)
+        assertEquals(null, AtributosTema.drawable(ctx(false), R.attr.fcNavPastilla))
+    }
+
+    @Test
+    fun `barra de abajo en tarjetas con pastilla`() {
+        val v = inflar(R.layout.nav_item, tarjetas = true)
+        assertEquals(px(14), (v.findViewById<View>(R.id.nav_icon).parent as View).paddingLeft)
+        assertNotNull(AtributosTema.drawable(ctx(true), R.attr.fcNavPastilla))
+    }
+
+    @Test
+    fun `estilo de pestanas y pagina actual segun el estilo`() {
+        fun ref(c: Context, attr: Int): Int {
+            val tv = android.util.TypedValue()
+            c.theme.resolveAttribute(attr, tv, true)
+            return tv.resourceId
+        }
+        assertEquals(R.style.FC_Pestanas, ref(ctx(false), R.attr.fcPestanas))
+        assertEquals(R.style.FC_Pestanas_Tarjetas, ref(ctx(true), R.attr.fcPestanas))
+        assertEquals(R.color.fc_rojo, ref(ctx(false), R.attr.fcPaginaActual))
+        assertEquals(R.drawable.bg_pagina_actual, ref(ctx(true), R.attr.fcPaginaActual))
+    }
+
+    @Test
     fun `cuadrito del sobre solo en tarjetas`() {
         assertEquals(null, AtributosTema.drawable(ctx(false), R.attr.fcSobreFondoNuevo))
         assertEquals(null, AtributosTema.drawable(ctx(false), R.attr.fcSobreFondoLeido))
