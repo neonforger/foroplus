@@ -655,7 +655,7 @@ class MainActivity : AppCompatActivity() {
         val conSesion = isLoggedIn()
         val url = if (conSesion) cuentasGuardadas().firstOrNull { it.uid == uidActivo }?.avatar.orEmpty() else ""
         val redondo = if (url.isEmpty()) null else AvatarRedondo.de(url)
-        for (iv in listOfNotNull(nativeAvatar, if (::cuentaAvatar.isInitialized) cuentaAvatar else null)) {
+        for (iv in listOfNotNull(nativeAvatar, if (::cuentaPanel.isInitialized) cuentaPanel.avatar else null)) {
             if (redondo != null) {
                 iv.setImageBitmap(redondo)
                 iv.clearColorFilter()
@@ -2355,126 +2355,45 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var nativeAvatar: android.widget.ImageView
     private lateinit var nativeAvatarPunto: View
-    private lateinit var panelCuenta: View
-    private lateinit var cuentaCajon: View
-    private lateinit var cuentaVelo: View
-    private lateinit var cuentaFilas: LinearLayout
-    private lateinit var cuentaAvatar: android.widget.ImageView
-    private lateinit var cuentaNombre: TextView
-    private lateinit var cuentaStats: TextView
-    private var isPanelCuentaVisible = false
     /** La línea de tu ficha ("Usuario · 17 mensajes · …"), de la última vez que se pidió. */
     private var lineaPerfil = ""
 
+    /** El panel del avatar: vive en [CuentaPanelController]; aquí solo se dice qué filas lleva. */
+    private lateinit var cuentaPanel: CuentaPanelController
+
+    /** ¿Está abierto el panel del avatar? (Falso hasta que existe.) */
+    private val isPanelCuentaVisible: Boolean
+        get() = ::cuentaPanel.isInitialized && cuentaPanel.visible
+
     private fun configurarPanelCuenta() {
-        // Encima de TODA la actividad: la barra de abajo está fuera del contenedor de pantallas
-        // y el velo tiene que taparla también.
-        panelCuenta = layoutInflater.inflate(R.layout.panel_cuenta, null)
-        addContentView(panelCuenta, android.view.ViewGroup.LayoutParams(
-            android.view.ViewGroup.LayoutParams.MATCH_PARENT, android.view.ViewGroup.LayoutParams.MATCH_PARENT))
-        cuentaCajon = panelCuenta.findViewById(R.id.cuenta_cajon)
-        cuentaVelo = panelCuenta.findViewById(R.id.cuenta_velo)
-        cuentaFilas = panelCuenta.findViewById(R.id.cuenta_filas)
-        cuentaAvatar = panelCuenta.findViewById(R.id.cuenta_avatar)
-        cuentaNombre = panelCuenta.findViewById(R.id.cuenta_nombre)
-        cuentaStats = panelCuenta.findViewById(R.id.cuenta_stats)
-        panelCuenta.findViewById<android.widget.ImageView>(R.id.cuenta_salir_icono)
-            .setColorFilter(color(R.color.fc_rojo))
-        // Pantalla de borde a borde (targetSdk 35+): el cajón no puede meterse debajo de la barra
-        // de estado ni de la de gestos. Medido en el Samsung: sin esto "Cerrar sesión" quedaba
-        // encima de la zona de gestos (y 2178-2340 de 2340). Mismo patrón que la raíz.
-        ViewCompat.setOnApplyWindowInsetsListener(cuentaCajon) { v, insets ->
-            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(0, bars.top, 0, bars.bottom)
-            insets
-        }
-        cuentaVelo.setOnClickListener { cerrarPanelCuenta() }
-        panelCuenta.findViewById<View>(R.id.cuenta_ficha).setOnClickListener {
-            cerrarPanelCuenta(animar = false)
-            if (isLoggedIn()) { showProfile(); pestana(Screen.Profile) } else showLogin()
-        }
-        panelCuenta.findViewById<View>(R.id.cuenta_salir).setOnClickListener {
-            cerrarPanelCuenta(animar = false)
-            doLogout()
-        }
-    }
-
-    /** Se abre SOLO tocando el avatar (deslizar desde el borde se pelearía con el swipe de subforos). */
-    private fun abrirPanelCuenta() {
-        if (isPanelCuentaVisible) return
-        isPanelCuentaVisible = true
-        pintarPanelCuenta()
-        panelCuenta.visibility = View.VISIBLE
-        val ancho = 316 * resources.displayMetrics.density
-        cuentaCajon.translationX = ancho
-        cuentaVelo.alpha = 0f
-        cuentaCajon.animate().translationX(0f).setDuration(220).start()
-        cuentaVelo.animate().alpha(1f).setDuration(220).start()
-        // La línea de tu ficha sale de member.php: se pide la primera vez que hace falta.
-        if (lineaPerfil.isEmpty()) pedirPerfil()
-    }
-
-    /**
-     * @param animar `false` cuando se cierra para ir a otra pantalla: así no se ve el cajón
-     *   deslizándose por encima de la pantalla nueva.
-     */
-    private fun cerrarPanelCuenta(animar: Boolean = true) {
-        if (!isPanelCuentaVisible) return
-        isPanelCuentaVisible = false
-        if (!animar) { panelCuenta.visibility = View.GONE; return }
-        val ancho = 316 * resources.displayMetrics.density
-        cuentaVelo.animate().alpha(0f).setDuration(180).start()
-        cuentaCajon.animate().translationX(ancho).setDuration(180)
-            .withEndAction { if (!isPanelCuentaVisible) panelCuenta.visibility = View.GONE }
-            .start()
-    }
-
-    /** Las filas del panel: lo que no va en la barra, y luego lo de la cuenta y la app. */
-    private fun pintarPanelCuenta() {
-        val yo = cuentasGuardadas().firstOrNull { it.uid == uidActivo }?.nombre
-            ?: profileName.text?.toString().orEmpty()
-        cuentaNombre.text = yo
-        cuentaStats.text = lineaPerfil
-        cuentaStats.visibility = if (lineaPerfil.isEmpty()) View.GONE else View.VISIBLE
-        pintarAvatarCuenta()
-        cuentaFilas.removeAllViews()
-        fun fila(icono: Int, texto: String, insignia: Int = 0, alTocar: () -> Unit) {
-            val v = layoutInflater.inflate(R.layout.item_panel_cuenta, cuentaFilas, false)
-            v.findViewById<android.widget.ImageView>(R.id.cuenta_fila_icono).apply {
-                setImageResource(icono)
-                setColorFilter(color(R.color.fc_texto_2))
-            }
-            v.findViewById<TextView>(R.id.cuenta_fila_texto).text = texto
-            v.findViewById<TextView>(R.id.cuenta_fila_badge).apply {
-                visibility = if (insignia > 0) View.VISIBLE else View.GONE
-                text = if (insignia > 99) "99+" else insignia.toString()
-            }
-            v.setOnClickListener { cerrarPanelCuenta(animar = false); alTocar() }
-            cuentaFilas.addView(v)
-        }
-        fun separador() {
-            cuentaFilas.addView(View(this).apply {
-                setBackgroundColor(color(R.color.fc_divisoria))
-                layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT,
-                    resources.displayMetrics.density.toInt().coerceAtLeast(1)).apply {
-                    val m = (20 * resources.displayMetrics.density).toInt()
-                    setMargins(m, m / 3, m, m / 3)
+        cuentaPanel = CuentaPanelController(
+            activity = this,
+            nombre = {
+                cuentasGuardadas().firstOrNull { it.uid == uidActivo }?.nombre
+                    ?: profileName.text?.toString().orEmpty()
+            },
+            lineaPerfil = { lineaPerfil },
+            pedirPerfil = { pedirPerfil() },
+            pintarAvatar = { pintarAvatarCuenta() },
+            alVerFicha = { if (isLoggedIn()) { showProfile(); pestana(Screen.Profile) } else showLogin() },
+            alSalir = { doLogout() },
+            rellenar = {
+                val panel = repartoBarra().panel
+                for (clave in panel) {
+                    val id = navClaves.firstOrNull { it.first == clave }?.second ?: continue
+                    fila(navIconos.getValue(clave), navNombres.getValue(clave), insigniaDe(clave)) { onNavClicked(id) }
                 }
-            })
-        }
-        val panel = repartoBarra().panel
-        for (clave in panel) {
-            val id = navClaves.firstOrNull { it.first == clave }?.second ?: continue
-            fila(navIconos.getValue(clave), navNombres.getValue(clave), insigniaDe(clave)) { onNavClicked(id) }
-        }
-        if (panel.isNotEmpty()) separador()
-        fila(R.drawable.ic_cuentas,
-            if (cuentasGuardadas().size > 1) "Cambiar de cuenta" else "Añadir otra cuenta") { mostrarHojaCuentas() }
-        fila(R.drawable.ic_organizar, "Organizar barra") { showOptions(); showOrganizar(true) }
-        fila(R.drawable.ic_opciones, "Opciones") { showOptions() }
-        separador()
-        fila(R.drawable.ic_opt_comunidad, "Comunidad en Telegram") { openExternal("https://t.me/foroplus") }
-        fila(R.drawable.ic_opt_cafe, "Invítame a un café") { openExternal("https://paypal.me/neonforger") }
+                if (panel.isNotEmpty()) separador()
+                fila(R.drawable.ic_cuentas,
+                    if (cuentasGuardadas().size > 1) "Cambiar de cuenta" else "Añadir otra cuenta") { mostrarHojaCuentas() }
+                fila(R.drawable.ic_organizar, "Organizar barra") { showOptions(); showOrganizar(true) }
+                fila(R.drawable.ic_opciones, "Opciones") { showOptions() }
+                separador()
+                fila(R.drawable.ic_opt_comunidad, "Comunidad en Telegram") { openExternal("https://t.me/foroplus") }
+                fila(R.drawable.ic_opt_cafe, "Invítame a un café") { openExternal("https://paypal.me/neonforger") }
+            }
+        )
+        cuentaPanel.configurar()
     }
 
     /** Qué abre el botón Avisos: Menciones solo si es lo único que hay nuevo; si no, Citas. */
@@ -2596,7 +2515,7 @@ class MainActivity : AppCompatActivity() {
                 )
             ).takeIf { it.isNotEmpty() }?.let { profileSub.text = it; lineaPerfil = it }
             pintarFicha(o, profileFirma, profileSobreMi)
-            if (isPanelCuentaVisible) pintarPanelCuenta()
+            if (isPanelCuentaVisible) cuentaPanel.pintar()
             val av = o.optString("avatar")
             if (av.isNotEmpty()) {
                 PostImages.get(av)?.let { profileAvatar.setImageBitmap(it) } ?: PostImages.load(av) {
@@ -3748,7 +3667,7 @@ class MainActivity : AppCompatActivity() {
         nativeAvatar = findViewById(R.id.native_avatar)
         nativeAvatarPunto = findViewById(R.id.native_avatar_punto)
         findViewById<View>(R.id.native_cuenta).apply {
-            setOnClickListener { if (isLoggedIn()) abrirPanelCuenta() else showLogin() }
+            setOnClickListener { if (isLoggedIn()) cuentaPanel.abrir() else showLogin() }
             // Atajo de siempre para cambiar de cuenta (antes estaba en el botón de Perfil).
             setOnLongClickListener { mostrarHojaCuentas(); true }
         }
@@ -7241,7 +7160,7 @@ class MainActivity : AppCompatActivity() {
             nativeAvatarPunto.visibility =
                 if (repartoBarra().panel.any { insigniaDe(it) > 0 }) View.VISIBLE else View.GONE
         }
-        if (isPanelCuentaVisible) pintarPanelCuenta()
+        if (isPanelCuentaVisible) cuentaPanel.pintar()
         if (isNoticesVisible) pintarPastillas()
     }
 
@@ -8089,7 +8008,7 @@ class MainActivity : AppCompatActivity() {
         // Lo que se DESCARTA va antes que la pila: son "cierra esto", no "vuelve atrás", y no
         // están en la pila precisamente para que retroceder no pueda resucitarlos (la capa web
         // reapareciendo sería violar la regla de oro).
-        if (isPanelCuentaVisible) { cerrarPanelCuenta(); return }
+        if (isPanelCuentaVisible) { cuentaPanel.cerrar(); return }
         if (isLoginVisible) { hideLogin(); return }
         if (isReplyVisible) { hideReply(); return }
         if (isOrganizarVisible) { hideOrganizar(); return }
