@@ -248,13 +248,29 @@
         </LinearLayout>
 
         <!-- Capa hilo nativo (Fase 2) -->
-        <LinearLayout
+        <androidx.coordinatorlayout.widget.CoordinatorLayout
             android:id="@+id/thread_panel"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:orientation="vertical"
             android:background="@color/fc_fondo"
             android:visibility="gone">
+            <!-- Fase de lectura (2026-10-11, pedido en Telegram): todo lo de arriba se esconde al
+                 bajar leyendo y vuelve al subir un poco (scroll|enterAlways|snap). Lo hace el
+                 AppBarLayout con el desplazamiento anidado de la lista: ni translationY a mano
+                 (no libera espacio, gotcha) ni escribir vistas desde onScrolled (gotcha). -->
+            <com.google.android.material.appbar.AppBarLayout
+                android:id="@+id/thread_appbar"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@color/fc_fondo"
+                app:elevation="2dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                app:layout_scrollFlags="scroll|enterAlways|snap">
+
 
             <!-- Cabecera del hilo (rehecha el 2026-09-27 con el dueño). Antes eran el título y
                  CUATRO iconos en la misma fila (suscribir, responder, descargar, compartir), y el
@@ -490,11 +506,15 @@
                 android:layout_height="1dp"
                 android:background="@color/fc_divisoria"
                 android:visibility="gone" />
+            </LinearLayout>
+            </com.google.android.material.appbar.AppBarLayout>
+
+
 
             <FrameLayout
                 android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="1">
+                android:layout_height="match_parent"
+                app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
                 <!-- Deslizar hacia abajo recarga la página que se está leyendo. Sin esto la
                      única forma de ver si te han contestado era SALIR del hilo y volver a
@@ -642,6 +662,19 @@
                  cambia el alcance del pulgar. NO es un ítem del RecyclerView a propósito: la
                  aritmética de posiciones de PostAdapter es 1:1 con el LayoutManager y un pie la
                  desplazaría. Los números los mete el código. -->
+            <!-- Barra de páginas y respuesta rápida SUPERPUESTAS abajo (fase de lectura): se esconden
+                 al bajar y vuelven al subir (HideBottomViewOnScrollBehavior). La lista lleva de
+                 relleno inferior su alto (MainActivity.configurarBarrasLectura) para que el último
+                 mensaje no quede debajo. La barra de secciones las sigue. -->
+            <LinearLayout
+                android:id="@+id/thread_abajo"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom"
+                android:orientation="vertical"
+                android:background="@color/fc_fondo"
+                app:layout_behavior="com.google.android.material.behavior.HideBottomViewOnScrollBehavior">
+
             <View
                 android:id="@+id/page_bar_divider"
                 android:layout_width="match_parent"
@@ -744,8 +777,9 @@
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:contentDescription="Enviar respuesta" />
             </LinearLayout>
+            </LinearLayout>
 
-        </LinearLayout>
+        </androidx.coordinatorlayout.widget.CoordinatorLayout>
 
         <!-- Capa RESPUESTA nativa (Fase 3): pantalla completa propia, tipo "pestaña de
              respuesta". Citas arriba como tarjetas quitables + caja grande. El envío usa

@@ -3371,6 +3371,7 @@ class MainActivity : AppCompatActivity() {
         navTop.setOnClickListener { alternarTop() }
         threadPanel = findViewById(R.id.thread_panel)
         postList = findViewById(R.id.post_list)
+        configurarBarrasLectura()
         threadLoading = findViewById(R.id.thread_loading)
         threadTitle = findViewById(R.id.thread_title)
         threadTitle.setOnClickListener {
@@ -4018,6 +4019,8 @@ class MainActivity : AppCompatActivity() {
         })
         quickReplyBar = findViewById(R.id.quick_reply_bar)
         quickInput = findViewById(R.id.quick_input)
+        // Al ir a escribir, las barras tienen que estar a la vista (si se habían escondido).
+        quickInput.setOnFocusChangeListener { _, conFoco -> if (conFoco) mostrarBarrasHilo() }
         SmileysEnCaja(quickInput).also { smileysEnCajas.add(it); quickInput.addTextChangedListener(it) }
         quickInput.addTextChangedListener(object : android.text.TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
@@ -4508,6 +4511,105 @@ class MainActivity : AppCompatActivity() {
      * de acordarse cada uno de repintar lo suyo (un botón rojo con las citas ya descartadas era
      * justo eso: un camino que se olvidaba).
      */
+    // ── Lectura: barras que se esconden al bajar (2026-10-11, pedido en Telegram) ──────────
+    private lateinit var threadAppbar: com.google.android.material.appbar.AppBarLayout
+    private lateinit var threadAbajo: View
+    private lateinit var barrasAbajo: com.google.android.material.behavior.HideBottomViewOnScrollBehavior<View>
+    private var rellenoListaAbajo = 0
+    private var altoAbajo = -1
+    /** La barra de secciones está escondida POR la lectura del hilo (no por otra pantalla). */
+    private var seccionesEscondidas = false
+
+    /**
+     * Al bajar leyendo se esconde todo y al subir vuelve: la cabecera (AppBarLayout), la barra de
+     * páginas y la respuesta rápida (HideBottomViewOnScrollBehavior) y, siguiéndolas, la barra de
+     * secciones. Nada de esto toca vistas desde onScrolled (gotcha): lo mueve el propio
+     * CoordinatorLayout con el desplazamiento anidado, y la barra de secciones va con el aviso
+     * de estado del comportamiento.
+     */
+    @Suppress("UNCHECKED_CAST")
+    private fun configurarBarrasLectura() {
+        threadAppbar = findViewById(R.id.thread_appbar)
+        threadAbajo = findViewById(R.id.thread_abajo)
+        barrasAbajo = (threadAbajo.layoutParams as androidx.coordinatorlayout.widget.CoordinatorLayout.LayoutParams)
+            .behavior as com.google.android.material.behavior.HideBottomViewOnScrollBehavior<View>
+        rellenoListaAbajo = postList.paddingBottom
+        barrasAbajo.addOnScrollStateChangedListener { _, estado ->
+            moverSecciones(mostrar = estado ==
+                com.google.android.material.behavior.HideBottomViewOnScrollBehavior.STATE_SCROLLED_UP)
+        }
+        // Al pararte al FINAL de la página, todo vuelve: ahí es donde quieres la barra de
+        // páginas para pasar a la siguiente. Al acabar el desplazamiento (no en onScrolled, que
+        // corre dentro del layout) y en el frame siguiente.
+        postList.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+            override fun onScrollStateChanged(rv: RecyclerView, estado: Int) {
+                if (estado == RecyclerView.SCROLL_STATE_IDLE && !rv.canScrollVertically(1)) {
+                    // Solo lo de abajo: desplegar la cabecera empujaría el último mensaje
+                    // debajo de las barras justo cuando lo estás leyendo.
+                    rv.post { if (isThreadVisible) mostrarBarrasHilo(conCabecera = false) }
+                    // Al volver la barra de secciones el hilo encoge (va en el flujo): se deja la
+                    // lista otra vez pegada al final cuando ya ha vuelto. scrollBy no avisa al
+                    // comportamiento de las barras (no las vuelve a esconder) y se recorta solo.
+                    rv.postDelayed({ if (isThreadVisible) rv.scrollBy(0, rv.height) }, 260)
+                }
+            }
+        })
+        // La lista deja abajo el hueco del bloque superpuesto, para que el último mensaje se
+        // pueda leer entero con las barras a la vista. En el frame siguiente: esto salta dentro
+        // de un paso de layout.
+        threadAbajo.addOnLayoutChangeListener { v, _, _, _, _, _, _, _, _ ->
+            val h = v.height
+            if (h != altoAbajo) {
+                altoAbajo = h
+                postList.post {
+                    postList.setPadding(postList.paddingLeft, postList.paddingTop,
+                        postList.paddingRight, rellenoListaAbajo + h)
+                }
+            }
+        }
+    }
+
+    /** Todo a la vista: al abrir un hilo, al cambiar de página y al ir a escribir. */
+    private fun mostrarBarrasHilo(conCabecera: Boolean = true) {
+        if (!::threadAppbar.isInitialized) return
+        if (conCabecera) threadAppbar.setExpanded(true, true)
+        barrasAbajo.slideUp(threadAbajo)
+        moverSecciones(mostrar = true)
+    }
+
+    /**
+     * La barra de secciones sigue a las de abajo mientras se lee un hilo. Escondida va a GONE (y
+     * no solo trasladada) porque está en el flujo del layout: trasladarla no daría ni un píxel.
+     * Si al acabar la animación ya no estás en el hilo, se queda visible: la pantalla nueva la
+     * quiere a la vista.
+     */
+    private fun moverSecciones(mostrar: Boolean) {
+        // Otra pantalla la volvió a poner visible mientras estaba escondida por la lectura: la
+        // marca ya no vale (si no, no se escondería nunca más).
+        if (seccionesEscondidas && bottomNav.visibility == View.VISIBLE &&
+            bottomNav.animate() != null && bottomNav.translationY == 0f && !isThreadVisible) {
+            seccionesEscondidas = false
+        }
+        if (mostrar) {
+            if (!seccionesEscondidas) return
+            seccionesEscondidas = false
+            bottomNav.animate().cancel()
+            bottomNav.visibility = View.VISIBLE
+            bottomNav.translationY = bottomNav.height.toFloat().coerceAtLeast(1f)
+            bottomNav.animate().translationY(0f).setDuration(200).start()
+        } else {
+            if (!isThreadVisible || seccionesEscondidas || bottomNav.visibility != View.VISIBLE) return
+            seccionesEscondidas = true
+            bottomNav.animate().cancel()
+            bottomNav.animate().translationY(bottomNav.height.toFloat()).setDuration(175)
+                .withEndAction {
+                    bottomNav.translationY = 0f
+                    if (seccionesEscondidas && isThreadVisible) bottomNav.visibility = View.GONE
+                    else seccionesEscondidas = false
+                }.start()
+        }
+    }
+
     /** El título del hilo abierto, limpio, aunque la cabecera enseñe una vista derivada. */
     private var tituloHiloReal = ""
 
@@ -6387,6 +6489,7 @@ class MainActivity : AppCompatActivity() {
         restrictedView.visibility = View.GONE
         threadTitle.text = CompartirFC.tituloLimpio(title)
         tituloHiloReal = CompartirFC.tituloLimpio(title)
+        mostrarBarrasHilo()
         tituloDesplegado = false
         pintarTituloHilo()
         // La miga es del hilo anterior: fuera hasta que la primera página diga el suyo.
@@ -6484,6 +6587,8 @@ class MainActivity : AppCompatActivity() {
         }
         threadPageCount = t.pageCount
         threadPage = t.page
+        // Página nueva: se empieza a leer con todo a la vista.
+        mostrarBarrasHilo()
         showThreadPageInfo(t.page)
 
         // Autor del hilo (para recuadrar sus mensajes). Se lee de t.posts SIN filtrar: si el
