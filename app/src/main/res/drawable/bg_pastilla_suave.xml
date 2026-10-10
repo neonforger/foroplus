@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Pastilla rojo suave: un botón que está ACTIVADO (multicita marcada). -->
+<ripple xmlns:android="http://schemas.android.com/apk/res/android" android:color="@color/fc_ripple">
+    <item>
+        <inset android:insetTop="6dp" android:insetBottom="6dp">
+            <shape android:shape="rectangle">
+                <solid android:color="@color/fc_rojo_suave" />
+                <corners android:radius="18dp" />
+            </shape>
+        </inset>
+    </item>
+</ripple>

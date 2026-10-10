@@ -558,7 +558,8 @@ class PostAdapter(
         val embeds: android.widget.LinearLayout = v.findViewById(R.id.post_embeds)
         val quote: TextView = v.findViewById(R.id.post_quote)
         val multiquote: TextView = v.findViewById(R.id.post_multiquote)
-        val menu: TextView = v.findViewById(R.id.post_menu)
+        val menu: View = v.findViewById(R.id.post_menu)
+        val insigniaAutor: View = v.findViewById(R.id.post_autor_insignia)
         val divider: View = v.findViewById(R.id.post_divider)
         var boundPid: String = ""
 
@@ -798,6 +799,8 @@ class PostAdapter(
             }
         }
         h.divider.visibility = if (isOp) View.GONE else View.VISIBLE
+        // La insignia "Autor" va con el recuadro: los dos casos siempre (vistas recicladas).
+        h.insigniaAutor.visibility = if (isOp) View.VISIBLE else View.GONE
     }
 
     /** Monta un EmbedView por cada embed del post (tarjeta → toca → reproductor inline). */
@@ -834,8 +837,20 @@ class PostAdapter(
     fun refreshSelection() = notifyDataSetChanged()
 
     private fun paintMultiquote(h: Holder, active: Boolean) {
-        h.multiquote.text = if (active) "✓" else "＋"
-        h.multiquote.setTextColor(col(h.multiquote, if (active) R.color.fc_rojo else R.color.fc_texto_3))
+        val a = BotonMulticita.aspecto(active)
+        val color = col(h.multiquote, a.color)
+        h.multiquote.text = a.texto
+        h.multiquote.contentDescription = a.descripcion
+        h.multiquote.setTextColor(color)
+        h.multiquote.setCompoundDrawablesRelativeWithIntrinsicBounds(a.icono, 0, 0, 0)
+        h.multiquote.compoundDrawableTintList = android.content.res.ColorStateList.valueOf(color)
+        // Sin marcar, la onda de siempre; marcada, la pastilla (que trae su propia onda).
+        if (a.fondo != null) h.multiquote.setBackgroundResource(a.fondo)
+        else {
+            val tv = android.util.TypedValue()
+            h.multiquote.context.theme.resolveAttribute(android.R.attr.selectableItemBackgroundBorderless, tv, true)
+            h.multiquote.setBackgroundResource(tv.resourceId)
+        }
     }
 
     private fun bindAvatar(h: Holder, item: PostItem) {

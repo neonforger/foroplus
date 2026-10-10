@@ -43,17 +43,44 @@
                 android:visibility="gone" />
         </FrameLayout>
 
-        <TextView
-            android:id="@+id/post_author"
+        <!-- El nombre y, si es quien abrió el hilo, la insignia "Autor" pegada a él (fase 2:
+             el borde rojo solo no basta, no se puede depender de un color). El nombre va en el
+             color del texto: lo rojo son las acciones. -->
+        <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:layout_marginStart="10dp"
-            android:textSize="14sp"
-            android:textStyle="bold"
-            android:textColor="@color/fc_rojo"
-            android:maxLines="1"
-            android:ellipsize="end" />
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/post_author"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:maxWidth="190dp"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:textColor="@color/fc_texto"
+                android:maxLines="1"
+                android:ellipsize="end" />
+
+            <TextView
+                android:id="@+id/post_autor_insignia"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:paddingStart="6dp"
+                android:paddingEnd="6dp"
+                android:paddingTop="1dp"
+                android:paddingBottom="1dp"
+                android:text="Autor"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:textColor="@color/fc_rojo"
+                android:background="@drawable/bg_insignia_autor"
+                android:visibility="gone" />
+        </LinearLayout>
 
         <TextView
             android:id="@+id/post_date"
@@ -62,19 +89,14 @@
             android:textSize="11sp"
             android:textColor="@color/fc_texto_3" />
 
-        <TextView
+        <!-- 48dp: la zona de toque recomendada (antes era un "⋮" de texto de ~30dp). El
+             margen negativo lo alinea con el borde del texto sin comerse el hueco. -->
+        <ImageButton
             android:id="@+id/post_menu"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="6dp"
-            android:paddingStart="8dp"
-            android:paddingEnd="6dp"
-            android:paddingTop="2dp"
-            android:paddingBottom="2dp"
-            android:text="⋮"
-            android:textSize="18sp"
-            android:textStyle="bold"
-            android:textColor="@color/fc_texto_3"
+            android:layout_width="44dp"
+            android:layout_height="48dp"
+            android:layout_marginEnd="-10dp"
+            android:src="@drawable/ic_more"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="Opciones del mensaje"
             android:visibility="gone" />
@@ -106,35 +128,41 @@
         android:gravity="end|center_vertical"
         android:layout_marginTop="2dp">
 
+        <!-- Botones con icono Y texto, de 48dp de alto (fase 2). Abajo a la derecha, donde
+             cae el pulgar; Citar, la acción principal, el último. El aspecto de Multicita lo
+             pone BotonMulticita según esté marcada o no. -->
         <TextView
             android:id="@+id/post_multiquote"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_height="48dp"
+            android:gravity="center_vertical"
             android:paddingStart="10dp"
-            android:paddingEnd="10dp"
-            android:paddingTop="6dp"
-            android:paddingBottom="6dp"
-            android:text="＋"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            android:textColor="@color/fc_texto_3"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Añadir a multicita" />
+            android:paddingEnd="14dp"
+            android:drawableStart="@drawable/ic_multicita"
+            android:drawablePadding="6dp"
+            android:text="Multicita"
+            android:textSize="14sp"
+            android:fontFamily="sans-serif-medium"
+            android:textColor="@color/fc_texto_2"
+            android:background="?attr/selectableItemBackgroundBorderless" />
 
         <TextView
             android:id="@+id/post_quote"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="4dp"
-            android:paddingStart="12dp"
+            android:layout_height="48dp"
+            android:layout_marginStart="2dp"
+            android:layout_marginEnd="-6dp"
+            android:gravity="center_vertical"
+            android:paddingStart="10dp"
             android:paddingEnd="12dp"
-            android:paddingTop="6dp"
-            android:paddingBottom="6dp"
+            android:drawableStart="@drawable/ic_citar"
+            android:drawablePadding="6dp"
+            android:drawableTint="@color/fc_rojo"
             android:text="Citar"
-            android:textSize="13sp"
-            android:textStyle="bold"
+            android:textSize="14sp"
+            android:fontFamily="sans-serif-medium"
             android:textColor="@color/fc_rojo"
-            android:background="?attr/selectableItemBackground" />
+            android:background="?attr/selectableItemBackgroundBorderless" />
     </LinearLayout>
 
     <!-- Se oculta en los mensajes del autor del hilo: ahí delimita el recuadro rojo y esta
