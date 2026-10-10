@@ -830,19 +830,21 @@
                         android:visibility="gone" />
                 </LinearLayout>
 
+                <!-- Enviar como botón en pastilla (fase 2): rojo si hay algo que enviar, gris si
+                     no (pintarEnviarComposer); sigue respondiendo siempre. -->
                 <TextView
                     android:id="@+id/reply_send"
                     android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
+                    android:layout_height="40dp"
+                    android:layout_marginStart="6dp"
+                    android:gravity="center"
                     android:paddingStart="18dp"
                     android:paddingEnd="18dp"
-                    android:paddingTop="10dp"
-                    android:paddingBottom="10dp"
                     android:text="Enviar"
                     android:textSize="15sp"
-                    android:textStyle="bold"
-                    android:textColor="@color/fc_rojo"
-                    android:background="?attr/selectableItemBackground" />
+                    android:fontFamily="sans-serif-medium"
+                    android:textColor="@color/texto_boton_enviar"
+                    android:background="@drawable/bg_boton_enviar" />
             </LinearLayout>
 
             <ScrollView
@@ -990,6 +992,18 @@
                         android:textColorHint="@color/fc_texto_3"
                         android:inputType="textMultiLine|textCapSentences"
                         android:importantForAutofill="no" />
+
+                    <!-- Que la firma se añade al enviar: antes no se decía en ningún sitio y
+                         aparecía en el foro por sorpresa. Lo pinta showComposer(). -->
+                    <TextView
+                        android:id="@+id/reply_firma"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="Se añadirá tu firma «Enviado desde ForoPlus»"
+                        android:textSize="12.5sp"
+                        android:textColor="@color/fc_texto_3"
+                        android:visibility="gone" />
                 </LinearLayout>
             </ScrollView>
 
@@ -1051,6 +1065,8 @@
                          que quiere hacer casi todo el mundo: sin esto había que salir a la web,
                          y los enlaces del foro traen de vuelta a la app (el círculo vicioso que
                          reportó V el 2026-09-08). -->
+                    <View style="@style/FmtSeparador" />
+
                     <TextView
                         android:id="@+id/fmt_subir"
                         style="@style/FmtButton"
@@ -1080,6 +1096,8 @@
                         android:id="@+id/fmt_spoiler"
                         style="@style/FmtButton"
                         android:text="▓" />
+
+                    <View style="@style/FmtSeparador" />
 
                     <TextView
                         android:id="@+id/fmt_smiley"

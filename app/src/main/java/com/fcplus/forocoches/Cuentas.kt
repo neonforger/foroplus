@@ -93,4 +93,16 @@ object Cuentas {
 
     /** Lo que se lee bajo el título del composer. */
     fun etiquetaComposer(cuenta: Cuenta): String = "como @${cuenta.nombre}"
+
+    /**
+     * La línea entera bajo el título del composer: con qué cuenta y en qué hilo ("como @x · en
+     * Mi hilo"). Lo que falte no se dice; el hilo, sin el "- Página N" de vBulletin.
+     */
+    fun subtituloComposer(etiquetaCuenta: String?, tituloHilo: String): String {
+        val hilo = CompartirFC.tituloLimpio(tituloHilo)
+        return listOfNotNull(
+            etiquetaCuenta?.takeIf { it.isNotBlank() },
+            hilo.takeIf { it.isNotBlank() }?.let { "en $it" }
+        ).joinToString(" · ")
+    }
 }

@@ -722,9 +722,13 @@ class MainActivity : AppCompatActivity() {
     private fun pintarCuentaComposer() {
         if (!::replyAvatar.isInitialized) return
         val cuenta = Cuentas.paraComposer(cuentasGuardadas(), uidActivo, cambiandoDeCuenta)
+        // Bajo el título: con qué cuenta y, si se responde o edita en un hilo, en cuál (fase 2).
+        val hilo = if (replyMode == "reply" || replyMode == "edit") threadTitle.text?.toString().orEmpty() else ""
+        val sub = Cuentas.subtituloComposer(cuenta?.let { Cuentas.etiquetaComposer(it) }, hilo)
+        replyHeaderAccount.text = sub
+        replyHeaderAccount.visibility = if (sub.isEmpty()) View.GONE else View.VISIBLE
         if (cuenta == null) {
             replyAvatar.visibility = View.GONE
-            replyHeaderAccount.visibility = View.GONE
             return
         }
         val redondo = if (cuenta.avatar.isEmpty()) null else AvatarRedondo.de(cuenta.avatar)
@@ -738,9 +742,14 @@ class MainActivity : AppCompatActivity() {
                 PostImages.load(cuenta.avatar) { runOnUiThread { pintarCuentaComposer() } }
             }
         }
-        replyHeaderAccount.text = Cuentas.etiquetaComposer(cuenta)
         replyAvatar.visibility = View.VISIBLE
-        replyHeaderAccount.visibility = View.VISIBLE
+    }
+
+    /** Enviar/Guardar del editor: rojo si hay algo que enviar (texto o citas), gris si no. */
+    private fun pintarEnviarComposer() {
+        if (!::replySend.isInitialized) return
+        val citas = if (replyMode == "edit") 0 else replyQuotes.size
+        replySend.isActivated = EstadoEnviar.listo(replyInput.text ?: "", citas)
     }
 
     // ── Barra inferior propia ────────────────────────────────────────────────
@@ -3887,6 +3896,11 @@ class MainActivity : AppCompatActivity() {
         replyPanel = findViewById(R.id.reply_panel)
         replyInput = findViewById(R.id.reply_input)
         replySend = findViewById(R.id.reply_send)
+        replyInput.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+            override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+            override fun afterTextChanged(s: android.text.Editable?) = pintarEnviarComposer()
+        })
         replyCancel = findViewById(R.id.reply_cancel)
         replyQuotesContainer = findViewById(R.id.reply_quotes)
         replyHeaderTitle = findViewById(R.id.reply_header_title)
@@ -4373,6 +4387,8 @@ class MainActivity : AppCompatActivity() {
         pollBox.visibility = if (mode == "newthread") View.VISIBLE else View.GONE
         applyComposerFont()
         renderReplyQuotes()
+        findViewById<View>(R.id.reply_firma).visibility =
+            if (mode != "edit" && OptionsController.signatureEnabled(shellPrefs)) View.VISIBLE else View.GONE
         val focus = if (showSubject) replySubject else replyInput
         focus.requestFocus()
         val imm = getSystemService(INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
@@ -4657,6 +4673,7 @@ class MainActivity : AppCompatActivity() {
 
     /** Reconstruye las tarjetas de cita del panel a partir de replyQuotes. */
     private fun renderReplyQuotes() {
+        pintarEnviarComposer()
         replyQuotesContainer.removeAllViews()
         val inflater = layoutInflater
         // Las citas como TEXTO, para recortarlas con formato o ponerlas donde quieras (ver

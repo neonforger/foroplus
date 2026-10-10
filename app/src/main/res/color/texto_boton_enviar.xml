@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Texto del botón Enviar/Guardar del editor (fase 2): sobre el rojo cuando hay algo que
+     enviar (activated, ver EstadoEnviar); apagado si no, o mientras se envía (disabled). -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_enabled="false" android:color="@color/fc_texto_off" />
+    <item android:state_activated="true" android:color="@color/fc_sobre_rojo" />
+    <item android:color="@color/fc_texto_2" />
+</selector>

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- El botón Enviar/Guardar del editor como pastilla (fase 2): roja cuando hay algo que enviar
+     (activated, ver EstadoEnviar), gris cuando no o mientras se envía. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_enabled="true" android:state_activated="true">
+        <ripple android:color="@color/fc_ripple">
+            <item>
+                <shape android:shape="rectangle">
+                    <solid android:color="@color/fc_rojo" />
+                    <corners android:radius="20dp" />
+                </shape>
+            </item>
+        </ripple>
+    </item>
+    <item>
+        <ripple android:color="@color/fc_ripple">
+            <item>
+                <shape android:shape="rectangle">
+                    <solid android:color="@color/fc_chip" />
+                    <corners android:radius="20dp" />
+                </shape>
+            </item>
+        </ripple>
+    </item>
+</selector>

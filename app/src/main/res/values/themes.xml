@@ -183,9 +183,20 @@
         <item name="android:background">?attr/selectableItemBackground</item>
     </style>
 
+    <!-- Raya entre grupos de la barra de formato (texto · insertar · emoticonos). -->
+    <style name="FmtSeparador">
+        <item name="android:layout_width">1dp</item>
+        <item name="android:layout_height">24dp</item>
+        <item name="android:layout_gravity">center_vertical</item>
+        <item name="android:layout_marginStart">4dp</item>
+        <item name="android:layout_marginEnd">4dp</item>
+        <!-- fc_texto_off y no fc_divisoria: la divisoria sobre el gris de la barra no se ve. -->
+        <item name="android:background">@color/fc_texto_off</item>
+    </style>
+
     <style name="FmtButton">
         <item name="android:layout_width">44dp</item>
-        <item name="android:layout_height">44dp</item>
+        <item name="android:layout_height">48dp</item>
         <item name="android:gravity">center</item>
         <item name="android:textSize">16sp</item>
         <item name="android:textColor">@color/fc_texto_2</item>
