@@ -10,7 +10,7 @@ object ResumenOpciones {
     private val LETRA = arrayOf("pequeña", "normal", "grande")
     private val TITULOS = arrayOf("pequeños", "normales", "grandes")
 
-    fun apariencia(tema: String, idxMensajes: Int, idxTitulos: Int): String {
+    fun apariencia(tema: String, idxMensajes: Int, idxTitulos: Int, estilo: String = EstiloApp.COMPACTA): String {
         val nombreTema = when (tema) {
             TemaApp.CLARO -> "Tema claro"
             TemaApp.OSCURO -> "Tema oscuro"
@@ -18,7 +18,10 @@ object ResumenOpciones {
         }
         val m = idxMensajes.coerceIn(0, 2)
         val t = idxTitulos.coerceIn(0, 2)
-        val partes = mutableListOf(nombreTema, "letra ${LETRA[m]}")
+        val partes = mutableListOf(nombreTema)
+        // La compacta es la de fábrica: decirlo sería ruido.
+        if (estilo == EstiloApp.TARJETAS) partes.add("estilo tarjetas")
+        partes.add("letra ${LETRA[m]}")
         // Si los títulos van como los mensajes, decirlo otra vez es ruido.
         if (t != m) partes.add("títulos ${TITULOS[t]}")
         return partes.joinToString(" · ")

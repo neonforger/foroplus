@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Lo que cambia entre estilos (EstiloApp). El tema base (themes.xml) da los valores de la
+     Compacta, que son EXACTAMENTE los que antes estaban escritos en cada layout; el overlay
+     ThemeOverlay.FC.Tarjetas los redefine. Un layout que use uno de estos nunca debe llevar el
+     valor a mano: si lo lleva, la Compacta y las Tarjetas se separan sin que nadie se entere. -->
+<resources>
+    <!-- Fondo detrás de las listas y del hilo (las tarjetas flotan sobre él). -->
+    <attr name="fcFondoLista" format="reference|color" />
+    <!-- Aire arriba y abajo dentro de las listas. -->
+    <attr name="fcListaPaddingV" format="dimension" />
+    <!-- Fila de lista pulsable (hilos, MPs): fondo y márgenes. -->
+    <attr name="fcFilaFondo" format="reference" />
+    <!-- Fila con su propio toque dentro (avisos): fondo sin onda. -->
+    <attr name="fcFilaFondoQuieto" format="reference" />
+    <!-- Color de relleno de una fila de aviso leída (la nueva usa fc_resaltado). -->
+    <attr name="fcFilaColor" format="reference|color" />
+    <attr name="fcFilaMargenH" format="dimension" />
+    <attr name="fcFilaMargenV" format="dimension" />
+    <!-- Recortar el contenido a la forma de la fila (esquinas redondeadas). -->
+    <attr name="fcRecortarFila" format="boolean" />
+    <!-- Alto de las rayas entre filas y entre mensajes (0 = sin raya). -->
+    <attr name="fcDivisoriaAlto" format="dimension" />
+    <!-- Cuadrito del sobre en la lista de hilos. -->
+    <attr name="fcSobreTamano" format="dimension" />
+    <attr name="fcSobrePadding" format="dimension" />
+    <attr name="fcSobreFondoNuevo" format="reference" />
+    <attr name="fcSobreFondoLeido" format="reference" />
+    <!-- Mensajes del hilo: fondos de los cuatro casos de PostAdapter.paintFrame y márgenes. -->
+    <attr name="fcPostFondo" format="reference|color" />
+    <attr name="fcPostResaltado" format="reference|color" />
+    <attr name="fcPostOp" format="reference" />
+    <attr name="fcPostOpResaltado" format="reference" />
+    <attr name="fcPostMargenH" format="dimension" />
+    <attr name="fcPostMargenV" format="dimension" />
+    <attr name="fcPostOpMargenH" format="dimension" />
+    <attr name="fcPostOpMargenV" format="dimension" />
+    <attr name="fcPostPaddingV" format="dimension" />
+    <!-- Estilo del TabLayout de subforos. -->
+    <attr name="fcPestanas" format="reference" />
+    <!-- Pastilla detrás del icono activo de la barra de abajo y su aire alrededor del icono. -->
+    <attr name="fcNavPastilla" format="reference" />
+    <attr name="fcNavPastillaPadH" format="dimension" />
+    <attr name="fcNavPastillaPadV" format="dimension" />
+    <!-- Fondo del número de la página actual en la barra de páginas del hilo. -->
+    <attr name="fcPaginaActual" format="reference|color" />
+</resources>

@@ -3377,6 +3377,10 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Estilo Tarjetas: un overlay de tema que redefine los atributos fc* (ver EstiloApp).
+        // Tiene que ir ANTES de inflar nada; cambiarlo luego recrea la actividad.
+        EstiloApp.overlay(EstiloApp.guardado(getSharedPreferences(PREFS, MODE_PRIVATE)))
+            ?.let { theme.applyStyle(it, true) }
         setContentView(R.layout.activity_main)
 
         swipeRefresh = findViewById(R.id.swipe_refresh)
@@ -3715,6 +3719,7 @@ class MainActivity : AppCompatActivity() {
             },
             onIgnoreWrite = { accion, usuario -> escribirIgnorado(accion, usuario) },
             onTemaChanged = { recreate() },
+            onEstiloChanged = { recreate() },
             hilosIgnorados = { hilosIgnorados() },
             onDesignorarHilo = { tid -> designorarHilo(tid) },
             mas18Disponible = { ConfigMas18Parser.de(RemoteConfig.cached(this)) != null },

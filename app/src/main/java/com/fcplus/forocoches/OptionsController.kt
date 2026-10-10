@@ -25,6 +25,8 @@ class OptionsController(
     private val onListsChanged: () -> Unit,
     /** El tema ha cambiado: quien nos crea decide qué hacer (recrear la pantalla). */
     private val onTemaChanged: () -> Unit = {},
+    /** El estilo (Compacta/Tarjetas) ha cambiado: igual que el tema, hay que recrear. */
+    private val onEstiloChanged: () -> Unit = {},
     /** Hilos que el usuario mandó callar, y cómo devolverles la voz. */
     private val hilosIgnorados: () -> List<HilosIgnorados.Hilo> = { emptyList() },
     private val onDesignorarHilo: (String) -> Unit = {},
@@ -113,6 +115,8 @@ class OptionsController(
     private val temaClaro: TextView = panel.findViewById(R.id.opt_tema_claro)
     private val temaOscuro: TextView = panel.findViewById(R.id.opt_tema_oscuro)
     private val temaSistema: TextView = panel.findViewById(R.id.opt_tema_sistema)
+    private val estiloCompacta: TextView = panel.findViewById(R.id.opt_estilo_compacta)
+    private val estiloTarjetas: TextView = panel.findViewById(R.id.opt_estilo_tarjetas)
     private val kwSwitch: SwitchCompat = panel.findViewById(R.id.opt_kw_switch)
     private val kwInput: EditText = panel.findViewById(R.id.opt_kw_input)
     private val kwChips: LinearLayout = panel.findViewById(R.id.opt_kw_chips)
@@ -189,6 +193,9 @@ class OptionsController(
         temaOscuro.setOnClickListener { setTema(TemaApp.OSCURO) }
         temaSistema.setOnClickListener { setTema(TemaApp.SISTEMA) }
         paintTema(TemaApp.guardado(prefs))
+        estiloCompacta.setOnClickListener { setEstilo(EstiloApp.COMPACTA) }
+        estiloTarjetas.setOnClickListener { setEstilo(EstiloApp.TARJETAS) }
+        paintEstilo(EstiloApp.guardado(prefs))
 
         kwSwitch.setOnCheckedChangeListener { _, checked -> keywordRepo.setEnabled(checked) }
         panel.findViewById<View>(R.id.opt_kw_add).setOnClickListener { addKeyword() }
@@ -240,7 +247,8 @@ class OptionsController(
     /** Cómo lo tienes, bajo cada categoría. Se repinta al volver a la pantalla de categorías. */
     private fun pintarResumenes() {
         ponerResumen(catApariencia, ResumenOpciones.apariencia(
-            TemaApp.guardado(prefs), prefs.getInt(PREF_FONT_IDX, 1), prefs.getInt(PREF_TITLE_FONT_IDX, 1)))
+            TemaApp.guardado(prefs), prefs.getInt(PREF_FONT_IDX, 1), prefs.getInt(PREF_TITLE_FONT_IDX, 1),
+            EstiloApp.guardado(prefs)))
         ponerResumen(catFiltros, ResumenOpciones.filtros(
             palabras = keywordRepo.getKeywords().size,
             palabrasActivas = keywordRepo.isEnabled(),
@@ -322,6 +330,21 @@ class OptionsController(
         // último estado visible del panel viejo, o al volver se ve un parpadeo con el
         // anterior seleccionado.
         if (TemaApp.elegir(prefs, modo)) onTemaChanged()
+    }
+
+    private fun setEstilo(estilo: String) {
+        // Se pinta ANTES de recrear, por lo mismo que en setTema.
+        paintEstilo(estilo)
+        if (EstiloApp.elegir(prefs, estilo)) onEstiloChanged()
+    }
+
+    private fun paintEstilo(estilo: String) {
+        listOf(estiloCompacta to EstiloApp.COMPACTA, estiloTarjetas to EstiloApp.TARJETAS)
+            .forEach { (tv, e) ->
+                val on = e == estilo
+                tv.setBackgroundColor(col(if (on) R.color.fc_rojo else R.color.fc_chip))
+                tv.setTextColor(col(if (on) R.color.fc_sobre_rojo else R.color.fc_texto_2))
+            }
     }
 
     private fun paintTema(modo: String) {

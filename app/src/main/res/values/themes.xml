@@ -17,6 +17,47 @@
              applyWindowInsets, que es lo unico que sabe si estamos en claro o en oscuro. -->
         <item name="android:statusBarColor">@color/fc_fondo</item>
         <item name="android:navigationBarColor">@color/fc_fondo</item>
+
+        <!-- Estilo Compacta (EstiloApp): los valores de siempre. Ver attrs.xml. -->
+        <item name="fcFondoLista">@android:color/transparent</item>
+        <item name="fcListaPaddingV">0dp</item>
+        <item name="fcFilaFondo">?attr/selectableItemBackground</item>
+        <item name="fcFilaFondoQuieto">@null</item>
+        <item name="fcFilaColor">@color/fc_fondo</item>
+        <item name="fcFilaMargenH">0dp</item>
+        <item name="fcFilaMargenV">0dp</item>
+        <item name="fcRecortarFila">false</item>
+        <item name="fcDivisoriaAlto">1dp</item>
+        <item name="fcSobreTamano">30dp</item>
+        <item name="fcSobrePadding">3dp</item>
+        <item name="fcSobreFondoNuevo">@null</item>
+        <item name="fcSobreFondoLeido">@null</item>
+        <item name="fcPostFondo">@android:color/transparent</item>
+        <item name="fcPostResaltado">@color/fc_resaltado</item>
+        <item name="fcPostOp">@drawable/bg_post_op</item>
+        <item name="fcPostOpResaltado">@drawable/bg_post_op_highlight</item>
+        <item name="fcPostMargenH">0dp</item>
+        <item name="fcPostMargenV">0dp</item>
+        <item name="fcPostOpMargenH">8dp</item>
+        <item name="fcPostOpMargenV">4dp</item>
+        <item name="fcPostPaddingV">6dp</item>
+        <item name="fcPestanas">@style/FC.Pestanas</item>
+        <item name="fcNavPastilla">@null</item>
+        <item name="fcNavPastillaPadH">0dp</item>
+        <item name="fcNavPastillaPadV">0dp</item>
+        <item name="fcPaginaActual">@color/fc_rojo</item>
+    </style>
+
+    <!-- Pestañas de subforos de la Compacta: lo que antes estaba escrito en el TabLayout. -->
+    <style name="FC.Pestanas" parent="Widget.MaterialComponents.TabLayout">
+        <item name="tabIndicatorColor">@color/fc_rojo</item>
+        <item name="tabSelectedTextColor">@color/fc_rojo</item>
+        <item name="tabTextColor">@color/fc_texto_2</item>
+    </style>
+
+    <!-- Estilo Tarjetas (EstiloApp): solo redefine atributos fc*. Se aplica en
+         MainActivity.onCreate con theme.applyStyle(…, true) antes de setContentView. -->
+    <style name="ThemeOverlay.FC.Tarjetas" parent="">
     </style>
 
     <!-- Estilos del panel de Opciones. -->

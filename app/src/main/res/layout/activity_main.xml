@@ -1434,6 +1434,19 @@
                             <TextView android:id="@+id/opt_tema_sistema" style="@style/OptChip" android:text="Sistema" />
                         </LinearLayout>
 
+                        <!-- Estilo: misma app, distinta forma de pintarla (EstiloApp). -->
+                        <TextView style="@style/OptSection" android:text="Estilo" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:layout_marginTop="6dp">
+
+                            <TextView android:id="@+id/opt_estilo_compacta" style="@style/OptChip" android:text="Compacta" />
+                            <TextView android:id="@+id/opt_estilo_tarjetas" style="@style/OptChip" android:text="Tarjetas" />
+                        </LinearLayout>
+
                         <!-- Fuente -->
                         <TextView style="@style/OptSection" android:text="Tamaño de los mensajes" />
 

@@ -18,6 +18,18 @@ class ResumenOpcionesTest {
     }
 
     @Test
+    fun `apariencia con tarjetas lo dice tras el tema`() {
+        assertEquals("Tema oscuro · estilo tarjetas · letra normal",
+            ResumenOpciones.apariencia(TemaApp.OSCURO, 1, 1, EstiloApp.TARJETAS))
+    }
+
+    @Test
+    fun `apariencia con la compacta no dice nada del estilo`() {
+        assertEquals(ResumenOpciones.apariencia(TemaApp.OSCURO, 1, 1),
+            ResumenOpciones.apariencia(TemaApp.OSCURO, 1, 1, EstiloApp.COMPACTA))
+    }
+
+    @Test
     fun `el tema del sistema se nombra como tal`() {
         assertEquals("Tema del sistema · letra pequeña · títulos grandes",
             ResumenOpciones.apariencia(TemaApp.SISTEMA, 0, 2))
