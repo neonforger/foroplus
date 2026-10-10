@@ -1,59 +1,73 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Tarjeta de cita dentro del panel de respuesta: autor + extracto + ✕ para quitarla. -->
+<!-- Una cita en el editor (fase 3 del rediseño, como el mockup de Responder): tarjeta con
+     "Citando a @fulano", los botones de recortar y quitar con zona de 44dp, y el extracto con
+     la misma barra y fondo que una cita del hilo. Tocar la tarjeta también la recorta. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="horizontal"
-    android:layout_marginBottom="8dp"
-    android:background="@color/fc_chip"
-    android:paddingStart="12dp"
+    android:orientation="vertical"
+    android:layout_marginBottom="10dp"
+    android:paddingStart="14dp"
     android:paddingEnd="4dp"
-    android:paddingTop="8dp"
-    android:paddingBottom="8dp">
-
-    <View
-        android:layout_width="3dp"
-        android:layout_height="match_parent"
-        android:layout_marginEnd="10dp"
-        android:background="@color/fc_rojo" />
+    android:paddingBottom="12dp"
+    android:background="@drawable/bg_tarjeta_cita"
+    android:foreground="?attr/selectableItemBackground">
 
     <LinearLayout
-        android:layout_width="0dp"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:orientation="vertical">
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <ImageView
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:src="@drawable/ic_citar"
+            android:tint="@color/fc_rojo"
+            android:contentDescription="@null" />
 
         <TextView
             android:id="@+id/quote_author"
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:textSize="13sp"
-            android:textStyle="bold"
-            android:textColor="@color/fc_rojo" />
-
-        <TextView
-            android:id="@+id/quote_preview"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
-            android:textSize="13sp"
-            android:textColor="@color/fc_texto_2"
-            android:maxLines="3"
+            android:layout_weight="1"
+            android:layout_marginStart="6dp"
+            android:textSize="13.5sp"
+            android:fontFamily="sans-serif-medium"
+            android:textColor="@color/fc_rojo"
+            android:maxLines="1"
             android:ellipsize="end" />
+
+        <ImageButton
+            android:id="@+id/quote_edit"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:src="@drawable/ic_editar"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Recortar la cita" />
+
+        <ImageButton
+            android:id="@+id/quote_remove"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:src="@drawable/ic_cerrar"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Quitar la cita" />
     </LinearLayout>
 
     <TextView
-        android:id="@+id/quote_remove"
-        android:layout_width="wrap_content"
+        android:id="@+id/quote_preview"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:paddingStart="12dp"
-        android:paddingEnd="12dp"
+        android:layout_marginEnd="10dp"
+        android:paddingStart="13dp"
+        android:paddingEnd="10dp"
         android:paddingTop="8dp"
         android:paddingBottom="8dp"
-        android:text="✕"
-        android:textSize="15sp"
-        android:textColor="@color/fc_texto_3"
-        android:background="?attr/selectableItemBackgroundBorderless"
-        android:contentDescription="Quitar cita" />
-
+        android:background="@drawable/bg_extracto_cita"
+        android:textSize="13.5sp"
+        android:lineSpacingExtra="2dp"
+        android:textColor="@color/fc_texto_2"
+        android:maxLines="3"
+        android:ellipsize="end" />
 </LinearLayout>

@@ -846,6 +846,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
                 android:layout_weight="1"
+                android:background="?attr/fcFondoLista"
                 android:fillViewport="true">
 
                 <LinearLayout
@@ -979,7 +980,11 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
                         android:minHeight="140dp"
-                        android:background="@null"
+                        android:background="?attr/fcFilaFondoQuieto"
+                        android:paddingStart="?attr/fcGrupoPaddingH"
+                        android:paddingEnd="?attr/fcGrupoPaddingH"
+                        android:paddingTop="?attr/fcGrupoPaddingH"
+                        android:paddingBottom="?attr/fcGrupoPaddingH"
                         android:gravity="top"
                         android:textSize="15sp"
                         android:textColor="@color/fc_texto"

@@ -4736,18 +4736,29 @@ class MainActivity : AppCompatActivity() {
         // Las citas como TEXTO, para recortarlas con formato o ponerlas donde quieras (ver
         // CitaBbcode.aTexto). Todas a la vez: una sola dejaría el orden al revés al publicar.
         if (replyQuotes.isNotEmpty()) {
+            // Botón secundario contorneado (fase 3), no un enlace suelto.
             replyQuotesContainer.addView(TextView(this).apply {
-                text = if (replyQuotes.size == 1) "✎ Editar la cita como texto" else "✎ Editar las citas como texto"
-                textSize = 14f
+                text = if (replyQuotes.size == 1) "Editar la cita como texto" else "Editar las citas como texto"
+                textSize = 13.5f
+                setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL))
                 setTextColor(color(R.color.fc_rojo))
-                setPadding(0, dp(2), dp(12), dp(8))
+                setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_editar, 0, 0, 0)
+                compoundDrawableTintList = android.content.res.ColorStateList.valueOf(color(R.color.fc_rojo))
+                compoundDrawablePadding = dp(6)
+                gravity = android.view.Gravity.CENTER_VERTICAL
+                minHeight = dp(36)
+                setPadding(dp(12), 0, dp(14), 0)
+                setBackgroundResource(R.drawable.bg_pastilla_contorno)
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { bottomMargin = dp(10) }
                 setOnClickListener { citasATexto() }
             })
         }
         for (post in replyQuotes.values.toList()) {
             val card = inflater.inflate(R.layout.item_reply_quote, replyQuotesContainer, false)
             card.findViewById<TextView>(R.id.quote_author).text =
-                if (post.author.isNotEmpty()) "@${post.author}" else "(anónimo)"
+                if (post.author.isNotEmpty()) "Citando a @${post.author}" else "Citando (anónimo)"
             val editada = replyQuoteEdits.containsKey(post.pid)
             val preview = cuerpoDeCita(post).replace(Regex("\\s+"), " ").trim()
             card.findViewById<TextView>(R.id.quote_preview).text =
@@ -4755,6 +4766,7 @@ class MainActivity : AppCompatActivity() {
             // Tocar la tarjeta abre la cita para recortarla: citar entero un mensaje largo
             // para responder a una sola línea es lo que hace todo el mundo en un foro.
             card.setOnClickListener { editarCita(post) }
+            card.findViewById<View>(R.id.quote_edit).setOnClickListener { editarCita(post) }
             card.findViewById<View>(R.id.quote_remove).setOnClickListener {
                 replyQuotes.remove(post.pid)
                 replyQuoteEdits.remove(post.pid)
