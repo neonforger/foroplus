@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Tarjeta del estilo elegido en Apariencia. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="@color/fc_tarjeta" />
+    <stroke android:width="2dp" android:color="@color/fc_rojo" />
+    <corners android:radius="14dp" />
+</shape>

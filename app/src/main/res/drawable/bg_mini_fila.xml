@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Miniatura de Tarjetas: una fila en tarjeta. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="@color/fc_tarjeta" />
+    <stroke android:width="1dp" android:color="@color/fc_tarjeta_borde" />
+    <corners android:radius="5dp" />
+</shape>

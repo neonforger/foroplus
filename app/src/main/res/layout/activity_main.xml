@@ -1418,7 +1418,8 @@
                 android:id="@+id/options_scroll"
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
-                android:layout_weight="1">
+                android:layout_weight="1"
+                android:background="?attr/fcFondoLista">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -1440,43 +1441,66 @@
                         android:orientation="vertical"
                         android:paddingTop="8dp">
 
+                        <!-- Dos grupos: los ajustes y "lo demás". En Tarjetas cada grupo es una
+                             tarjeta (fcGrupo*); en la Compacta, como siempre, con la raya. -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:background="?attr/fcGrupoFondo"
+                            android:paddingStart="?attr/fcGrupoPaddingH"
+                            android:paddingEnd="?attr/fcGrupoPaddingH"
+                            android:paddingTop="?attr/fcGrupoPaddingV"
+                            android:paddingBottom="?attr/fcGrupoPaddingV">
                         <include android:id="@+id/opt_cat_apariencia" layout="@layout/item_opt_categoria" />
                         <include android:id="@+id/opt_cat_filtros" layout="@layout/item_opt_categoria" />
                         <include android:id="@+id/opt_cat_personalizar" layout="@layout/item_opt_categoria" />
                         <include android:id="@+id/opt_cat_publicar" layout="@layout/item_opt_categoria" />
                         <include android:id="@+id/opt_enlaces" layout="@layout/item_opt_categoria" />
+                        </LinearLayout>
 
                         <View
                             android:layout_width="match_parent"
-                            android:layout_height="1dp"
+                            android:layout_height="?attr/fcDivisoriaAlto"
                             android:layout_marginTop="8dp"
                             android:layout_marginBottom="8dp"
                             android:background="@color/fc_divisoria" />
 
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:background="?attr/fcGrupoFondo"
+                            android:paddingStart="?attr/fcGrupoPaddingH"
+                            android:paddingEnd="?attr/fcGrupoPaddingH"
+                            android:paddingTop="?attr/fcGrupoPaddingV"
+                            android:paddingBottom="?attr/fcGrupoPaddingV">
                         <include android:id="@+id/opt_telegram" layout="@layout/item_opt_categoria" />
                         <include android:id="@+id/opt_coffee" layout="@layout/item_opt_categoria" />
                         <include android:id="@+id/opt_novedades" layout="@layout/item_opt_categoria" />
+                        </LinearLayout>
                     </LinearLayout>
 
                     <LinearLayout
                         android:id="@+id/opt_sec_apariencia"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
                         android:orientation="vertical"
+                        android:background="?attr/fcGrupoFondo"
+                        android:paddingStart="?attr/fcGrupoPaddingH"
+                        android:paddingEnd="?attr/fcGrupoPaddingH"
+                        android:paddingTop="?attr/fcGrupoPaddingV"
+                        android:paddingBottom="?attr/fcGrupoPaddingV"
                         android:visibility="gone">
 
-                        <!-- Tema: lo primero de Apariencia, que es lo que más se busca aquí. -->
+                        <!-- Fase 2 del rediseño: tema y tamaños como controles segmentados
+                             (Segmentado), el estilo con miniaturas y una vista previa de la letra. -->
                         <TextView style="@style/OptSection" android:text="Tema" />
-
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="horizontal"
-                            android:layout_marginTop="6dp">
-
-                            <TextView android:id="@+id/opt_tema_claro" style="@style/OptChip" android:text="Claro" />
-                            <TextView android:id="@+id/opt_tema_oscuro" style="@style/OptChip" android:text="Oscuro" />
-                            <TextView android:id="@+id/opt_tema_sistema" style="@style/OptChip" android:text="Sistema" />
+                        <LinearLayout style="@style/Segmentado">
+                            <TextView android:id="@+id/opt_tema_claro" style="@style/SegmentoOpcion" android:text="Claro" />
+                            <TextView android:id="@+id/opt_tema_oscuro" style="@style/SegmentoOpcion" android:text="Oscuro" />
+                            <TextView android:id="@+id/opt_tema_sistema" style="@style/SegmentoOpcion" android:text="Sistema" />
                         </LinearLayout>
 
                         <!-- Estilo: misma app, distinta forma de pintarla (EstiloApp). -->
@@ -1485,39 +1509,182 @@
                         <LinearLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:orientation="horizontal"
-                            android:layout_marginTop="6dp">
+                            android:layout_marginTop="8dp"
+                            android:orientation="horizontal">
+                            <LinearLayout
+                                android:id="@+id/opt_estilo_compacta"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical"
+                                android:padding="8dp"
+                                android:clickable="true"
+                                android:focusable="true"
+                                android:contentDescription="Estilo Compacta"
+                                android:background="@drawable/bg_estilo">
 
-                            <TextView android:id="@+id/opt_estilo_compacta" style="@style/OptChip" android:text="Compacta" />
-                            <TextView android:id="@+id/opt_estilo_tarjetas" style="@style/OptChip" android:text="Tarjetas" />
+                                <LinearLayout
+                                    android:layout_width="match_parent"
+                                    android:layout_height="76dp"
+                                    android:orientation="vertical"
+                                    android:padding="6dp"
+                                    android:importantForAccessibility="noHideDescendants"
+                                    android:background="@drawable/bg_mini_compacta">
+                                    <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="horizontal" android:gravity="center_vertical">
+                                        <View android:layout_width="9dp" android:layout_height="7dp" android:background="@drawable/bg_mini_sobre" />
+                                        <View android:layout_width="84dp" android:layout_height="4dp" android:layout_marginStart="6dp" android:background="@drawable/bg_mini_texto" />
+                                    </LinearLayout>
+                                    <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="horizontal" android:gravity="center_vertical">
+                                        <View android:layout_width="9dp" android:layout_height="7dp" android:background="@drawable/bg_mini_texto_leido" />
+                                        <View android:layout_width="64dp" android:layout_height="4dp" android:layout_marginStart="6dp" android:background="@drawable/bg_mini_texto_leido" />
+                                    </LinearLayout>
+                                    <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="horizontal" android:gravity="center_vertical">
+                                        <View android:layout_width="9dp" android:layout_height="7dp" android:background="@drawable/bg_mini_sobre" />
+                                        <View android:layout_width="92dp" android:layout_height="4dp" android:layout_marginStart="6dp" android:background="@drawable/bg_mini_texto" />
+                                    </LinearLayout>
+                                </LinearLayout>
+
+                                <LinearLayout
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="8dp"
+                                    android:orientation="horizontal"
+                                    android:gravity="center_vertical">
+
+                                    <TextView
+                                        android:id="@+id/opt_estilo_compacta_nombre"
+                                        android:layout_width="0dp"
+                                        android:layout_height="wrap_content"
+                                        android:layout_weight="1"
+                                        android:text="Compacta"
+                                        android:textSize="14.5sp"
+                                        android:fontFamily="sans-serif-medium"
+                                        android:textColor="@color/fc_texto" />
+
+                                    <ImageView
+                                        android:id="@+id/opt_estilo_compacta_check"
+                                        android:layout_width="20dp"
+                                        android:layout_height="20dp"
+                                        android:src="@drawable/ic_marcado"
+                                        android:tint="@color/fc_rojo"
+                                        android:contentDescription="@null"
+                                        android:visibility="invisible" />
+                                </LinearLayout>
+
+                                <TextView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:text="Más hilos por pantalla"
+                                    android:textSize="12.5sp"
+                                    android:textColor="@color/fc_texto_2" />
+                            </LinearLayout>
+                            <LinearLayout
+                                android:id="@+id/opt_estilo_tarjetas"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:layout_marginStart="10dp"
+                                android:orientation="vertical"
+                                android:padding="8dp"
+                                android:clickable="true"
+                                android:focusable="true"
+                                android:contentDescription="Estilo Tarjetas"
+                                android:background="@drawable/bg_estilo">
+
+                                <LinearLayout
+                                    android:layout_width="match_parent"
+                                    android:layout_height="76dp"
+                                    android:orientation="vertical"
+                                    android:padding="6dp"
+                                    android:importantForAccessibility="noHideDescendants"
+                                    android:background="@drawable/bg_mini_tarjetas">
+                                    <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginTop="3dp" android:layout_marginBottom="3dp" android:orientation="horizontal" android:gravity="center_vertical" android:paddingStart="6dp" android:background="@drawable/bg_mini_fila">
+                                        <View android:layout_width="13dp" android:layout_height="13dp" android:background="@drawable/bg_mini_sobre_suave" />
+                                        <View android:layout_width="70dp" android:layout_height="5dp" android:layout_marginStart="6dp" android:background="@drawable/bg_mini_texto" />
+                                    </LinearLayout>
+                                    <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginTop="3dp" android:layout_marginBottom="3dp" android:orientation="horizontal" android:gravity="center_vertical" android:paddingStart="6dp" android:background="@drawable/bg_mini_fila">
+                                        <View android:layout_width="13dp" android:layout_height="13dp" android:background="@drawable/bg_mini_sobre_suave" />
+                                        <View android:layout_width="54dp" android:layout_height="5dp" android:layout_marginStart="6dp" android:background="@drawable/bg_mini_texto_leido" />
+                                    </LinearLayout>
+                                </LinearLayout>
+
+                                <LinearLayout
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="8dp"
+                                    android:orientation="horizontal"
+                                    android:gravity="center_vertical">
+
+                                    <TextView
+                                        android:id="@+id/opt_estilo_tarjetas_nombre"
+                                        android:layout_width="0dp"
+                                        android:layout_height="wrap_content"
+                                        android:layout_weight="1"
+                                        android:text="Tarjetas"
+                                        android:textSize="14.5sp"
+                                        android:fontFamily="sans-serif-medium"
+                                        android:textColor="@color/fc_texto" />
+
+                                    <ImageView
+                                        android:id="@+id/opt_estilo_tarjetas_check"
+                                        android:layout_width="20dp"
+                                        android:layout_height="20dp"
+                                        android:src="@drawable/ic_marcado"
+                                        android:tint="@color/fc_rojo"
+                                        android:contentDescription="@null"
+                                        android:visibility="invisible" />
+                                </LinearLayout>
+
+                                <TextView
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:text="Más aire, más grande"
+                                    android:textSize="12.5sp"
+                                    android:textColor="@color/fc_texto_2" />
+                            </LinearLayout>
                         </LinearLayout>
 
-                        <!-- Fuente -->
                         <TextView style="@style/OptSection" android:text="Tamaño de los mensajes" />
-
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="horizontal"
-                            android:layout_marginTop="6dp">
-
-                            <TextView android:id="@+id/opt_font_small" style="@style/OptChip" android:text="Pequeña" />
-                            <TextView android:id="@+id/opt_font_normal" style="@style/OptChip" android:text="Normal" />
-                            <TextView android:id="@+id/opt_font_large" style="@style/OptChip" android:text="Grande" />
+                        <LinearLayout style="@style/Segmentado">
+                            <TextView android:id="@+id/opt_font_small" style="@style/SegmentoOpcion" android:text="Pequeña" />
+                            <TextView android:id="@+id/opt_font_normal" style="@style/SegmentoOpcion" android:text="Normal" />
+                            <TextView android:id="@+id/opt_font_large" style="@style/SegmentoOpcion" android:text="Grande" />
                         </LinearLayout>
 
                         <!-- Títulos del listado: ajuste APARTE del de los mensajes (Márquez). -->
                         <TextView style="@style/OptSection" android:text="Tamaño de los títulos" />
+                        <LinearLayout style="@style/Segmentado">
+                            <TextView android:id="@+id/opt_title_small" style="@style/SegmentoOpcion" android:text="Pequeña" />
+                            <TextView android:id="@+id/opt_title_normal" style="@style/SegmentoOpcion" android:text="Normal" />
+                            <TextView android:id="@+id/opt_title_large" style="@style/SegmentoOpcion" android:text="Grande" />
+                        </LinearLayout>
 
+                        <!-- Cómo se verá, con los dos tamaños elegidos (OptionsController.pintarPrevia). -->
                         <LinearLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:orientation="horizontal"
-                            android:layout_marginTop="6dp">
+                            android:layout_marginTop="14dp"
+                            android:orientation="vertical"
+                            android:padding="12dp"
+                            android:contentDescription="Vista previa del tamaño de la letra"
+                            android:background="@drawable/bg_bloque_cifra">
 
-                            <TextView android:id="@+id/opt_title_small" style="@style/OptChip" android:text="Pequeña" />
-                            <TextView android:id="@+id/opt_title_normal" style="@style/OptChip" android:text="Normal" />
-                            <TextView android:id="@+id/opt_title_large" style="@style/OptChip" android:text="Grande" />
+                            <TextView
+                                android:id="@+id/opt_previa_titulo"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="¿Merece la pena un coche eléctrico?"
+                                android:textStyle="bold"
+                                android:textColor="@color/fc_texto" />
+
+                            <TextView
+                                android:id="@+id/opt_previa_texto"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="6dp"
+                                android:lineSpacingExtra="2dp"
+                                android:text="Depende mucho de la zona. Haz números con la carga rápida, no con la de casa."
+                                android:textColor="@color/fc_texto" />
                         </LinearLayout>
 
                         <!-- Quién escribió el último mensaje, bajo la hora de cada fila (Juan). Se
@@ -1559,7 +1726,13 @@
                         android:id="@+id/opt_sec_filtros"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
                         android:orientation="vertical"
+                        android:background="?attr/fcGrupoFondo"
+                        android:paddingStart="?attr/fcGrupoPaddingH"
+                        android:paddingEnd="?attr/fcGrupoPaddingH"
+                        android:paddingTop="?attr/fcGrupoPaddingV"
+                        android:paddingBottom="?attr/fcGrupoPaddingV"
                         android:visibility="gone">
 
                         <!-- Usuarios ignorados -->
@@ -1774,7 +1947,13 @@
                         android:id="@+id/opt_sec_personalizar"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
                         android:orientation="vertical"
+                        android:background="?attr/fcGrupoFondo"
+                        android:paddingStart="?attr/fcGrupoPaddingH"
+                        android:paddingEnd="?attr/fcGrupoPaddingH"
+                        android:paddingTop="?attr/fcGrupoPaddingV"
+                        android:paddingBottom="?attr/fcGrupoPaddingV"
                         android:visibility="gone">
 
                         <!-- Barras: qué se ve en cada una y en qué orden. -->
@@ -1823,7 +2002,13 @@
                         android:id="@+id/opt_sec_publicar"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
                         android:orientation="vertical"
+                        android:background="?attr/fcGrupoFondo"
+                        android:paddingStart="?attr/fcGrupoPaddingH"
+                        android:paddingEnd="?attr/fcGrupoPaddingH"
+                        android:paddingTop="?attr/fcGrupoPaddingV"
+                        android:paddingBottom="?attr/fcGrupoPaddingV"
                         android:visibility="gone">
 
                         <!-- Firma "Enviado desde ForoPlus" al publicar (opcional; apagada por defecto) -->

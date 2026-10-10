@@ -115,8 +115,10 @@ class OptionsController(
     private val temaClaro: TextView = panel.findViewById(R.id.opt_tema_claro)
     private val temaOscuro: TextView = panel.findViewById(R.id.opt_tema_oscuro)
     private val temaSistema: TextView = panel.findViewById(R.id.opt_tema_sistema)
-    private val estiloCompacta: TextView = panel.findViewById(R.id.opt_estilo_compacta)
-    private val estiloTarjetas: TextView = panel.findViewById(R.id.opt_estilo_tarjetas)
+    private val estiloCompacta: View = panel.findViewById(R.id.opt_estilo_compacta)
+    private val estiloTarjetas: View = panel.findViewById(R.id.opt_estilo_tarjetas)
+    private val previaTitulo: TextView = panel.findViewById(R.id.opt_previa_titulo)
+    private val previaTexto: TextView = panel.findViewById(R.id.opt_previa_texto)
     private val kwSwitch: SwitchCompat = panel.findViewById(R.id.opt_kw_switch)
     private val kwInput: EditText = panel.findViewById(R.id.opt_kw_input)
     private val kwChips: LinearLayout = panel.findViewById(R.id.opt_kw_chips)
@@ -299,6 +301,7 @@ class OptionsController(
         popurriAbierto = false
         paintFont(prefs.getInt(PREF_FONT_IDX, 1))
         paintChips(listOf(titleSmall, titleNormal, titleLarge), prefs.getInt(PREF_TITLE_FONT_IDX, 1))
+        pintarPrevia()
         signSwitch.isChecked = signatureEnabled(prefs)
         ultimoSwitch.isChecked = ultimoEnLista(prefs)
         mas18Switch.isChecked = mas18Activa(prefs)
@@ -314,13 +317,21 @@ class OptionsController(
     private fun setFont(idx: Int) {
         prefs.edit().putInt(PREF_FONT_IDX, idx).apply()
         paintFont(idx)
+        pintarPrevia()
         onFontChanged()
     }
 
     private fun setTitleFont(idx: Int) {
         prefs.edit().putInt(PREF_TITLE_FONT_IDX, idx).apply()
         paintChips(listOf(titleSmall, titleNormal, titleLarge), idx)
+        pintarPrevia()
         onTitleFontChanged()
+    }
+
+    /** La vista previa de Apariencia con los tamaños elegidos (los mismos que usa la app). */
+    private fun pintarPrevia() {
+        previaTitulo.textSize = tituloSp(prefs)
+        previaTexto.textSize = fontSp(prefs)
     }
 
     private fun setTema(modo: String) {
@@ -338,34 +349,28 @@ class OptionsController(
         if (EstiloApp.elegir(prefs, estilo)) onEstiloChanged()
     }
 
+    /** Las dos tarjetas de estilo: la elegida con borde rojo, su nombre en rojo y el ✓. */
     private fun paintEstilo(estilo: String) {
-        listOf(estiloCompacta to EstiloApp.COMPACTA, estiloTarjetas to EstiloApp.TARJETAS)
-            .forEach { (tv, e) ->
-                val on = e == estilo
-                tv.setBackgroundColor(col(if (on) R.color.fc_rojo else R.color.fc_chip))
-                tv.setTextColor(col(if (on) R.color.fc_sobre_rojo else R.color.fc_texto_2))
-            }
+        listOf(
+            Triple(estiloCompacta, EstiloApp.COMPACTA, R.id.opt_estilo_compacta_nombre to R.id.opt_estilo_compacta_check),
+            Triple(estiloTarjetas, EstiloApp.TARJETAS, R.id.opt_estilo_tarjetas_nombre to R.id.opt_estilo_tarjetas_check)
+        ).forEach { (tarjeta, e, ids) ->
+            val on = e == estilo
+            tarjeta.setBackgroundResource(if (on) R.drawable.bg_estilo_elegido else R.drawable.bg_estilo)
+            tarjeta.isSelected = on
+            panel.findViewById<TextView>(ids.first).setTextColor(col(if (on) R.color.fc_rojo else R.color.fc_texto))
+            panel.findViewById<View>(ids.second).visibility = if (on) View.VISIBLE else View.INVISIBLE
+        }
     }
 
     private fun paintTema(modo: String) {
-        val chips = listOf(temaClaro to TemaApp.CLARO, temaOscuro to TemaApp.OSCURO,
-                           temaSistema to TemaApp.SISTEMA)
-        chips.forEach { (tv, m) ->
-            val on = m == modo
-            tv.setBackgroundColor(col(if (on) R.color.fc_rojo else R.color.fc_chip))
-            tv.setTextColor(col(if (on) R.color.fc_sobre_rojo else R.color.fc_texto_2))
-        }
+        val modos = listOf(TemaApp.CLARO, TemaApp.OSCURO, TemaApp.SISTEMA)
+        Segmentado.pintar(listOf(temaClaro, temaOscuro, temaSistema), modos.indexOf(modo))
     }
 
     private fun paintFont(idx: Int) = paintChips(listOf(fontSmall, fontNormal, fontLarge), idx)
 
-    private fun paintChips(chips: List<TextView>, idx: Int) {
-        chips.forEachIndexed { i, tv ->
-            val on = i == idx
-            tv.setBackgroundColor(col(if (on) R.color.fc_rojo else R.color.fc_chip))
-            tv.setTextColor(col(if (on) R.color.fc_sobre_rojo else R.color.fc_texto_2))
-        }
-    }
+    private fun paintChips(chips: List<TextView>, idx: Int) = Segmentado.pintar(chips, idx)
 
     private fun addKeyword() {
         val w = kwInput.text.toString().trim()

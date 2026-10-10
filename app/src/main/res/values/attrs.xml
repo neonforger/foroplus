@@ -48,6 +48,10 @@
     <attr name="fcPostOpMargenH" format="dimension" />
     <attr name="fcPostOpMargenV" format="dimension" />
     <attr name="fcPostPaddingV" format="dimension" />
+    <!-- Grupos de Opciones (categorías y cada subpantalla): en Tarjetas, una tarjeta. -->
+    <attr name="fcGrupoFondo" format="reference" />
+    <attr name="fcGrupoPaddingH" format="dimension" />
+    <attr name="fcGrupoPaddingV" format="dimension" />
     <!-- Estilo del TabLayout de subforos. -->
     <attr name="fcPestanas" format="reference" />
     <!-- Pastilla detrás del icono activo de la barra de abajo y su aire alrededor del icono. -->

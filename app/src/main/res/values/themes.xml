@@ -45,6 +45,9 @@
         <item name="fcPostOpMargenH">8dp</item>
         <item name="fcPostOpMargenV">4dp</item>
         <item name="fcPostPaddingV">6dp</item>
+        <item name="fcGrupoFondo">@null</item>
+        <item name="fcGrupoPaddingH">0dp</item>
+        <item name="fcGrupoPaddingV">0dp</item>
         <item name="fcPestanas">@style/FC.Pestanas</item>
         <item name="fcNavPastilla">@null</item>
         <item name="fcNavPastillaPadH">0dp</item>
@@ -111,6 +114,9 @@
         <item name="fcPostOpMargenH">12dp</item>
         <item name="fcPostOpMargenV">5dp</item>
         <item name="fcPostPaddingV">12dp</item>
+        <item name="fcGrupoFondo">@drawable/bg_tarjeta</item>
+        <item name="fcGrupoPaddingH">14dp</item>
+        <item name="fcGrupoPaddingV">6dp</item>
         <item name="fcPestanas">@style/FC.Pestanas.Tarjetas</item>
         <item name="fcNavPastilla">@drawable/bg_nav_pastilla</item>
         <item name="fcNavPastillaPadH">14dp</item>
@@ -192,6 +198,25 @@
         <item name="android:layout_marginEnd">4dp</item>
         <!-- fc_texto_off y no fc_divisoria: la divisoria sobre el gris de la barra no se ve. -->
         <item name="android:background">@color/fc_texto_off</item>
+    </style>
+
+    <!-- Control segmentado (Segmentado): la cápsula y cada opción. -->
+    <style name="Segmentado">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">44dp</item>
+        <item name="android:layout_marginTop">8dp</item>
+        <item name="android:orientation">horizontal</item>
+        <item name="android:padding">3dp</item>
+        <item name="android:background">@drawable/bg_segmentado</item>
+    </style>
+
+    <style name="SegmentoOpcion">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">match_parent</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:gravity">center</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:textColor">@color/fc_texto_2</item>
     </style>
 
     <style name="FmtButton">
