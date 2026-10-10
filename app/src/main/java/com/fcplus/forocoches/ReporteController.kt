@@ -225,11 +225,29 @@ class ReporteController(
         }
     }
 
-    /** Cancela el envío en marcha y quita la capa (botón atrás, "Cancelar", fin o error). */
+    /**
+     * Cancela el envío en marcha y quita la capa (botón atrás, "Cancelar", fin o error).
+     *
+     * Primero FUERA DE LA PANTALLA y luego destruir, un frame después: al revés, `destroy()`
+     * revienta el renderer, el `removeView` no llega y la capa se queda puesta — con la tapa
+     * quitada para el Cloudflare, el foro a la vista (gotcha de Android, el mismo que tuvo el
+     * login; `cerrarVerificacionLogin` de MainActivity hace esto mismo). Se aplaza también
+     * porque se llama desde callbacks del propio WebView.
+     */
     fun cerrar() {
         reportPoll?.let { reportHandler.removeCallbacks(it) }; reportPoll = null
-        reportWeb?.let { it.stopLoading(); it.loadUrl("about:blank"); it.destroy() }; reportWeb = null
-        reportOverlay?.let { (it.parent as? android.view.ViewGroup)?.removeView(it) }; reportOverlay = null
-        reportCover = null
+        val overlay = reportOverlay
+        val wv = reportWeb
+        reportOverlay = null; reportWeb = null; reportCover = null
+        reportHandler.post {
+            // 1) fuera de la pantalla   2) fuera del WebView de dentro   3) destruir
+            (overlay?.parent as? android.view.ViewGroup)?.removeView(overlay)
+            wv?.let {
+                it.stopLoading()
+                it.loadUrl("about:blank")
+                (it.parent as? android.view.ViewGroup)?.removeView(it)
+                it.destroy()
+            }
+        }
     }
 }
