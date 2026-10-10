@@ -860,11 +860,10 @@
                     <!-- Asunto: solo visible al crear hilo nuevo. -->
                     <EditText
                         android:id="@+id/reply_subject"
+                        style="@style/Campo"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginBottom="6dp"
-                        android:background="@color/fc_chip"
-                        android:padding="12dp"
                         android:textSize="16sp"
                         android:textStyle="bold"
                         android:textColor="@color/fc_texto"
