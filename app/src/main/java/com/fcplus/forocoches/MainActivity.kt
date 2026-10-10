@@ -3348,6 +3348,7 @@ class MainActivity : AppCompatActivity() {
         threadFav.setOnClickListener { toggleFavorite() }
         threadForum = findViewById(R.id.thread_forum)
         threadForum.setOnClickListener { irAlSubforoDelHilo() }
+        findViewById<View>(R.id.thread_back).setOnClickListener { goBack() }
         findViewById<View>(R.id.thread_more).setOnClickListener { menuDelHiloAbierto(it) }
         pollBar = findViewById(R.id.poll_bar)
         pollBarText = findViewById(R.id.poll_bar_text)
@@ -4009,9 +4010,12 @@ class MainActivity : AppCompatActivity() {
     /** Indicador "Página X de Y" de la cabecera; con varias páginas es el botón de salto. */
     private fun showThreadPageInfo(visiblePage: Int) {
         val multi = threadPageCount > 1
-        threadPageInfo.text = if (multi) "Página $visiblePage de $threadPageCount  ▾" else ""
+        // Pastilla "Página X de Y ▾" (el ▾ es su drawable); con una sola página no hay nada que
+        // elegir y no se enseña.
+        threadPageInfo.text = if (multi) "Página $visiblePage de $threadPageCount" else ""
         threadPageInfo.isClickable = multi
-        threadPageInfo.setTextColor(color(if (multi) R.color.fc_texto_2 else R.color.fc_texto_3))
+        threadPageInfo.contentDescription = if (multi) "Página $visiblePage de $threadPageCount. Elegir página" else null
+        threadPageInfo.visibility = if (multi) View.VISIBLE else View.GONE
     }
 
     /**
@@ -4040,11 +4044,9 @@ class MainActivity : AppCompatActivity() {
         )
         threadForum.isClickable = hay
         threadForum.contentDescription = if (hay) "Ir al subforo $threadForumName" else null
-        threadForum.background = if (hay) {
-            val tv = android.util.TypedValue()
-            theme.resolveAttribute(android.R.attr.selectableItemBackground, tv, true)
-            androidx.core.content.ContextCompat.getDrawable(this, tv.resourceId)
-        } else null
+        // Chip del subforo (fase 2): sin dato no hay chip; la fila sigue llevando atrás, ★ y ⋮.
+        threadForum.background = if (hay) ContextCompat.getDrawable(this, R.drawable.bg_chip_subforo) else null
+        threadForum.visibility = if (hay) View.VISIBLE else View.GONE
     }
 
     /**
@@ -6279,7 +6281,7 @@ class MainActivity : AppCompatActivity() {
         replyMode = "reply"
         if (isReplyVisible) { isReplyVisible = false; replyPanel.visibility = View.GONE }
         restrictedView.visibility = View.GONE
-        threadTitle.text = title
+        threadTitle.text = CompartirFC.tituloLimpio(title)
         tituloDesplegado = false
         pintarTituloHilo()
         // La miga es del hilo anterior: fuera hasta que la primera página diga el suyo.
@@ -6287,6 +6289,7 @@ class MainActivity : AppCompatActivity() {
         threadForumName = ""
         pintarMigaHilo()
         threadPageInfo.text = ""
+        threadPageInfo.visibility = View.GONE
         // La barra de páginas es del hilo anterior: fuera hasta que updatePageBar() la
         // repinte con los datos del nuevo hilo (evita un parpadeo con números viejos).
         // Se apaga LLAMANDO a updatePageBar (con threadPageCount ya a 1, su rama "!on"), y no
@@ -6357,7 +6360,8 @@ class MainActivity : AppCompatActivity() {
         if (copiaAbierta.isEmpty() && vistaDerivada.isEmpty()) {
             updateBadges(t.pmCount, t.quotesCount, t.mentionsCount)
         }
-        if (t.title.isNotEmpty()) threadTitle.text = t.title
+        // Sin el "- Página N" que pone vBulletin (gotcha 22): la página ya la dice la pastilla.
+        if (t.title.isNotEmpty()) threadTitle.text = CompartirFC.tituloLimpio(t.title)
         if (t.forumFid > 0) {
             threadForumFid = t.forumFid
             threadForumName = t.forumName

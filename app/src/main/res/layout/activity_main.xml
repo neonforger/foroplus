@@ -271,44 +271,63 @@
                 android:orientation="vertical"
                 android:background="@color/fc_fondo"
                 android:elevation="2dp"
-                android:paddingStart="14dp"
+                android:paddingStart="4dp"
                 android:paddingEnd="4dp"
-                android:paddingBottom="8dp">
+                android:paddingBottom="12dp">
 
+                <!-- Fase 2 del rediseño: atrás visible, el subforo como chip, los iconos a 48dp
+                     (zona de toque recomendada), el título limpio y la página como pastilla. -->
                 <LinearLayout
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
+                    android:layout_height="56dp"
                     android:orientation="horizontal"
                     android:gravity="center_vertical">
+
+                    <ImageButton
+                        android:id="@+id/thread_back"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:src="@drawable/ic_atras"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="Volver" />
+
+                    <FrameLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1">
 
                     <!-- La miga: en qué subforo está el hilo. Tocarla lleva a ese subforo en
                          Inicio. La pidió Juan: desde los hilos de un usuario no había forma de
                          saber dónde ibas a responder. La pinta pintarMigaHilo(). -->
                     <TextView
                         android:id="@+id/thread_forum"
-                        android:layout_width="0dp"
-                        android:layout_height="44dp"
-                        android:layout_weight="1"
+                        android:layout_width="wrap_content"
+                        android:layout_height="32dp"
+                        android:layout_gravity="center_vertical|start"
+                        android:paddingStart="12dp"
+                        android:paddingEnd="6dp"
                         android:gravity="center_vertical"
-                        android:textSize="12sp"
-                        android:textStyle="bold"
+                        android:textSize="13sp"
+                        android:fontFamily="sans-serif-medium"
                         android:textColor="@color/fc_rojo"
                         android:singleLine="true"
                         android:ellipsize="end"
-                        android:drawablePadding="1dp" />
+                        android:drawablePadding="2dp"
+                        android:visibility="gone" />
+                    </FrameLayout>
 
                     <ImageButton
                         android:id="@+id/thread_fav"
-                        android:layout_width="44dp"
-                        android:layout_height="44dp"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
                         android:src="@drawable/ic_fav"
                         android:background="?attr/selectableItemBackgroundBorderless"
                         android:contentDescription="Favorito" />
 
                     <ImageButton
                         android:id="@+id/thread_more"
-                        android:layout_width="44dp"
-                        android:layout_height="44dp"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
                         android:src="@drawable/ic_more"
                         android:background="?attr/selectableItemBackgroundBorderless"
                         android:contentDescription="Más opciones del hilo" />
@@ -322,8 +341,10 @@
                     android:id="@+id/thread_title"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
                     android:paddingEnd="10dp"
-                    android:textSize="17sp"
+                    android:textSize="19sp"
+                    android:lineSpacingExtra="2dp"
                     android:textStyle="bold"
                     android:textColor="@color/fc_texto"
                     android:maxLines="2"
@@ -334,13 +355,19 @@
                 <TextView
                     android:id="@+id/thread_page_info"
                     android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:textSize="12sp"
-                    android:textColor="@color/fc_texto_3"
-                    android:paddingTop="4dp"
-                    android:paddingBottom="2dp"
-                    android:paddingEnd="8dp"
-                    android:background="?attr/selectableItemBackground" />
+                    android:layout_height="32dp"
+                    android:layout_marginStart="12dp"
+                    android:layout_marginTop="8dp"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="6dp"
+                    android:gravity="center_vertical"
+                    android:textSize="13sp"
+                    android:fontFamily="sans-serif-medium"
+                    android:textColor="@color/fc_texto_2"
+                    android:drawableEnd="@drawable/ic_desplegar"
+                    android:drawablePadding="2dp"
+                    android:background="@drawable/bg_pastilla_contorno"
+                    android:visibility="gone" />
             </LinearLayout>
 
             <!-- Qué estás viendo exactamente, cuando NO es el hilo vivo: una copia guardada
