@@ -31,9 +31,12 @@ class CifrasPerfilTest {
     fun `sin datos ningun bloque`() =
         assertEquals(emptyList<Pair<String, String>>(), EstadisticasMiembro.cifras("", "", "", hoy))
 
+    /** La fecha es la de ALTA, no la del rango: "Moderador desde…" afirmaría algo falso. */
     @Test
-    fun `rango y fecha`() =
-        assertEquals("Miembro desde 30-may-2026", EstadisticasMiembro.desde("Miembro", "30-may-2026"))
+    fun `rango y fecha van separados`() {
+        assertEquals("Miembro · desde 30-may-2026", EstadisticasMiembro.desde("Miembro", "30-may-2026"))
+        assertEquals("Moderador · desde 30-nov-2004", EstadisticasMiembro.desde("Moderador", "30-nov-2004"))
+    }
 
     @Test
     fun `solo fecha`() = assertEquals("Desde 30-may-2026", EstadisticasMiembro.desde("", "30-may-2026"))

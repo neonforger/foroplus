@@ -723,7 +723,8 @@ class MainActivity : AppCompatActivity() {
         if (!::replyAvatar.isInitialized) return
         val cuenta = Cuentas.paraComposer(cuentasGuardadas(), uidActivo, cambiandoDeCuenta)
         // Bajo el título: con qué cuenta y, si se responde o edita en un hilo, en cuál (fase 2).
-        val hilo = if (replyMode == "reply" || replyMode == "edit") threadTitle.text?.toString().orEmpty() else ""
+        // tituloHiloReal y no threadTitle: en "sus mensajes en este hilo" la cabecera dice otra cosa.
+        val hilo = if (replyMode == "reply" || replyMode == "edit") tituloHiloReal else ""
         val sub = Cuentas.subtituloComposer(cuenta?.let { Cuentas.etiquetaComposer(it) }, hilo)
         replyHeaderAccount.text = sub
         replyHeaderAccount.visibility = if (sub.isEmpty()) View.GONE else View.VISIBLE
@@ -4270,7 +4271,7 @@ class MainActivity : AppCompatActivity() {
                 if (texto.isEmpty()) {
                     replyQuotes.remove(p.pid)
                     replyQuoteEdits.remove(p.pid)
-                    postAdapter.refreshSelection()
+                    citasCambiadas()
                 } else if (texto == original.trim()) {
                     // No lo ha tocado: se queda la cita buena, no una copia en texto plano.
                     replyQuoteEdits.remove(p.pid)
@@ -4304,7 +4305,7 @@ class MainActivity : AppCompatActivity() {
         citasProvisionales.clear()
         citasBbcode.clear()
         quotesThreadTid = ""
-        postAdapter.refreshSelection()
+        citasCambiadas()
     }
 
     /** "Citar" en un post: lo añade a la respuesta y abre la pestaña de respuesta. */
@@ -4354,7 +4355,7 @@ class MainActivity : AppCompatActivity() {
         replyQuotes[post.pid] = post
         quotesThreadTid = currentThreadTid
         pedirCitaReal(post.pid)
-        postAdapter.refreshSelection()
+        citasCambiadas()
         openReply()
     }
 
@@ -4366,8 +4367,7 @@ class MainActivity : AppCompatActivity() {
             replyQuotes[post.pid] = post; quotesThreadTid = currentThreadTid
             pedirCitaReal(post.pid); true
         }
-        postAdapter.refreshSelection()
-        pintarEnviarRapido()
+        citasCambiadas()
         if (isReplyVisible) renderReplyQuotes()
         if (added) {
             val n = replyQuotes.size
@@ -4474,6 +4474,21 @@ class MainActivity : AppCompatActivity() {
      * La barra solo tiene sentido leyendo un hilo, con sesión y si el hilo no está
      * restringido (+HD). En cualquier otro panel se oculta.
      */
+    /**
+     * Las citas pendientes (Citar/Multicita) han cambiado: repinta las marcas de los mensajes y
+     * los dos botones de enviar. Todos los sitios que tocan replyQuotes pasan por aquí, en vez
+     * de acordarse cada uno de repintar lo suyo (un botón rojo con las citas ya descartadas era
+     * justo eso: un camino que se olvidaba).
+     */
+    /** El título del hilo abierto, limpio, aunque la cabecera enseñe una vista derivada. */
+    private var tituloHiloReal = ""
+
+    private fun citasCambiadas() {
+        postAdapter.refreshSelection()
+        pintarEnviarRapido()
+        pintarEnviarComposer()
+    }
+
     private lateinit var quickSend: android.widget.ImageButton
 
     /** Enviar de la barra rápida: rojo si hay algo que enviar (texto o citas), gris si no. */
@@ -4506,7 +4521,7 @@ class MainActivity : AppCompatActivity() {
         replyQuoteEdits.clear()
         citasProvisionales.clear()
         citasBbcode.clear()
-        postAdapter.refreshSelection()
+        citasCambiadas()
         replyInput.setText("")
         replySubject.setText("")
         editingPid = ""
@@ -4658,7 +4673,7 @@ class MainActivity : AppCompatActivity() {
             replyQuotes.keys.retainAll(sobreviven)
             replyQuoteEdits.keys.retainAll(sobreviven)
             citasProvisionales.clear()
-            postAdapter.refreshSelection()
+            citasCambiadas()
         }
         val imm = getSystemService(INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
         imm.hideSoftInputFromWindow(replyInput.windowToken, 0)
@@ -4715,7 +4730,7 @@ class MainActivity : AppCompatActivity() {
             card.findViewById<View>(R.id.quote_remove).setOnClickListener {
                 replyQuotes.remove(post.pid)
                 replyQuoteEdits.remove(post.pid)
-                postAdapter.refreshSelection()
+                citasCambiadas()
                 renderReplyQuotes()
             }
             replyQuotesContainer.addView(card)
@@ -4734,7 +4749,7 @@ class MainActivity : AppCompatActivity() {
         replyQuotes.clear()
         replyQuoteEdits.clear()
         citasProvisionales.clear()
-        postAdapter.refreshSelection()
+        citasCambiadas()
         renderReplyQuotes()
         replyInput.setText(nuevo)
         replyInput.setSelection(cursor.coerceIn(0, replyInput.text.length))
@@ -5016,7 +5031,7 @@ class MainActivity : AppCompatActivity() {
             replyQuotes.clear()
             replyQuoteEdits.clear()
         replyQuoteEdits.clear()
-            postAdapter.refreshSelection()
+            citasCambiadas()
             hideReply()
             quickInput.setText("")
             toast("Respuesta publicada")
@@ -6331,6 +6346,7 @@ class MainActivity : AppCompatActivity() {
         if (isReplyVisible) { isReplyVisible = false; replyPanel.visibility = View.GONE }
         restrictedView.visibility = View.GONE
         threadTitle.text = CompartirFC.tituloLimpio(title)
+        tituloHiloReal = CompartirFC.tituloLimpio(title)
         tituloDesplegado = false
         pintarTituloHilo()
         // La miga es del hilo anterior: fuera hasta que la primera página diga el suyo.
@@ -6410,7 +6426,10 @@ class MainActivity : AppCompatActivity() {
             updateBadges(t.pmCount, t.quotesCount, t.mentionsCount)
         }
         // Sin el "- Página N" que pone vBulletin (gotcha 22): la página ya la dice la pastilla.
-        if (t.title.isNotEmpty()) threadTitle.text = CompartirFC.tituloLimpio(t.title)
+        if (t.title.isNotEmpty()) {
+            threadTitle.text = CompartirFC.tituloLimpio(t.title)
+            if (vistaDerivada.isEmpty()) tituloHiloReal = CompartirFC.tituloLimpio(t.title)
+        }
         if (t.forumFid > 0) {
             threadForumFid = t.forumFid
             threadForumName = t.forumName

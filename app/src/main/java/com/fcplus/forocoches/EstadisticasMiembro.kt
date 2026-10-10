@@ -97,12 +97,15 @@ object EstadisticasMiembro {
         return bloques
     }
 
-    /** "Miembro desde 30-may-2026", o lo que haya de eso (bajo tu nombre en el panel). */
+    /**
+     * "Miembro · desde 30-may-2026", o lo que haya de eso (bajo tu nombre en el panel). Rango y
+     * fecha SEPARADOS: la fecha es la de alta, no la del rango, y "Moderador desde…" mentiría.
+     */
     fun desde(rango: String, registro: String): String {
         val r = rango.trim()
         val fecha = registro.trim().takeIf { it.split("-").size == 3 }
         return when {
-            r.isNotEmpty() && fecha != null -> "$r desde $fecha"
+            r.isNotEmpty() && fecha != null -> "$r · desde $fecha"
             fecha != null -> "Desde $fecha"
             else -> r
         }
