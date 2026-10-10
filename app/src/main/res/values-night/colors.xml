@@ -23,7 +23,8 @@
     <!-- El rojo de marca aclarado. El #C8102E original sobre este fondo se queda por debajo de
          un contraste legible; este mantiene la identidad y se lee. -->
     <color name="fc_rojo">#FF6070</color>
-    <color name="fc_sobre_rojo">#FFFFFF</color>
+    <!-- Tinta oscura sobre el rojo claro: 6,3:1 (el blanco daba 2,9:1). Ver values/colors. -->
+    <color name="fc_sobre_rojo">#121214</color>
 
     <!-- La cita en oscuro: el rojo aclarado y un fondo un punto por encima del de la app,
          suficiente para delimitar la cita sin convertirla en un bloque que grita. -->
@@ -50,6 +51,9 @@
     <color name="fc_velo">#99000000</color>
 
     <color name="fc_capa_boton">#99000000</color>
+    <!-- Texto o icono ENCIMA de un vídeo o de fc_capa_boton (el ✕ del reproductor flotante).
+         Blanco en los dos modos a propósito: no es fc_sobre_rojo, que en oscuro es tinta oscura. -->
+    <color name="fc_sobre_capa">#FFFFFF</color>
 
     <color name="fc_avatar_fondo">#3FAFBC</color>
     <color name="fc_avatar_figura">#FFFFFF</color>
@@ -60,6 +64,8 @@
     <!-- La tarjeta y su borde. -->
     <color name="fc_tarjeta">#1E1E23</color>
     <color name="fc_tarjeta_borde">#2E2E34</color>
+    <!-- Fondo de las citas en Tarjetas: van sobre la tarjeta, no sobre el fondo. -->
+    <color name="fc_cita_fondo_tarjeta">#2A2A30</color>
     <!-- Rojo suave: cuadrito del sobre sin leer y pastilla del icono activo. -->
     <color name="fc_rojo_suave">#3A2126</color>
 

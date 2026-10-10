@@ -143,7 +143,7 @@
         android:id="@+id/post_divider"
         android:layout_width="match_parent"
         android:layout_height="?attr/fcDivisoriaAlto"
-        android:layout_marginTop="6dp"
+        android:layout_marginTop="?attr/fcDivisoriaMargen"
         android:background="@color/fc_divisoria" />
 
 </LinearLayout>

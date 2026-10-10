@@ -6,7 +6,8 @@
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item>
         <shape android:shape="rectangle">
-            <solid android:color="@color/fc_cita_fondo" />
+            <!-- Del tema: en Tarjetas va sobre la tarjeta y necesita otro tono (EstiloApp). -->
+            <solid android:color="?attr/fcCitaFondo" />
         </shape>
     </item>
     <item android:width="2dp" android:gravity="start|fill_vertical">

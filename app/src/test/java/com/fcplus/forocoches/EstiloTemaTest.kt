@@ -142,6 +142,39 @@ class EstiloTemaTest {
     }
 
     @Test
+    fun `raya del mensaje sin hueco en tarjetas`() {
+        fun margen(t: Boolean) = (inflar(R.layout.item_post, t).findViewById<View>(R.id.post_divider)
+            .layoutParams as ViewGroup.MarginLayoutParams).topMargin
+        assertEquals(px(6), margen(false))
+        assertEquals(0, margen(true))
+    }
+
+    @Test
+    fun `la tarjeta de aviso deja ver su borde`() {
+        assertEquals(0, inflar(R.layout.item_notice, tarjetas = false).paddingLeft)
+        assertEquals(px(1), inflar(R.layout.item_notice, tarjetas = true).paddingLeft)
+    }
+
+    @Test
+    fun `fondo de las citas segun el estilo`() {
+        fun ref(c: Context): Int {
+            val tv = android.util.TypedValue()
+            c.theme.resolveAttribute(R.attr.fcCitaFondo, tv, true)
+            return tv.resourceId
+        }
+        assertEquals(R.color.fc_cita_fondo, ref(ctx(false)))
+        assertEquals(R.color.fc_cita_fondo_tarjeta, ref(ctx(true)))
+    }
+
+    @Test
+    fun `el sobre va centrado en la compacta y arriba en tarjetas`() {
+        fun gravedad(t: Boolean) = (inflar(R.layout.item_thread, t).findViewById<View>(R.id.thread_sobre_caja)
+            .layoutParams as android.widget.LinearLayout.LayoutParams).gravity
+        assertEquals(android.view.Gravity.CENTER_VERTICAL, gravedad(false))
+        assertEquals(android.view.Gravity.TOP, gravedad(true))
+    }
+
+    @Test
     fun `cuadrito del sobre solo en tarjetas`() {
         assertEquals(null, AtributosTema.drawable(ctx(false), R.attr.fcSobreFondoNuevo))
         assertEquals(null, AtributosTema.drawable(ctx(false), R.attr.fcSobreFondoLeido))

@@ -32,7 +32,8 @@
     <FrameLayout
         android:id="@+id/thread_sobre_caja"
         android:layout_width="?attr/fcSobreTamano"
-        android:layout_height="?attr/fcSobreTamano">
+        android:layout_height="?attr/fcSobreTamano"
+        android:layout_gravity="?attr/fcSobreGravedad">
 
         <ImageView
             android:id="@+id/thread_sobre"

@@ -1085,7 +1085,7 @@ class PostAdapter(
         // es una raya AZUL FIJA del framework y en modo oscuro no se ve (ver [CitaSpan]). Va el
         // primero porque el plegado busca los tramos por CitaSpan.
         CitaSpan.vestir(
-            spanned, col(tv, R.color.fc_cita_barra), col(tv, R.color.fc_cita_fondo), densidad
+            spanned, col(tv, R.color.fc_cita_barra), AtributosTema.color(tv.context, R.attr.fcCitaFondo), densidad
         )
         // Después el plegado: el resto de pasadas (enlaces, fotos) trabajan sobre los índices
         // que queden tras recortar.

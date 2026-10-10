@@ -26,8 +26,10 @@
     <color name="fc_texto">#1A1A1A</color>
     <!-- Texto secundario (autores, etiquetas, botones de texto). -->
     <color name="fc_texto_2">#616161</color>
-    <!-- Texto terciario y pistas de los campos (fechas, contadores, hints). -->
-    <color name="fc_texto_3">#9E9E9E</color>
+    <!-- Texto terciario y pistas de los campos (fechas, contadores, hints). Era #9E9E9E y
+         daba 2,7:1 sobre blanco: por debajo del mínimo para texto pequeño (repaso de diseño del
+         2026-10-10). Este da 4,6:1 y lo vigila ContrasteTest. -->
+    <color name="fc_texto_3">#757575</color>
     <!-- Texto de algo desactivado (flechas de página que no llevan a ninguna parte). -->
     <color name="fc_texto_off">#BDBDBD</color>
     <!-- "Has escrito en este hilo" en el listado: el turquesa del thread-notification-bullet de FC. -->
@@ -44,8 +46,10 @@
 
     <!-- Rojo de marca. En oscuro se ACLARA: el #C8102E sobre negro se lee mal y cansa. -->
     <color name="fc_rojo">#C8102E</color>
-    <!-- Texto que va ENCIMA del rojo. Blanco en los dos modos, por eso no es fc_fondo: si
-         fuera el mismo token, en oscuro el texto del botón rojo se volvería negro. -->
+    <!-- Texto que va ENCIMA del rojo. Blanco en claro; en OSCURO es tinta oscura, porque el
+         rojo de oscuro es claro (#FF6070) y el blanco encima daba 2,9:1 (ContrasteTest). Es lo
+         que hace Material: "on primary" oscuro sobre un primario claro. Lo que va encima de un
+         vídeo o de una capa oscura NO es esto: es fc_sobre_capa. -->
     <color name="fc_sobre_rojo">#FFFFFF</color>
 
     <!-- Cita dentro de un mensaje: barra lateral y fondo. Existen porque el QuoteSpan de
@@ -82,6 +86,9 @@
     <color name="fc_velo">#6B000000</color>
 
     <color name="fc_capa_boton">#99000000</color>
+    <!-- Texto o icono ENCIMA de un vídeo o de fc_capa_boton (el ✕ del reproductor flotante).
+         Blanco en los dos modos: no es fc_sobre_rojo, que en oscuro es tinta oscura. -->
+    <color name="fc_sobre_capa">#FFFFFF</color>
 
     <color name="fc_avatar_fondo">#3FAFBC</color>
     <color name="fc_avatar_figura">#FFFFFF</color>
@@ -92,6 +99,8 @@
     <!-- La tarjeta y su borde. -->
     <color name="fc_tarjeta">#FFFFFF</color>
     <color name="fc_tarjeta_borde">#E6E3DD</color>
+    <!-- Fondo de las citas en Tarjetas: van sobre la tarjeta, no sobre el fondo. -->
+    <color name="fc_cita_fondo_tarjeta">#F4F4F6</color>
     <!-- Rojo suave: cuadrito del sobre sin leer y pastilla del icono activo. -->
     <color name="fc_rojo_suave">#FBE9EC</color>
 

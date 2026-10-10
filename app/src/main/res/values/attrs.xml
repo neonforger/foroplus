@@ -20,6 +20,19 @@
     <attr name="fcRecortarFila" format="boolean" />
     <!-- Alto de las rayas entre filas y entre mensajes (0 = sin raya). -->
     <attr name="fcDivisoriaAlto" format="dimension" />
+    <!-- Aire encima de la raya de un mensaje: sin raya (Tarjetas) sería un hueco suelto. -->
+    <attr name="fcDivisoriaMargen" format="dimension" />
+    <!-- Relleno de la raíz de una fila de aviso: en Tarjetas, 1dp para que la fila (opaca) no
+         tape el borde de la tarjeta. -->
+    <attr name="fcFilaBorde" format="dimension" />
+    <!-- Fondo de las citas dentro de un mensaje y del extracto de un aviso: en Tarjetas va sobre
+         la tarjeta, no sobre el fondo, y en oscuro hace falta otro tono para distinguirse. -->
+    <attr name="fcCitaFondo" format="reference|color" />
+    <!-- Dónde va el cuadrito del sobre en filas de varias líneas. -->
+    <attr name="fcSobreGravedad">
+        <flag name="top" value="0x30" />
+        <flag name="center_vertical" value="0x10" />
+    </attr>
     <!-- Cuadrito del sobre en la lista de hilos. -->
     <attr name="fcSobreTamano" format="dimension" />
     <attr name="fcSobrePadding" format="dimension" />

@@ -18,6 +18,7 @@
     android:layout_marginEnd="?attr/fcFilaMargenH"
     android:layout_marginTop="?attr/fcFilaMargenV"
     android:layout_marginBottom="?attr/fcFilaMargenV"
+    android:padding="?attr/fcFilaBorde"
     android:background="?attr/fcFilaFondoQuieto"
     android:orientation="vertical">
 
