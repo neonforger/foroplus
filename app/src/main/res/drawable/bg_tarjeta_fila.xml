@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Tarjeta pulsable (filas de hilos y de MPs): la onda va recortada a la misma forma (la
+     máscara), o se vería un rectángulo sobre una tarjeta redonda. -->
+<ripple xmlns:android="http://schemas.android.com/apk/res/android" android:color="@color/fc_ripple">
+    <item android:id="@android:id/mask">
+        <shape android:shape="rectangle">
+            <solid android:color="@color/fc_tarjeta" />
+            <corners android:radius="18dp" />
+        </shape>
+    </item>
+    <item android:drawable="@drawable/bg_tarjeta" />
+</ripple>

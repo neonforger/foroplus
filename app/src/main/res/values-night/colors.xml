@@ -54,4 +54,13 @@
     <color name="fc_avatar_fondo">#3FAFBC</color>
     <color name="fc_avatar_figura">#FFFFFF</color>
 
+    <!-- Estilo Tarjetas (EstiloApp). Valores sacados de los mockups del 2026-10-09. -->
+    <!-- Fondo gris cálido detrás de las tarjetas. -->
+    <color name="fc_fondo_tarjetas">#121214</color>
+    <!-- La tarjeta y su borde. -->
+    <color name="fc_tarjeta">#1E1E23</color>
+    <color name="fc_tarjeta_borde">#2E2E34</color>
+    <!-- Rojo suave: cuadrito del sobre sin leer y pastilla del icono activo. -->
+    <color name="fc_rojo_suave">#3A2126</color>
+
 </resources>

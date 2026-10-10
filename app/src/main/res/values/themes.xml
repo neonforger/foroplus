@@ -58,6 +58,19 @@
     <!-- Estilo Tarjetas (EstiloApp): solo redefine atributos fc*. Se aplica en
          MainActivity.onCreate con theme.applyStyle(…, true) antes de setContentView. -->
     <style name="ThemeOverlay.FC.Tarjetas" parent="">
+        <item name="fcFondoLista">@color/fc_fondo_tarjetas</item>
+        <item name="fcListaPaddingV">7dp</item>
+        <item name="fcFilaFondo">@drawable/bg_tarjeta_fila</item>
+        <item name="fcFilaFondoQuieto">@drawable/bg_tarjeta</item>
+        <item name="fcFilaColor">@color/fc_tarjeta</item>
+        <item name="fcFilaMargenH">12dp</item>
+        <item name="fcFilaMargenV">5dp</item>
+        <item name="fcRecortarFila">true</item>
+        <item name="fcDivisoriaAlto">0dp</item>
+        <item name="fcSobreTamano">40dp</item>
+        <item name="fcSobrePadding">9dp</item>
+        <item name="fcSobreFondoNuevo">@drawable/bg_sobre_nuevo</item>
+        <item name="fcSobreFondoLeido">@drawable/bg_sobre_leido</item>
     </style>
 
     <!-- Estilos del panel de Opciones. -->

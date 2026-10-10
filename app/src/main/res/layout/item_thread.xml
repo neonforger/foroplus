@@ -2,12 +2,19 @@
 <!-- Fila del listado. La raíz es un contenedor VERTICAL para poder colgar la línea
      divisoria debajo: la fila en sí es horizontal (avatar + textos) y una View al final
      habría salido como una barra vertical a la derecha. El fondo pulsable vive aquí, en la
-     raíz, que es la vista que recibe el click. -->
+     raíz, que es la vista que recibe el click.
+
+     Fondo, márgenes, raya y tamaño del sobre salen del TEMA (atributos fc*, ver EstiloApp):
+     la Compacta da los valores de siempre y Tarjetas la convierte en tarjeta. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:layout_marginStart="?attr/fcFilaMargenH"
+    android:layout_marginEnd="?attr/fcFilaMargenH"
+    android:layout_marginTop="?attr/fcFilaMargenV"
+    android:layout_marginBottom="?attr/fcFilaMargenV"
     android:orientation="vertical"
-    android:background="?attr/selectableItemBackground">
+    android:background="?attr/fcFilaFondo">
 
 <LinearLayout
     android:layout_width="match_parent"
@@ -23,14 +30,15 @@
          hilo; la quitamos porque no aportaba nada (lo dijo un tester) y costaba una petición
          por persona. Ver ThreadListAdapter.pintarEstado. -->
     <FrameLayout
-        android:layout_width="30dp"
-        android:layout_height="30dp">
+        android:id="@+id/thread_sobre_caja"
+        android:layout_width="?attr/fcSobreTamano"
+        android:layout_height="?attr/fcSobreTamano">
 
         <ImageView
             android:id="@+id/thread_sobre"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:padding="3dp"
+            android:padding="?attr/fcSobrePadding"
             android:src="@drawable/ic_sobre" />
 
         <View
@@ -168,7 +176,7 @@
     <View
         android:id="@+id/thread_divider"
         android:layout_width="match_parent"
-        android:layout_height="1dp"
+        android:layout_height="?attr/fcDivisoriaAlto"
         android:layout_marginStart="14dp"
         android:layout_marginEnd="14dp"
         android:background="@color/fc_divisoria" />

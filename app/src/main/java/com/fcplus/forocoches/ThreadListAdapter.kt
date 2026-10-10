@@ -219,6 +219,11 @@ class ThreadListAdapter(
 
     class Holder(v: View) : RecyclerView.ViewHolder(v) {
         val sobre: ImageView = v.findViewById(R.id.thread_sobre)
+        val sobreCaja: View = v.findViewById(R.id.thread_sobre_caja)
+        // Estilo Tarjetas: el cuadrito detrás del sobre. Uno por vista (un Drawable no se
+        // comparte entre filas); en la Compacta los dos son null.
+        val fondoNuevo = AtributosTema.drawable(v.context, R.attr.fcSobreFondoNuevo)
+        val fondoLeido = AtributosTema.drawable(v.context, R.attr.fcSobreFondoLeido)
         val participado: View = v.findViewById(R.id.thread_participado)
         val candado: View = v.findViewById(R.id.thread_candado)
         val foro: TextView = v.findViewById(R.id.thread_foro)
@@ -263,6 +268,7 @@ class ThreadListAdapter(
      * señales de "sin leer" que se contradicen son peor que una.
      */
     private fun pintarEstado(h: Holder, item: ThreadItem, sinLeer: Boolean) {
+        h.sobreCaja.background = if (sinLeer) h.fondoNuevo else h.fondoLeido
         h.sobre.setColorFilter(col(h.sobre, if (sinLeer) R.color.fc_rojo else R.color.fc_texto_off))
         h.participado.visibility = if (item.estado.participado) View.VISIBLE else View.GONE
         h.candado.visibility = if (item.estado.cerrado) View.VISIBLE else View.GONE
