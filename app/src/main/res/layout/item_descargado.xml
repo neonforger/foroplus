@@ -2,6 +2,11 @@
 <!-- Una copia guardada en la lista de Descargados. El tamaño sale en cada fila y no solo en el
      total: si alguien tiene que hacer sitio, necesita saber CUÁL borrar. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_marginStart="?attr/fcFilaMargenH"
+    android:layout_marginEnd="?attr/fcFilaMargenH"
+    android:layout_marginTop="?attr/fcFilaMargenV"
+    android:layout_marginBottom="?attr/fcFilaMargenV"
+    android:background="?attr/fcFilaFondoQuieto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical">
@@ -61,6 +66,6 @@
 
     <View
         android:layout_width="match_parent"
-        android:layout_height="1dp"
+        android:layout_height="?attr/fcDivisoriaAlto"
         android:background="@color/fc_divisoria" />
 </LinearLayout>

@@ -229,6 +229,20 @@
         <item name="android:background">@drawable/bg_asa</item>
     </style>
 
+    <!-- Fila que lleva a otra pantalla (fichas): texto a la izquierda y › a la derecha. -->
+    <style name="FilaEnlace">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:minHeight">48dp</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:paddingStart">4dp</item>
+        <item name="android:paddingEnd">0dp</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:textColor">@color/fc_texto</item>
+        <item name="android:drawableEnd">@drawable/ic_fila</item>
+        <item name="android:background">?attr/selectableItemBackground</item>
+    </style>
+
     <!-- Botones (fase 3): principal en pastilla roja, secundario contorneado. 48dp de alto. -->
     <style name="BotonPrimario">
         <item name="android:layout_height">48dp</item>

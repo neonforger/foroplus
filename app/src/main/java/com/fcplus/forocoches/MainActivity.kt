@@ -1638,6 +1638,18 @@ class MainActivity : AppCompatActivity() {
         pmComposeSubject = findViewById(R.id.pm_compose_subject)
         pmComposeMessage = findViewById(R.id.pm_compose_message)
         pmComposeSend = findViewById(R.id.pm_compose_send)
+        // Enviar en pastilla (fase 3): roja con destinatario y mensaje, gris si falta algo.
+        // Solo es el aspecto: el botón sigue respondiendo y el envío valida como siempre.
+        val pintarEnviarMp = object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+            override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+            override fun afterTextChanged(s: android.text.Editable?) {
+                pmComposeSend.isActivated = EstadoEnviar.listo(pmComposeTo.text ?: "", 0) &&
+                    EstadoEnviar.listo(pmComposeMessage.text ?: "", 0)
+            }
+        }
+        pmComposeTo.addTextChangedListener(pintarEnviarMp)
+        pmComposeMessage.addTextChangedListener(pintarEnviarMp)
         findViewById<View>(R.id.pm_compose_cancel).setOnClickListener { cancelPmCompose() }
         pmComposeSend.setOnClickListener { sendPm() }
     }
@@ -1889,7 +1901,7 @@ class MainActivity : AppCompatActivity() {
                 CitaSpan.vestir(
                     cuerpo,
                     ContextCompat.getColor(this, R.color.fc_cita_barra),
-                    ContextCompat.getColor(this, R.color.fc_cita_fondo),
+                    AtributosTema.color(this, R.attr.fcCitaFondo),
                     resources.displayMetrics.density
                 )
                 pmDetailBody.text = cuerpo
@@ -1917,6 +1929,7 @@ class MainActivity : AppCompatActivity() {
     private fun configureMemberPanel() {
         memberPanel = findViewById(R.id.member_panel)
         memberAvatar = findViewById(R.id.member_avatar)
+        memberAvatar.clipToOutline = true   // redondo, con bg_avatar_circulo (fase 3)
         memberName = findViewById(R.id.member_name)
         memberConectado = findViewById(R.id.member_conectado)
         memberConectadoPunto = findViewById(R.id.member_conectado_punto)
@@ -3078,16 +3091,28 @@ class MainActivity : AppCompatActivity() {
             return
         }
         for (v in versiones) {
-            lista.addView(TextView(this).apply {
+            // Fase 3: en Tarjetas, cada versión en su tarjeta (fcFilaFondoQuieto); en la
+            // Compacta el atributo es @null y queda como siempre, en una sola columna.
+            val fondo = AtributosTema.drawable(this, R.attr.fcFilaFondoQuieto)
+            val caja = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                background = fondo
+                if (fondo != null) setPadding((16 * dp).toInt(), 0, (16 * dp).toInt(), (14 * dp).toInt())
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { if (fondo != null) topMargin = (12 * dp).toInt() }
+            }
+            lista.addView(caja)
+            caja.addView(TextView(this).apply {
                 text = if (v.codigo == instalada) "${Novedades.cabecera(v)}  ·  la tuya" else Novedades.cabecera(v)
                 textSize = 15f
                 setTypeface(null, android.graphics.Typeface.BOLD)
                 setTextColor(ContextCompat.getColor(context,
                     if (v.codigo == instalada) R.color.fc_rojo else R.color.fc_texto))
-                setPadding(0, (22 * dp).toInt(), 0, (6 * dp).toInt())
+                setPadding(0, ((if (fondo != null) 14 else 22) * dp).toInt(), 0, (6 * dp).toInt())
             })
             for (nota in v.notas) {
-                lista.addView(TextView(this).apply {
+                caja.addView(TextView(this).apply {
                     text = "•  $nota"
                     textSize = 14f
                     setTextColor(ContextCompat.getColor(context, R.color.fc_texto_2))
@@ -3386,6 +3411,8 @@ class MainActivity : AppCompatActivity() {
         noticesEmpty = findViewById(R.id.notices_empty)
         profilePanel = findViewById(R.id.profile_panel)
         profileAvatar = findViewById(R.id.profile_avatar)
+        profileAvatar.clipToOutline = true
+        findViewById<View>(R.id.profile_back).setOnClickListener { goBack() }
         profileName = findViewById(R.id.profile_name)
         profileSub = findViewById(R.id.profile_sub)
         profileFirma = findViewById(R.id.profile_firma)
@@ -3613,6 +3640,7 @@ class MainActivity : AppCompatActivity() {
         descargadosPanel = findViewById(R.id.descargados_panel)
         descargadosTotal = findViewById(R.id.descargados_total)
         descargadosEmpty = findViewById(R.id.descargados_empty)
+        findViewById<View>(R.id.descargados_back).setOnClickListener { goBack() }
         descargadosList = findViewById(R.id.descargados_list)
         descargadosAdapter = DescargadosAdapter(
             onAbrir = { d -> abrirCopia(d.tid) },
