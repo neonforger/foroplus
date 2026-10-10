@@ -1,6 +1,18 @@
 {
   "versiones": [
     {
+      "code": 51,
+      "nombre": "1.13.0",
+      "fecha": "2026-10-11",
+      "notas": [
+        "Nuevo estilo Tarjetas, en Opciones → Apariencia: hilos, mensajes, avisos y privados en tarjetas, con más aire. La Compacta sigue como estaba",
+        "Lee a pantalla completa: al bajar por un hilo se esconden las barras, y vuelven en cuanto subes un poco o llegas al final de la página",
+        "Pantallas renovadas: la cabecera del hilo, el editor con cada cita en su tarjeta, tu ficha y la de otros usuarios, los privados, las opciones y los diálogos",
+        "Apariencia más fácil de ajustar: tema y tamaños con botones, y una vista previa del tamaño de letra",
+        "El autocompletado del móvil ya no se mete en la respuesta rápida ni en el editor"
+      ]
+    },
+    {
       "code": 50,
       "nombre": "1.12.0",
       "fecha": "2026-10-10",
