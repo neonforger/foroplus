@@ -3962,11 +3962,18 @@ class MainActivity : AppCompatActivity() {
         quickReplyBar = findViewById(R.id.quick_reply_bar)
         quickInput = findViewById(R.id.quick_input)
         SmileysEnCaja(quickInput).also { smileysEnCajas.add(it); quickInput.addTextChangedListener(it) }
+        quickInput.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+            override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+            override fun afterTextChanged(s: android.text.Editable?) = pintarEnviarRapido()
+        })
         quickAvatar = findViewById(R.id.quick_avatar)
         // Con una sola cuenta no hay nada que confundir: se manda directo a la hoja solo
         // tiene sentido si hay más de una entre las que elegir.
         quickAvatar.setOnClickListener { if (cuentasGuardadas().size > 1) mostrarHojaCuentas() }
-        findViewById<View>(R.id.quick_send).setOnClickListener { submitQuickReply() }
+        quickSend = findViewById(R.id.quick_send)
+        quickSend.setOnClickListener { submitQuickReply() }
+        pintarEnviarRapido()
         findViewById<View>(R.id.quick_expand).setOnClickListener { expandQuickReply() }
         restrictedView = findViewById(R.id.thread_restricted)
         restrictedMsg = findViewById(R.id.restricted_msg)
@@ -4332,6 +4339,7 @@ class MainActivity : AppCompatActivity() {
             pedirCitaReal(post.pid); true
         }
         postAdapter.refreshSelection()
+        pintarEnviarRapido()
         if (isReplyVisible) renderReplyQuotes()
         if (added) {
             val n = replyQuotes.size
@@ -4436,7 +4444,17 @@ class MainActivity : AppCompatActivity() {
      * La barra solo tiene sentido leyendo un hilo, con sesión y si el hilo no está
      * restringido (+HD). En cualquier otro panel se oculta.
      */
+    private lateinit var quickSend: android.widget.ImageButton
+
+    /** Enviar de la barra rápida: rojo si hay algo que enviar (texto o citas), gris si no. */
+    private fun pintarEnviarRapido() {
+        if (!::quickSend.isInitialized) return
+        val listo = EstadoEnviar.listo(quickInput.text ?: "", replyQuotes.size)
+        quickSend.setColorFilter(color(if (listo) R.color.fc_rojo else R.color.fc_texto_off))
+    }
+
     private fun updateQuickReplyVisibility() {
+        pintarEnviarRapido()
         val show = threadPanel.visibility == View.VISIBLE &&
             isLoggedIn() &&
             currentThreadTid.isNotEmpty() &&

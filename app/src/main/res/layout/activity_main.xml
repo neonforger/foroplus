@@ -729,31 +729,24 @@
                     android:maxLines="4"
                     android:importantForAutofill="no" />
 
-                <TextView
+                <!-- Iconos de verdad (no caracteres ⤢ ➤) y zonas de 48dp (fase 2). El color del
+                     de enviar lo pone pintarEnviarRapido(): gris si no hay nada, rojo si sí. -->
+                <ImageButton
                     android:id="@+id/quick_expand"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:paddingStart="12dp"
-                    android:paddingEnd="8dp"
-                    android:paddingTop="10dp"
-                    android:paddingBottom="10dp"
-                    android:text="⤢"
-                    android:textSize="19sp"
-                    android:textColor="@color/fc_texto_2"
+                    android:layout_width="44dp"
+                    android:layout_height="48dp"
+                    android:layout_marginStart="2dp"
+                    android:src="@drawable/ic_expandir"
+                    android:scaleType="center"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:contentDescription="Abrir el editor completo" />
 
-                <TextView
+                <ImageButton
                     android:id="@+id/quick_send"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:paddingStart="8dp"
-                    android:paddingEnd="12dp"
-                    android:paddingTop="10dp"
-                    android:paddingBottom="10dp"
-                    android:text="➤"
-                    android:textSize="19sp"
-                    android:textColor="@color/fc_rojo"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:src="@drawable/ic_enviar"
+                    android:scaleType="center"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:contentDescription="Enviar respuesta" />
             </LinearLayout>
