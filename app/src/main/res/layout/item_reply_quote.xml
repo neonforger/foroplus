@@ -3,6 +3,7 @@
      "Citando a @fulano", los botones de recortar y quitar con zona de 44dp, y el extracto con
      la misma barra y fondo que una cita del hilo. Tocar la tarjeta también la recorta. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
@@ -23,7 +24,7 @@
             android:layout_width="16dp"
             android:layout_height="16dp"
             android:src="@drawable/ic_citar"
-            android:tint="@color/fc_rojo"
+            app:tint="@color/fc_rojo"
             android:contentDescription="@null" />
 
         <TextView

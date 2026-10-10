@@ -1625,7 +1625,7 @@
                                         android:layout_width="20dp"
                                         android:layout_height="20dp"
                                         android:src="@drawable/ic_marcado"
-                                        android:tint="@color/fc_rojo"
+                                        app:tint="@color/fc_rojo"
                                         android:contentDescription="@null"
                                         android:visibility="invisible" />
                                 </LinearLayout>
@@ -1689,7 +1689,7 @@
                                         android:layout_width="20dp"
                                         android:layout_height="20dp"
                                         android:src="@drawable/ic_marcado"
-                                        android:tint="@color/fc_rojo"
+                                        app:tint="@color/fc_rojo"
                                         android:contentDescription="@null"
                                         android:visibility="invisible" />
                                 </LinearLayout>
