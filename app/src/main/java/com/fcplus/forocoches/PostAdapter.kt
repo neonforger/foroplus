@@ -433,6 +433,36 @@ class PostAdapter(
 
     companion object {
         /**
+         * Fondos y márgenes de los cuatro casos de [paintFrame], leídos UNA vez del tema
+         * (EstiloApp): Compacta = recuadro rojo solo en el autor; Tarjetas = todo en tarjeta.
+         */
+        data class MarcoPost(
+            val fondo: Int, val resaltado: Int, val op: Int, val opResaltado: Int,
+            val margenH: Int, val margenV: Int, val opMargenH: Int, val opMargenV: Int
+        )
+
+        fun marco(ctx: android.content.Context): MarcoPost {
+            fun ref(attr: Int): Int {
+                val tv = android.util.TypedValue()
+                ctx.theme.resolveAttribute(attr, tv, true)
+                return tv.resourceId
+            }
+            // Truncando (no redondeando), como el dp() de antes: en densidades no enteras el
+            // recuadro del autor de la Compacta queda exactamente donde estaba.
+            fun px(attr: Int): Int {
+                val tv = android.util.TypedValue()
+                ctx.theme.resolveAttribute(attr, tv, true)
+                return android.util.TypedValue.complexToDimension(tv.data, ctx.resources.displayMetrics).toInt()
+            }
+            return MarcoPost(
+                fondo = ref(R.attr.fcPostFondo), resaltado = ref(R.attr.fcPostResaltado),
+                op = ref(R.attr.fcPostOp), opResaltado = ref(R.attr.fcPostOpResaltado),
+                margenH = px(R.attr.fcPostMargenH), margenV = px(R.attr.fcPostMargenV),
+                opMargenH = px(R.attr.fcPostOpMargenH), opMargenV = px(R.attr.fcPostOpMargenV)
+            )
+        }
+
+        /**
          * HTML de un mensaje → texto plano, sin las citas. Lo usan la cita del composer y las
          * dos tarjetas de compartir. Está aquí, y no copiado en cada sitio, porque olvidar la
          * conversión no rompe nada que se note al compilar: la tarjeta sale con el HTML CRUDO
@@ -732,29 +762,33 @@ class PostAdapter(
         }
     }
 
+    /** El marco del tema, resuelto en el primer mensaje que se pinta (ver [marco]). */
+    private var marco: MarcoPost? = null
+
     /**
      * Fondo del mensaje: recuadro rojo si es del AUTOR DEL HILO y/o resaltado breve si es el
      * que acabas de publicar. Los cuatro casos se pintan SIEMPRE, sin `if` sueltos: las vistas
      * se reciclan y una rama a medias dejaría el recuadro colgado en el mensaje de otro.
+     *
+     * Qué fondo y qué márgenes lleva cada caso lo dice el tema ([marco], EstiloApp).
      */
     private fun paintFrame(h: Holder, item: PostItem) {
         val isOp = ThreadStarter.isStarter(item.author, starterAuthor)
         val highlighted = item.pid.isNotEmpty() && item.pid == highlightPid
-        if (isOp) {
-            // Un solo fondo por vista: con el resaltado encima el recuadro desaparecería, así
-            // que el caso combinado tiene su propio drawable (trazo + relleno).
-            h.itemView.setBackgroundResource(
-                if (highlighted) R.drawable.bg_post_op_highlight else R.drawable.bg_post_op
-            )
-        } else {
-            h.itemView.setBackgroundColor(
-                if (highlighted) col(h.itemView, R.color.fc_resaltado) else 0x00000000)
-        }
-        // El recuadro se despega de los bordes de la pantalla; el resto de mensajes siguen a
-        // ancho completo, como siempre.
+        val m = marco ?: marco(h.itemView.context).also { marco = it }
+        // Un solo fondo por vista: con el resaltado encima el recuadro desaparecería, así que
+        // el caso combinado tiene su propio drawable (trazo + relleno).
+        h.itemView.setBackgroundResource(when {
+            isOp && highlighted -> m.opResaltado
+            isOp -> m.op
+            highlighted -> m.resaltado
+            else -> m.fondo
+        })
+        // Compacta: el recuadro del autor se despega de los bordes y el resto va a ancho
+        // completo. Tarjetas: todos despegados.
         (h.itemView.layoutParams as? ViewGroup.MarginLayoutParams)?.let { lp ->
-            val side = if (isOp) dp(h.itemView, 8f) else 0
-            val vert = if (isOp) dp(h.itemView, 4f) else 0
+            val side = if (isOp) m.opMargenH else m.margenH
+            val vert = if (isOp) m.opMargenV else m.margenV
             if (lp.leftMargin != side || lp.topMargin != vert) {
                 lp.leftMargin = side
                 lp.rightMargin = side
@@ -765,9 +799,6 @@ class PostAdapter(
         }
         h.divider.visibility = if (isOp) View.GONE else View.VISIBLE
     }
-
-    private fun dp(v: View, value: Float): Int =
-        (value * v.resources.displayMetrics.density).toInt()
 
     /** Monta un EmbedView por cada embed del post (tarjeta → toca → reproductor inline). */
     private fun bindEmbeds(h: Holder, item: PostItem) {

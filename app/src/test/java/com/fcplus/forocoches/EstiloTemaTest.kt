@@ -87,6 +87,34 @@ class EstiloTemaTest {
     }
 
     @Test
+    fun `mensaje compacto como siempre`() {
+        val v = inflar(R.layout.item_post, tarjetas = false)
+        assertEquals(px(6), v.paddingTop)
+        assertEquals(px(1), v.findViewById<View>(R.id.post_divider).layoutParams.height)
+        val m = PostAdapter.marco(ctx(false))
+        assertEquals(0, m.margenH)
+        assertEquals(0, m.margenV)
+        assertEquals(px(8), m.opMargenH)
+        assertEquals(px(4), m.opMargenV)
+        assertEquals(R.drawable.bg_post_op, m.op)
+        assertEquals(R.drawable.bg_post_op_highlight, m.opResaltado)
+        assertEquals(R.color.fc_resaltado, m.resaltado)
+    }
+
+    @Test
+    fun `mensaje en tarjetas`() {
+        val v = inflar(R.layout.item_post, tarjetas = true)
+        assertEquals(px(12), v.paddingTop)
+        assertEquals(0, v.findViewById<View>(R.id.post_divider).layoutParams.height)
+        val m = PostAdapter.marco(ctx(true))
+        assertEquals(px(12), m.margenH)
+        assertEquals(px(5), m.margenV)
+        assertEquals(R.drawable.bg_tarjeta, m.fondo)
+        assertEquals(R.drawable.bg_tarjeta_op, m.op)
+        assertEquals(R.drawable.bg_tarjeta_resaltada, m.resaltado)
+    }
+
+    @Test
     fun `cuadrito del sobre solo en tarjetas`() {
         assertEquals(null, AtributosTema.drawable(ctx(false), R.attr.fcSobreFondoNuevo))
         assertEquals(null, AtributosTema.drawable(ctx(false), R.attr.fcSobreFondoLeido))

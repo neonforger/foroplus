@@ -2,15 +2,18 @@
 <!-- Espaciado APRETADO a propósito (2026-08-14): el coste fijo de cada post era de unos
      110dp antes de escribir una letra, y con 30 posts por página eso son diez pantallas de
      puro andamiaje. Se recorta solo el aire vertical; el texto, el avatar y las zonas de
-     toque se quedan igual. -->
+     toque se quedan igual.
+
+     El aire vertical y la raya salen del TEMA (atributos fc*, ver EstiloApp): Compacta 6dp y
+     raya; Tarjetas 12dp y sin raya. El fondo y los márgenes los pone PostAdapter.paintFrame. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
     android:paddingStart="14dp"
     android:paddingEnd="14dp"
-    android:paddingTop="6dp"
-    android:paddingBottom="6dp">
+    android:paddingTop="?attr/fcPostPaddingV"
+    android:paddingBottom="?attr/fcPostPaddingV">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -139,7 +142,7 @@
     <View
         android:id="@+id/post_divider"
         android:layout_width="match_parent"
-        android:layout_height="1dp"
+        android:layout_height="?attr/fcDivisoriaAlto"
         android:layout_marginTop="6dp"
         android:background="@color/fc_divisoria" />
 

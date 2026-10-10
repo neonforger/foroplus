@@ -71,6 +71,15 @@
         <item name="fcSobrePadding">9dp</item>
         <item name="fcSobreFondoNuevo">@drawable/bg_sobre_nuevo</item>
         <item name="fcSobreFondoLeido">@drawable/bg_sobre_leido</item>
+        <item name="fcPostFondo">@drawable/bg_tarjeta</item>
+        <item name="fcPostResaltado">@drawable/bg_tarjeta_resaltada</item>
+        <item name="fcPostOp">@drawable/bg_tarjeta_op</item>
+        <item name="fcPostOpResaltado">@drawable/bg_tarjeta_op_resaltada</item>
+        <item name="fcPostMargenH">12dp</item>
+        <item name="fcPostMargenV">5dp</item>
+        <item name="fcPostOpMargenH">12dp</item>
+        <item name="fcPostOpMargenV">5dp</item>
+        <item name="fcPostPaddingV">12dp</item>
     </style>
 
     <!-- Estilos del panel de Opciones. -->
