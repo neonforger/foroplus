@@ -131,8 +131,13 @@ class NoticeAdapter(
         val extract: TextView = v.findViewById(R.id.notice_extract)
     }
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder =
-        Holder(LayoutInflater.from(parent.context).inflate(R.layout.item_notice, parent, false))
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
+        val v = LayoutInflater.from(parent.context).inflate(R.layout.item_notice, parent, false)
+        // Tarjetas: la barra roja de "sin leer" y el rosa de "nueva" se recortan a la forma
+        // redondeada de la tarjeta, o asomarían por las esquinas.
+        if (AtributosTema.bool(parent.context, R.attr.fcRecortarFila)) v.clipToOutline = true
+        return Holder(v)
+    }
 
     override fun getItemCount() = items.size
 
@@ -146,8 +151,10 @@ class NoticeAdapter(
         // LAS TRES SEÑALES DE "SIN LEER" VAN JUNTAS: fondo, barra y punto. Se encienden aquí y
         // en ningún otro sitio — misma regla que la barra de avisos y la de páginas. Media
         // señal (el punto sin el fondo, pongamos) se lee como un adorno y no como un estado.
+        // Leída: el color de la fila según el estilo (fondo en la Compacta, tarjeta en Tarjetas).
         h.row.setBackgroundColor(
-            ContextCompat.getColor(ctx, if (nueva) R.color.fc_resaltado else R.color.fc_fondo)
+            if (nueva) ContextCompat.getColor(ctx, R.color.fc_resaltado)
+            else AtributosTema.color(ctx, R.attr.fcFilaColor)
         )
         h.bar.visibility = if (nueva) View.VISIBLE else View.GONE
         h.dot.visibility = if (nueva) View.VISIBLE else View.GONE

@@ -63,6 +63,30 @@ class EstiloTemaTest {
     }
 
     @Test
+    fun `fila de aviso compacta como siempre`() {
+        val v = inflar(R.layout.item_notice, tarjetas = false)
+        assertEquals(listOf(0, 0, 0, 0), margenes(v))
+        assertEquals(null, v.background)
+        assertEquals(false, AtributosTema.bool(ctx(false), R.attr.fcRecortarFila))
+    }
+
+    @Test
+    fun `fila de privado compacta como siempre`() {
+        val v = inflar(R.layout.item_pm, tarjetas = false)
+        assertEquals(listOf(0, 0, 0, 0), margenes(v))
+    }
+
+    @Test
+    fun `fila de aviso y de privado en tarjetas`() {
+        for (layout in listOf(R.layout.item_notice, R.layout.item_pm)) {
+            val v = inflar(layout, tarjetas = true)
+            assertEquals(listOf(px(12), px(5), px(12), px(5)), margenes(v))
+            assertNotNull(v.background)
+        }
+        assertEquals(true, AtributosTema.bool(ctx(true), R.attr.fcRecortarFila))
+    }
+
+    @Test
     fun `cuadrito del sobre solo en tarjetas`() {
         assertEquals(null, AtributosTema.drawable(ctx(false), R.attr.fcSobreFondoNuevo))
         assertEquals(null, AtributosTema.drawable(ctx(false), R.attr.fcSobreFondoLeido))

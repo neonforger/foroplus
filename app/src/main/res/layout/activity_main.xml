@@ -1163,6 +1163,9 @@
                     android:id="@+id/notices_list"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
+                    android:background="?attr/fcFondoLista"
+                    android:paddingTop="?attr/fcListaPaddingV"
+                    android:paddingBottom="?attr/fcListaPaddingV"
                     android:clipToPadding="false" />
 
                 <ProgressBar
@@ -2068,6 +2071,9 @@
                     android:id="@+id/pm_list"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
+                    android:background="?attr/fcFondoLista"
+                    android:paddingTop="?attr/fcListaPaddingV"
+                    android:paddingBottom="?attr/fcListaPaddingV"
                     android:clipToPadding="false" />
 
                 <ProgressBar

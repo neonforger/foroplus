@@ -1,12 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Fila de la bandeja de MPs. Colores explícitos (panel de fondo blanco fijo, tema
-     DayNight): sin ellos el texto sería invisible en modo oscuro. -->
+<!-- Fila de la bandeja de MPs. Colores de la paleta (tema DayNight): sin ellos el texto sería
+     invisible en modo oscuro. Fondo y márgenes salen del TEMA (atributos fc*, ver EstiloApp):
+     la Compacta da los de siempre y Tarjetas la convierte en tarjeta. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:layout_marginStart="?attr/fcFilaMargenH"
+    android:layout_marginEnd="?attr/fcFilaMargenH"
+    android:layout_marginTop="?attr/fcFilaMargenV"
+    android:layout_marginBottom="?attr/fcFilaMargenV"
     android:orientation="horizontal"
     android:gravity="center_vertical"
-    android:background="?attr/selectableItemBackground"
+    android:background="?attr/fcFilaFondo"
     android:paddingStart="16dp"
     android:paddingEnd="16dp"
     android:paddingTop="14dp"

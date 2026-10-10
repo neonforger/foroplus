@@ -7,10 +7,18 @@
 
      La MISMA fila sirve para "sus mensajes" y para la búsqueda por mensajes, que no traen
      tipo: en ese caso el bloque de arriba y el extracto se esconden y queda la fila de
-     siempre (título + subtítulo). Ver NoticeAdapter. -->
+     siempre (título + subtítulo). Ver NoticeAdapter.
+
+     Fondo, márgenes y raya salen del TEMA (atributos fc*, ver EstiloApp): en Tarjetas la raíz
+     es la tarjeta (sin onda: el toque es de notice_row) y NoticeAdapter recorta a su forma. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:layout_marginStart="?attr/fcFilaMargenH"
+    android:layout_marginEnd="?attr/fcFilaMargenH"
+    android:layout_marginTop="?attr/fcFilaMargenV"
+    android:layout_marginBottom="?attr/fcFilaMargenV"
+    android:background="?attr/fcFilaFondoQuieto"
     android:orientation="vertical">
 
     <LinearLayout
@@ -135,7 +143,7 @@
 
     <View
         android:layout_width="match_parent"
-        android:layout_height="1dp"
+        android:layout_height="?attr/fcDivisoriaAlto"
         android:background="@color/fc_divisoria" />
 
 </LinearLayout>
