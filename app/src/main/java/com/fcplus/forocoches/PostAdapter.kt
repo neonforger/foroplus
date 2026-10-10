@@ -1113,9 +1113,16 @@ class PostAdapter(
                 val end = spanned.getSpanEnd(span)
                 val flags = spanned.getSpanFlags(span)
                 val url = span.url
+                val cabecera = CabeceraCita.es(spanned.subSequence(start, end))
                 spanned.removeSpan(span)
                 spanned.setSpan(object : ClickableSpan() {
                     override fun onClick(widget: View) = onLinkClick(url)
+                    // La cabecera de una cita ("X dijo:") no se subraya: es un título, no un
+                    // enlace del texto. Sigue llevando al mensaje citado.
+                    override fun updateDrawState(ds: android.text.TextPaint) {
+                        super.updateDrawState(ds)
+                        if (cabecera) ds.isUnderlineText = false
+                    }
                 }, start, end, flags)
             }
         }

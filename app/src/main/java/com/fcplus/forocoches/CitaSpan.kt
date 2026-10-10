@@ -38,6 +38,12 @@ class CitaSpan(
     /** Aire entre la barra y el texto citado. */
     private val hueco = (HUECO_DP * densidad).toInt().coerceAtLeast(4)
 
+    /** Radio de las esquinas DERECHAS del fondo (la izquierda es la barra). Fase 2. */
+    private val radio = RADIO_DP * densidad
+    private val camino = android.graphics.Path()
+    private val caja = android.graphics.RectF()
+    private val radios = FloatArray(8)
+
     override fun getLeadingMargin(first: Boolean): Int = ancho + hueco
 
     override fun drawLeadingMargin(
@@ -63,13 +69,39 @@ class CitaSpan(
     ) {
         val colorAntes = p.color
         p.color = fondo
-        c.drawRect(left.toFloat(), top.toFloat(), right.toFloat(), bottom.toFloat(), p)
+        val sp = text as? android.text.Spanned
+        val (arriba, abajo) = if (sp != null && sp.getSpanStart(this) >= 0)
+            esquinas(start, end, sp.getSpanStart(this), sp.getSpanEnd(this)) else (false to false)
+        if (!arriba && !abajo) {
+            c.drawRect(left.toFloat(), top.toFloat(), right.toFloat(), bottom.toFloat(), p)
+        } else {
+            // Solo las de la derecha: a la izquierda va la barra, recta.
+            val ra = if (arriba) radio else 0f
+            val rb = if (abajo) radio else 0f
+            radios[0] = 0f; radios[1] = 0f
+            radios[2] = ra; radios[3] = ra
+            radios[4] = rb; radios[5] = rb
+            radios[6] = 0f; radios[7] = 0f
+            caja.set(left.toFloat(), top.toFloat(), right.toFloat(), bottom.toFloat())
+            camino.reset()
+            camino.addRoundRect(caja, radios, android.graphics.Path.Direction.CW)
+            c.drawPath(camino, p)
+        }
         p.color = colorAntes
     }
 
     companion object {
         const val ANCHO_DP = 3f
         const val HUECO_DP = 10f
+        const val RADIO_DP = 8f
+
+        /**
+         * ¿Esta línea redondea su esquina de arriba (es la primera de la cita) y/o la de abajo
+         * (es la última)? Por posiciones del texto: la línea [inicioLinea, finLinea) dentro de
+         * la cita [inicioCita, finCita).
+         */
+        fun esquinas(inicioLinea: Int, finLinea: Int, inicioCita: Int, finCita: Int): Pair<Boolean, Boolean> =
+            (inicioLinea <= inicioCita) to (finLinea >= finCita)
 
         /**
          * La cita tiene que ser el PRIMER margen del párrafo, el de más a la izquierda.
