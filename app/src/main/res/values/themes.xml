@@ -20,6 +20,8 @@
         <!-- Hojas inferiores con esquinas redondeadas (fase 3); su fondo lo pone la hoja, no el
              layout (si el layout se pinta el suyo, tapa las esquinas). -->
         <item name="bottomSheetDialogTheme">@style/FC.Hoja</item>
+        <!-- Diálogos (fase 3): esquinas redondeadas y botones rojos sin MAYÚSCULAS. -->
+        <item name="alertDialogTheme">@style/FC.Dialogo</item>
 
         <!-- Estilo Compacta (EstiloApp): los valores de siempre. Ver attrs.xml. -->
         <item name="fcFondoLista">@android:color/transparent</item>
@@ -201,6 +203,23 @@
         <item name="android:layout_marginEnd">4dp</item>
         <!-- fc_texto_off y no fc_divisoria: la divisoria sobre el gris de la barra no se ve. -->
         <item name="android:background">@color/fc_texto_off</item>
+    </style>
+
+    <!-- Diálogo (fase 3): fondo redondeado con margen (bg_dialogo) y botones de la app. -->
+    <style name="FC.Dialogo" parent="ThemeOverlay.MaterialComponents.Dialog.Alert">
+        <item name="android:windowBackground">@drawable/bg_dialogo</item>
+        <item name="colorAccent">@color/fc_rojo</item>
+        <item name="colorPrimary">@color/fc_rojo</item>
+        <item name="buttonBarPositiveButtonStyle">@style/FC.Dialogo.Boton</item>
+        <item name="buttonBarNegativeButtonStyle">@style/FC.Dialogo.Boton</item>
+        <item name="buttonBarNeutralButtonStyle">@style/FC.Dialogo.Boton</item>
+    </style>
+
+    <style name="FC.Dialogo.Boton" parent="Widget.MaterialComponents.Button.TextButton.Dialog">
+        <item name="android:textAllCaps">false</item>
+        <item name="android:letterSpacing">0</item>
+        <item name="android:textColor">@color/fc_rojo</item>
+        <item name="android:textSize">15sp</item>
     </style>
 
     <!-- Hoja inferior (fase 3): esquinas de arriba redondeadas, fondo de la app. -->

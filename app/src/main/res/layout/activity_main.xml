@@ -712,6 +712,7 @@
                  se reiniciaba en cada evento de scroll, así que salía a trompicones. -->
             <LinearLayout
                 android:id="@+id/quick_reply_bar"
+                android:importantForAutofill="noExcludeDescendants"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
@@ -786,6 +787,7 @@
              fcSubmitReply, que reutiliza el securitytoken del form real de FC. -->
         <LinearLayout
             android:id="@+id/reply_panel"
+                android:importantForAutofill="noExcludeDescendants"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:orientation="vertical"
@@ -2548,6 +2550,7 @@
         <!-- Capa COMPOSITOR de MP: nuevo mensaje o respuesta. -->
         <LinearLayout
             android:id="@+id/pm_compose_panel"
+                android:importantForAutofill="noExcludeDescendants"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:orientation="vertical"

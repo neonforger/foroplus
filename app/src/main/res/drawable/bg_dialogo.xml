@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fondo de los diálogos (fase 3): redondeado, con el margen a los lados que da Material. -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:insetLeft="16dp" android:insetRight="16dp" android:insetTop="16dp" android:insetBottom="16dp">
+    <shape android:shape="rectangle">
+        <solid android:color="@color/fc_fondo" />
+        <corners android:radius="24dp" />
+    </shape>
+</inset>
