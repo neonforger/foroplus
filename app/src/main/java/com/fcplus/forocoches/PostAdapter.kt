@@ -1061,31 +1061,8 @@ class PostAdapter(
         // La caché primero; si ya la echó, la que este mensaje tenía pintada (ver Holder.retenidas).
         fun bmpDe(src: String): android.graphics.Bitmap? =
             PostImages.get(src)?.also { h.retenidas[src] = it } ?: h.retenidas[src]
-        val getter = Html.ImageGetter { src ->
-            val bmp = bmpDe(src)
-            if (bmp != null) {
-                // El bitmap viene ya reducido al ancho de dibujo, así que NO sirve para medir:
-                // manda el tamaño del FICHERO (un píxel de imagen es un CSS px, ver abajo).
-                val (anchoReal, altoReal) = PostImages.tamano(src) ?: (bmp.width to bmp.height)
-                // Se escala por la densidad: un pixel declarado en HTML es un CSS px, que
-                // es un dp. Sin esto un smiley de 20x15 px se pintaba a 20 px FISICOS
-                // (6,7dp en un movil de densidad 3) y por eso se veian diminutos.
-                val (w, hh) = ImagenEnTexto.medida(anchoReal, altoReal, densidad, maxW)
-                // Si la imagen es un GIF y este Android sabe animarlo, se pinta el fichero
-                // entero en vez del primer fotograma (ver [GifAnimado]).
-                val animado = PostImages.gif(src)?.let { GifAnimado.decodificar(it) }
-                if (animado != null) {
-                    animado.setBounds(0, 0, w, hh)
-                    GifAnimado.animar(animado, tv)
-                    animado
-                } else {
-                    BitmapDrawable(tv.context.resources, bmp).apply { setBounds(0, 0, w, hh) }
-                }
-            } else {
-                PostImages.load(src) { pedirRepintado(h, item) }
-                ColorDrawable(Color.TRANSPARENT).apply { setBounds(0, 0, 2, 2) }
-            }
-        }
+        // Compartido con el detalle de los privados (ver [HtmlConImagenes]).
+        val getter = HtmlConImagenes.getter(tv, maxW, { bmpDe(it) }) { pedirRepintado(h, item) }
         // Los embeds ya NO van en el HTML: se extraen como specs y se pintan como
         // reproductores interactivos (bindEmbeds). El HTML aquí es solo texto/imágenes.
         // Se copia a un SpannableStringBuilder porque las citas largas se RECORTAN, y para eso
@@ -1126,26 +1103,8 @@ class PostAdapter(
                 }, start, end, flags)
             }
         }
-        // Los iconos pequenos (smilies, el logo de Vocaroo...) se centran en el renglon.
-        // Html.fromHtml los pega a la BASE del texto, asi que cuelgan por debajo de la linea
-        // y se ven torcidos. Solo los pequenos: una foto ocupa su propio renglon y ahi la
-        // alineacion no cambia nada.
-        if (spanned is Spannable) {
-            for (img in spanned.getSpans(0, spanned.length, ImageSpan::class.java)) {
-                val d = img.drawable ?: continue
-                // Se mide el bitmap ORIGINAL, no el dibujo: los limites del drawable ya vienen
-                // multiplicados por la densidad y el umbral esta en pixeles del fichero.
-                val fuente = img.source.orEmpty()
-                val bmp = bmpDe(fuente) ?: continue
-                val (anchoReal, altoReal) = PostImages.tamano(fuente) ?: (bmp.width to bmp.height)
-                if (!ImagenEnTexto.esIcono(anchoReal, altoReal)) continue
-                val ini = spanned.getSpanStart(img)
-                val fin = spanned.getSpanEnd(img)
-                val flags = spanned.getSpanFlags(img)
-                spanned.removeSpan(img)
-                spanned.setSpan(IconoCentradoSpan(d, img.source.orEmpty()), ini, fin, flags)
-            }
-        }
+        // Los iconos pequeños se centran en el renglón (ver [HtmlConImagenes.centrarIconos]).
+        HtmlConImagenes.centrarIconos(spanned) { bmpDe(it) }
         // Tocar una imagen la abre en el visor. Va DESPUÉS de los enlaces a propósito: cuando la
         // foto viene envuelta en un <a> (imgur y compañía lo hacen siempre), el toque debe abrir
         // la foto y no el enlace — el destino suele ser esa misma imagen, y sacarte de la app

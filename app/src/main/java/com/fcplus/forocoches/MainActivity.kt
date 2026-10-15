@@ -287,6 +287,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var pmDetailSubject: TextView
     private lateinit var pmDetailSender: TextView
     private lateinit var pmDetailBody: TextView
+    /** Pinta el cuerpo del privado con sus imágenes, igual que un mensaje de un hilo. */
+    private lateinit var pmCuerpo: CuerpoConImagenes
     private lateinit var pmDetailReply: TextView
     /** Carpeta de MPs a la vista: "0" = Recibidos, "-1" = Enviados (el folderid de FC). */
     private var pmCarpeta = "0"
@@ -1627,6 +1629,17 @@ class MainActivity : AppCompatActivity() {
         pmDetailSender = findViewById(R.id.pm_detail_sender)
         pmDetailBody = findViewById(R.id.pm_detail_body)
         pmDetailBody.movementMethod = android.text.method.LinkMovementMethod.getInstance()
+        // La conversación anterior viene como citas anidadas: se visten con la misma
+        // barra y fondo que en los hilos. Con el QuoteSpan de fábrica (raya azul fija,
+        // sin fondo, gotcha 29) no se distinguía qué era cita y qué la respuesta.
+        pmCuerpo = CuerpoConImagenes(pmDetailBody) { cuerpo ->
+            CitaSpan.vestir(
+                cuerpo,
+                ContextCompat.getColor(this, R.color.fc_cita_barra),
+                AtributosTema.color(this, R.attr.fcCitaFondo),
+                resources.displayMetrics.density
+            )
+        }
         pmDetailReply = findViewById(R.id.pm_detail_reply)
         findViewById<View>(R.id.pm_detail_back).setOnClickListener { goBack() }
         pmDetailReply.setOnClickListener { showPmCompose("reply", currentPmId, currentPmSubject) }
@@ -1736,7 +1749,7 @@ class MainActivity : AppCompatActivity() {
         swipeRefresh.visibility = View.INVISIBLE
         pmDetailSubject.text = subject
         pmDetailSender.text = ""
-        pmDetailBody.text = "Cargando…"
+        pmCuerpo.texto("Cargando…")
         pmDetailReply.visibility = View.GONE
         webView.evaluateJavascript("window.fcLoadPm&&fcLoadPm('${jsEscape(pmid)}')", null)
     }
@@ -1885,26 +1898,14 @@ class MainActivity : AppCompatActivity() {
                 if (!isPmDetailVisible) return
                 if (o.optString("pmid") != currentPmId) return
                 val err = o.optString("error", "")
-                if (err.isNotEmpty()) { pmDetailBody.text = "No se pudo cargar el mensaje"; return }
+                if (err.isNotEmpty()) { pmCuerpo.texto("No se pudo cargar el mensaje"); return }
                 val sender = o.optString("sender").trim()
                 pmDetailSender.text = if (sender.isNotEmpty()) "@$sender" else ""
                 val subj = o.optString("subject").trim()
                 if (subj.isNotEmpty()) { pmDetailSubject.text = subj; currentPmSubject = subj }
-                // La conversación anterior viene como citas anidadas: se visten con la misma
-                // barra y fondo que en los hilos. Con el QuoteSpan de fábrica (raya azul fija,
-                // sin fondo, gotcha 29) no se distinguía qué era cita y qué la respuesta.
-                val cuerpo = android.text.SpannableStringBuilder(
-                    androidx.core.text.HtmlCompat.fromHtml(
-                        o.optString("body"), androidx.core.text.HtmlCompat.FROM_HTML_MODE_LEGACY
-                    )
-                )
-                CitaSpan.vestir(
-                    cuerpo,
-                    ContextCompat.getColor(this, R.color.fc_cita_barra),
-                    AtributosTema.color(this, R.attr.fcCitaFondo),
-                    resources.displayMetrics.density
-                )
-                pmDetailBody.text = cuerpo
+                // Con sus imágenes: antes iba sin ImageGetter y cada una salía como el icono
+                // genérico de Android (ver [HtmlConImagenes]).
+                pmCuerpo.pintar(o.optString("body"))
                 pmDetailReply.visibility = if (o.optBoolean("canReply", false)) View.VISIBLE else View.GONE
             }
             "send" -> {
