@@ -46,7 +46,10 @@ data class PostItem(
     val own: Boolean = false,
     val embeds: List<EmbedSpec> = emptyList(),
     /** El autor está conectado ahora (el punto verde de FC en su avatar). Ver [Presencia]. */
-    val conectado: Boolean = false
+    val conectado: Boolean = false,
+    /** Última edición: quién (vacío si FC no lo dice) y cuándo. Ver [AvisoEdicion]. */
+    val editadoPor: String = "",
+    val editadoCuando: String = ""
 )
 
 data class ThreadPayload(
@@ -87,7 +90,9 @@ fun parseThreadPayload(json: String): ThreadPayload? {
                     page = pageNum,
                     own = o.optBoolean("own", false),
                     embeds = parseEmbeds(o.optJSONArray("embeds")),
-                    conectado = o.optBoolean("online", false)
+                    conectado = o.optBoolean("online", false),
+                    editadoPor = o.optString("editBy").trim(),
+                    editadoCuando = o.optString("editDate").trim()
                 )
             )
         }
@@ -554,6 +559,7 @@ class PostAdapter(
         val conectado: View = v.findViewById(R.id.post_conectado)
         val author: TextView = v.findViewById(R.id.post_author)
         val date: TextView = v.findViewById(R.id.post_date)
+        val editado: TextView = v.findViewById(R.id.post_editado)
         val content: TextView = v.findViewById(R.id.post_content)
         val embeds: android.widget.LinearLayout = v.findViewById(R.id.post_embeds)
         val quote: TextView = v.findViewById(R.id.post_quote)
@@ -712,6 +718,9 @@ class PostAdapter(
         paintFrame(h, item)
         h.author.text = if (item.author.isNotEmpty()) "@${item.author}" else "(anónimo)"
         h.date.text = item.date
+        val editado = AvisoEdicion.texto(item.editadoPor, item.editadoCuando, item.author)
+        h.editado.text = editado
+        h.editado.visibility = if (editado.isEmpty()) View.GONE else View.VISIBLE
         // Nombre y avatar abren el perfil ajeno, pero solo si conocemos el uid real
         // (anónimos/baneados quedan sin clic, sin gestos fantasma).
         val hasProfile = item.uid.isNotEmpty()

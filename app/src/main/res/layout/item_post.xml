@@ -128,6 +128,20 @@
         android:gravity="end|center_vertical"
         android:layout_marginTop="2dp">
 
+        <!-- "Editado por X · fecha" (ver AvisoEdicion). En el hueco libre a la izquierda de los
+             botones, discreto como la fecha de la cabecera; solo en los mensajes editados. -->
+        <TextView
+            android:id="@+id/post_editado"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginEnd="8dp"
+            android:maxLines="2"
+            android:ellipsize="end"
+            android:textSize="11sp"
+            android:textColor="@color/fc_texto_3"
+            android:visibility="gone" />
+
         <!-- Botones con icono Y texto, de 48dp de alto (fase 2). Abajo a la derecha, donde
              cae el pulgar; Citar, la acción principal, el último. El aspecto de Multicita lo
              pone BotonMulticita según esté marcada o no. -->

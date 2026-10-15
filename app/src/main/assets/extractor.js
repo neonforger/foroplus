@@ -1077,6 +1077,8 @@
           // cabecera ya va sin el mensaje, así que una cita no puede colarlo. Medido 2026-10-07.
           var enLinea = !!header.querySelector('[style*="user-status-online-color"]');
 
+          var edicion = ultimaEdicion(wrap, doc);
+
           // Mensaje simplificado para render nativo.
           var m = msg.cloneNode(true);
           m.querySelectorAll('style').forEach(function (x) { x.remove(); });
@@ -1160,7 +1162,8 @@
 
           posts.push({
             pid: pid, author: author, uid: uid, avatar: avatar, date: date,
-            html: m.innerHTML, own: !!own, embeds: embeds, online: enLinea
+            html: m.innerHTML, own: !!own, embeds: embeds, online: enLinea,
+            editBy: edicion.por, editDate: edicion.cuando
           });
         });
         if (!posts.length) {
@@ -2161,6 +2164,34 @@
   // sería meter mano en el corazón de la app para una función decorativa. Aquí basta con
   // autor, fecha, avatar y el HTML del mensaje (que Kotlin pasa a texto con el MISMO
   // CompartirFC.cuerpoTarjeta que usa la tarjeta de un mensaje suelto).
+  // Quién y cuándo editó un mensaje por última vez. La plantilla móvil lo manda DENTRO DE UN
+  // COMENTARIO ("info ultima edicion del post": "Última edición por X fecha: Ayer a las 22:51"),
+  // así que en la web móvil tampoco se ve; al pie deja además un
+  // <span class="postdate old">Editado: Ayer 22:51 - </span> sin el quién. Medido en los
+  // fixtures el 2026-10-15: coinciden siempre. Manda el comentario (quien edita puede ser un
+  // moderador) y el span queda de respaldo. Vacíos = no editado.
+  function ultimaEdicion(wrap, doc) {
+    var limpio = function (t) { return (t || '').replace(/\s+/g, ' ').trim(); };
+    var w = doc.createTreeWalker(wrap, 128 /* NodeFilter.SHOW_COMMENT */);
+    while (w.nextNode()) {
+      var v = w.currentNode.nodeValue || '';
+      if (v.indexOf('ultima edicion') === -1) continue;
+      var tmp = doc.createElement('div');
+      tmp.innerHTML = v;
+      var m = limpio(tmp.textContent)
+        .match(/edici[oó]n por (.+?) fecha:\s*(.+?) a las (\d{1,2}:\d{2})/i);
+      if (m) return { por: m[1].trim(), cuando: m[2].trim() + ' ' + m[3] };
+      break;
+    }
+    // OJO: la fecha normal de la cabecera lleva la MISMA clase `postdate old`.
+    var spans = wrap.querySelectorAll('.postdate.old');
+    for (var i = 0; i < spans.length; i++) {
+      var pm = limpio(spans[i].textContent).match(/^Editado:\s*(.+?)[\s-]*$/i);
+      if (pm) return { por: '', cuando: pm[1].trim() };
+    }
+    return { por: '', cuando: '' };
+  }
+
   // Quién escribió un mensaje concreto, para el "último que escribe" de la lista. FC no lo da en
   // ninguna página barata (gotcha 18, revisado el 2026-10-02), pero respeta `pp=1`: con
   // `showthread.php?p=N&pp=1` devuelve la página con ESE mensaje solo (~33 KB por el cable en la
