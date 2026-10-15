@@ -1809,8 +1809,11 @@
         }
         var subj = (doc.title || '').replace(/^Forocoches\s*-\s*/, '').trim();
         var reply = doc.querySelector('a[href*="do=newpm&pmid="], a[href*="do=newpm&amp;pmid="]');
+        // El uid, para que tocar el nombre abra su ficha (en los MPs FC sí lo trae real, no
+        // el u=0 de los hilos: gotcha 36).
+        var senderUid = senderEl ? uidDe(senderEl) : '';
         AndroidShell.onPmData(JSON.stringify({
-          view: 'detail', pmid: pmid, subject: subj, sender: sender,
+          view: 'detail', pmid: pmid, subject: subj, sender: sender, senderUid: senderUid,
           body: body, canReply: !!reply
         }));
       })

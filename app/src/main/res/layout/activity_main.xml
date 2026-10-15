@@ -2435,6 +2435,7 @@
                         android:id="@+id/pm_detail_sender"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
+                        android:background="?attr/selectableItemBackground"
                         android:textSize="15sp"
                         android:textStyle="bold"
                         android:textColor="@color/fc_texto" />

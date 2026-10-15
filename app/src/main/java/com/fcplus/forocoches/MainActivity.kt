@@ -1749,6 +1749,8 @@ class MainActivity : AppCompatActivity() {
         swipeRefresh.visibility = View.INVISIBLE
         pmDetailSubject.text = subject
         pmDetailSender.text = ""
+        pmDetailSender.setOnClickListener(null)
+        pmDetailSender.isClickable = false
         pmCuerpo.texto("Cargando…")
         pmDetailReply.visibility = View.GONE
         webView.evaluateJavascript("window.fcLoadPm&&fcLoadPm('${jsEscape(pmid)}')", null)
@@ -1901,6 +1903,13 @@ class MainActivity : AppCompatActivity() {
                 if (err.isNotEmpty()) { pmCuerpo.texto("No se pudo cargar el mensaje"); return }
                 val sender = o.optString("sender").trim()
                 pmDetailSender.text = if (sender.isNotEmpty()) "@$sender" else ""
+                // Tocar el nombre abre su ficha, como el autor de un mensaje en un hilo.
+                val uid = o.optString("senderUid").trim()
+                pmDetailSender.setOnClickListener(
+                    if (uid.isNotEmpty() && uid != "0") View.OnClickListener { showMemberProfile(uid) }
+                    else null
+                )
+                pmDetailSender.isClickable = uid.isNotEmpty() && uid != "0"
                 val subj = o.optString("subject").trim()
                 if (subj.isNotEmpty()) { pmDetailSubject.text = subj; currentPmSubject = subj }
                 // Con sus imágenes: antes iba sin ImageGetter y cada una salía como el icono
