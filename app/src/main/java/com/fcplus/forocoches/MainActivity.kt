@@ -4334,17 +4334,19 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
+
     /**
-     * Tira el borrador y las citas pendientes. Se llama SOLO al cambiar de hilo de verdad:
-     * una respuesta se publica en un hilo concreto, así que arrastrar citas de otro no tendría
-     * sentido — pero volver al mismo hilo sí debe conservarlas.
+     * Al abrir OTRO hilo: el texto y las citas de "Citar" se tiran, pero las del ＋ viajan
+     * contigo. Es la multicita entre hilos que permite la web (recoges mensajes de varios hilos
+     * y respondes en el último); antes se tiraba todo y solo quedaba la última cita, que es lo
+     * que reportó Juan el 2026-10-04. Ver [CitasPendientes].
      */
-    private fun descartarBorrador() {
+    private fun cambiarDeHilo() {
+        val viajan = CitasPendientes.alCambiarDeHilo(replyQuotes.keys, citasProvisionales)
         replyInput.setText("")
-        replyQuotes.clear()
-        replyQuoteEdits.clear()
+        replyQuotes.keys.retainAll(viajan)
+        replyQuoteEdits.keys.retainAll(viajan)
         citasProvisionales.clear()
-        citasBbcode.clear()
         quotesThreadTid = ""
         citasCambiadas()
     }
@@ -6490,7 +6492,7 @@ class MainActivity : AppCompatActivity() {
         // se puede hacer aquí: la decide onThreadJson en cuanto se sabe el tid.
         val tidDeLaUrl = Regex("""[?&]t=(\d+)""").find(url)?.groupValues?.get(1) ?: ""
         if (tidDeLaUrl.isNotEmpty() && quotesThreadTid.isNotEmpty() && tidDeLaUrl != quotesThreadTid) {
-            descartarBorrador()
+            cambiarDeHilo()
         }
         replySubject.setText("")
         editingPid = ""
@@ -6559,7 +6561,7 @@ class MainActivity : AppCompatActivity() {
         // Citas/borrador de OTRO hilo: ahora que se sabe el tid real, fuera. (Las citas se
         // abren por `?p=` y hasta aquí no se sabía a qué hilo pertenecían.)
         if (t.tid.isNotEmpty() && quotesThreadTid.isNotEmpty() && t.tid != quotesThreadTid) {
-            descartarBorrador()
+            cambiarDeHilo()
         }
         if (currentThreadTid.isEmpty() && t.tid.isNotEmpty()) {
             currentThreadTid = t.tid

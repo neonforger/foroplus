@@ -34,6 +34,14 @@ class CitasPendientesTest {
     }
 
     @Test
+    fun `al cambiar de hilo las del mas viajan y las de citar no`() {
+        // Multicita entre hilos (Juan, 2026-10-04): marcas A con el ＋ en un hilo, pulsas
+        // "Citar" en B y te vas a otro hilo sin enviar. A tiene que seguir ahí; B no.
+        val prov = CitasPendientes.alCitar(setOf("A"), emptySet(), "B")
+        assertEquals(setOf("A"), CitasPendientes.alCambiarDeHilo(setOf("A", "B"), prov))
+    }
+
+    @Test
     fun `sin nada citado no revienta`() {
         assertEquals(emptySet<String>(), CitasPendientes.alCerrarSinEnviar(emptySet(), setOf("A")))
     }

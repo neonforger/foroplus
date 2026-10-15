@@ -29,4 +29,12 @@ object CitasPendientes {
     /** Las que quedan al cerrar sin enviar: todas menos las provisionales. */
     fun alCerrarSinEnviar(citadas: Set<String>, provisionales: Set<String>): Set<String> =
         citadas - provisionales
+
+    /**
+     * Las que viajan al abrir OTRO hilo: las del ＋, igual que al cerrar sin enviar. Es la
+     * multicita entre hilos de la web (recoger mensajes de varios hilos y responder en uno).
+     * Hasta el 2026-10-15 cambiar de hilo tiraba TODAS y solo quedaba la última.
+     */
+    fun alCambiarDeHilo(citadas: Set<String>, provisionales: Set<String>): Set<String> =
+        alCerrarSinEnviar(citadas, provisionales)
 }
