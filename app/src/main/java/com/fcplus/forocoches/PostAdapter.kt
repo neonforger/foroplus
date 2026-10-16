@@ -1082,6 +1082,8 @@ class PostAdapter(
         // Lo PRIMERO: las marcas de los spoilers. Se cambian por spans, que se ajustan solos
         // cuando las pasadas siguientes editan el texto (unas posiciones sueltas, no).
         Spoilers.marcar(spanned)
+        // El [SIZE] que fromHtml ignora (ver [TamanoLetra]).
+        TamanoLetra.aplicar(spanned)
         // Después, el adorno de las citas. `fromHtml` pone un QuoteSpan de fábrica, que
         // es una raya AZUL FIJA del framework y en modo oscuro no se ve (ver [CitaSpan]). Va el
         // primero porque el plegado busca los tramos por CitaSpan.

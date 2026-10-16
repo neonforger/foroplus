@@ -122,6 +122,7 @@ class CuerpoConImagenes(
         val cuerpo = SpannableStringBuilder(
             HtmlCompat.fromHtml(html, HtmlCompat.FROM_HTML_MODE_LEGACY, getter, null)
         )
+        TamanoLetra.aplicar(cuerpo)
         adornar(cuerpo)
         HtmlConImagenes.centrarIconos(cuerpo, PostImages::get)
         tv.text = cuerpo

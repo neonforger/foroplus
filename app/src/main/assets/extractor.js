@@ -1083,6 +1083,7 @@
           var m = msg.cloneNode(true);
           m.querySelectorAll('style').forEach(function (x) { x.remove(); });
           deshacerCorreosCF(m);
+          marcarTamanos(m);
           m.querySelectorAll('div.quote').forEach(function (q) {
             var bq = doc.createElement('blockquote');
             var qb = q.querySelector('b');
@@ -1671,10 +1672,31 @@
     });
   }
 
+  // [SIZE=N] → `<font size="N">` en FC (medido en la plantilla móvil). Html.fromHtml de Android
+  // solo lee `color` y `face` de un <font>, así que el tamaño se perdía (lo reportó Juan,
+  // 2026-10-16). Se pasa a `face="fcsize-N"`, que fromHtml sí convierte en un span y cierra bien
+  // aunque vaya anidado (una etiqueta inventada no: gotcha 28); TamanoLetra.kt cambia ese span
+  // por uno de tamaño. Los relativos (+N/-N) cuentan desde el 3, como en HTML.
+  function marcarTamanos(el) {
+    if (!el || !el.querySelectorAll) return;
+    el.querySelectorAll('font[size]').forEach(function (f) {
+      var v = (f.getAttribute('size') || '').trim();
+      var mm = v.match(/^([+-]?)(\d+)$/);
+      if (!mm) return;
+      var n = parseInt(mm[2], 10);
+      if (mm[1] === '+') n = 3 + n;
+      else if (mm[1] === '-') n = 3 - n;
+      n = Math.max(1, Math.min(7, n));
+      f.setAttribute('face', 'fcsize-' + n);
+      f.removeAttribute('size');
+    });
+  }
+
   function simplifyPmBody(msg, doc) {
     var m = msg.cloneNode(true);
     m.querySelectorAll('script,style').forEach(function (x) { x.remove(); });
     deshacerCorreosCF(m);
+    marcarTamanos(m);
     // Un MP no guarda la conversación aparte: cada respuesta trae los mensajes anteriores
     // DENTRO del cuerpo, como citas anidadas (`div.squote > div.quote > [cabecera "Cita de
     // <b>X</b>"] + [contenido]`). Se convierten de DENTRO hacia FUERA (orden inverso del
