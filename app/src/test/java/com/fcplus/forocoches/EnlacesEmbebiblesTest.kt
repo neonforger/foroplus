@@ -92,9 +92,17 @@ class EnlacesEmbebiblesTest {
     @Test
     fun `varios enlaces en el mismo mensaje`() {
         assertEquals(
-            "[YOUTUBE]abc123[/YOUTUBE] y [TIKTOK]https://vm.tiktok.com/ZXYW[/TIKTOK] fin",
-            EnlacesEmbebibles.conTarjetas("https://youtu.be/abc123 y https://vm.tiktok.com/ZXYW fin")
+            "[YOUTUBE]abc123[/YOUTUBE] y [TIKTOK]https://www.tiktok.com/video/7515016903421693206[/TIKTOK] fin",
+            EnlacesEmbebibles.conTarjetas("https://youtu.be/abc123 y https://www.tiktok.com/video/7515016903421693206 fin")
         )
+    }
+
+    @Test
+    fun `un enlace corto de tiktok NO se envuelve, que FC lo pinta como error`() {
+        // Medido con la vista previa de FC (2026-10-16): "[TikTok Error - URL incorrecta]".
+        // Antes de llegar aquí se resuelve (TiktokCorto); si no se pudo, mejor un enlace que un error.
+        val t = "mira https://vm.tiktok.com/ZXYW/ y https://www.tiktok.com/t/ZTAb/"
+        assertEquals(t, EnlacesEmbebibles.conTarjetas(t))
     }
 
     @Test

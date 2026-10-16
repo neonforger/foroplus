@@ -4996,11 +4996,44 @@ class MainActivity : AppCompatActivity() {
         return (if (conTarjetas) EnlacesEmbebibles.conTarjetas(limpio) else limpio).trim()
     }
 
+    /** true justo después de resolver: la segunda pasada de [despues] no vuelve a resolver. */
+    private var tiktoksResueltos = false
+
+    /**
+     * Cambia los enlaces cortos de TikTok del composer por su forma larga antes de publicar,
+     * porque FC los pinta como error (ver [TiktokCorto]). Hace falta red, así que si hay alguno
+     * devuelve true, resuelve en segundo plano y vuelve a llamar a [despues]; si no, false y no
+     * hace nada. Los que no se puedan resolver se publican tal cual.
+     */
+    private fun resolviendoTiktoks(despues: () -> Unit): Boolean {
+        if (tiktoksResueltos) { tiktoksResueltos = false; return false }
+        val cortos = TiktokCorto.cortos(replyInput.text.toString())
+        if (cortos.isEmpty()) return false
+        val etiqueta = replySend.text
+        startSending("Preparando…")
+        Thread {
+            val largos = cortos.mapNotNull { c -> ResolverTiktok.resolver(c)?.let { c to it } }.toMap()
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                if (largos.isNotEmpty()) {
+                    replyInput.setText(TiktokCorto.sustituir(replyInput.text.toString(), largos))
+                }
+                sendingReply = false
+                replySend.isEnabled = true
+                replySend.text = etiqueta
+                tiktoksResueltos = true
+                despues()
+            }
+        }.start()
+        return true
+    }
+
     private fun submitReplyPost() {
         // Aquí, y no en submitReply(): esta función tiene DOS vías de entrada (el composer
         // grande y submitQuickReply(), la barra rápida) y es donde de verdad se llama a
         // fcSubmitReply con las cookies que haya puestas en ese instante.
         if (cambiandoDeCuenta) { toast("Espera a que termine el cambio de cuenta"); return }
+        if (resolviendoTiktoks { submitReplyPost() }) return
         val body = textoDelComposer()
         if (body.isEmpty() && replyQuotes.isEmpty()) { toast("Escribe algo antes de enviar"); return }
         if (currentThreadTid.isEmpty()) { toast("No se pudo identificar el hilo"); return }
@@ -5022,6 +5055,7 @@ class MainActivity : AppCompatActivity() {
         // submitReplyPost()): si mañana le sale otra vía de entrada, como le pasó a esa,
         // queda cubierta igual sin tener que acordarse de repetirlo en el sitio nuevo.
         if (cambiandoDeCuenta) { toast("Espera a que termine el cambio de cuenta"); return }
+        if (resolviendoTiktoks { submitNewThread() }) return
         val subject = replySubject.text.toString().trim()
         val body = textoDelComposer()
         if (subject.isEmpty()) { toast("Ponle un título al hilo"); return }
@@ -5109,6 +5143,7 @@ class MainActivity : AppCompatActivity() {
         // Mismo motivo que submitNewThread(): el guard vive donde se publica, no donde se
         // pulsa, para que una futura vía de entrada distinta a submitReply() no lo pierda.
         if (cambiandoDeCuenta) { toast("Espera a que termine el cambio de cuenta"); return }
+        if (resolviendoTiktoks { submitEdit() }) return
         val body = textoDelComposer(conTarjetas = false)
         if (body.isEmpty()) { toast("El mensaje no puede quedar vacío"); return }
         if (editingPid.isEmpty()) { toast("No se pudo identificar el mensaje"); return }
