@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Selector de emoticonos, en pestañas como los stickers de WhatsApp: "Forocoches" (los de FC,
+     que da misc.php?do=getsmilies) y "ForoPlus" (los propios, ver EmoticonosForoPlus). Lo monta
+     BbcodeEditor.showSmilies. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingTop="12dp">
+
+    <View style="@style/Asa" />
+
+    <com.google.android.material.tabs.TabLayout
+        android:id="@+id/smiley_tabs"
+        style="?attr/fcPestanas"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="12dp"
+        android:background="@android:color/transparent"
+        app:tabGravity="fill"
+        app:tabMode="fixed" />
+
+    <!-- Solo en la pestaña ForoPlus: que se sepa que en la web también se ven. -->
+    <TextView
+        android:id="@+id/smiley_nota"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:paddingTop="12dp"
+        android:textColor="@color/fc_texto_2"
+        android:textSize="13sp"
+        android:text="Emoticonos de ForoPlus. Quien lea el foro desde la web también los ve."
+        android:visibility="gone" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/smiley_rejilla"
+        android:layout_width="match_parent"
+        android:layout_height="340dp"
+        android:clipToPadding="false"
+        android:paddingStart="10dp"
+        android:paddingEnd="10dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="12dp" />
+
+</LinearLayout>

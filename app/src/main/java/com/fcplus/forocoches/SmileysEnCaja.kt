@@ -25,16 +25,24 @@ class SmileysEnCaja(private val input: EditText) : TextWatcher {
     /** El dibujo de un smiley en la caja. Clase propia para no tocar ningún otro span. */
     class Marca(dibujo: Drawable, val codigo: String, origen: String) : IconoCentradoSpan(dibujo, origen)
 
-    /** código → url de la imagen. Vacío hasta que el motor trae la lista de FC. */
-    private var porCodigo: Map<String, String> = emptyMap()
+    /**
+     * código → url de la imagen. Los de ForoPlus están desde el principio (su "código" es el
+     * `[IMG]` entero, que se ve como el emoticono y se borra de una vez); los de FC llegan cuando
+     * el motor trae su lista.
+     */
+    private var porCodigo: Map<String, String> = DE_FOROPLUS
 
     /** Smiley que el usuario está borrando: tras el borrado se quita lo que quede de él. */
     private var borrando: Marca? = null
     private var ocupado = false
 
     fun conLista(lista: List<Smiley>) {
-        porCodigo = lista.associate { it.code to it.src }
+        porCodigo = lista.associate { it.code to it.src } + DE_FOROPLUS
         repintar()
+    }
+
+    private companion object {
+        val DE_FOROPLUS = EmoticonosForoPlus.TODOS.associate { it.bbcode to it.url }
     }
 
     override fun beforeTextChanged(s: CharSequence, start: Int, count: Int, after: Int) {

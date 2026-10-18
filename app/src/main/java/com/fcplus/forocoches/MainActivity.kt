@@ -3363,6 +3363,9 @@ class MainActivity : AppCompatActivity() {
         EstiloApp.overlay(EstiloApp.guardado(getSharedPreferences(PREFS, MODE_PRIVATE)))
             ?.let { theme.applyStyle(it, true) }
         setContentView(R.layout.activity_main)
+        // Los emoticonos de ForoPlus se pintan desde el APK, nunca desde la red.
+        val assetsApp = applicationContext.assets
+        EmoticonosForoPlus.lector = { f -> assetsApp.open("emoticonos/$f").use { it.readBytes() } }
 
         swipeRefresh = findViewById(R.id.swipe_refresh)
         webView = findViewById(R.id.webview)

@@ -74,7 +74,9 @@ object HtmlConImagenes {
             val fuente = img.source.orEmpty()
             val bmp = bmpDe(fuente) ?: continue
             val (anchoReal, altoReal) = PostImages.tamano(fuente) ?: (bmp.width to bmp.height)
-            if (!ImagenEnTexto.esIcono(anchoReal, altoReal)) continue
+            // Los de ForoPlus pasan de 80 px de ancho (el SEÑORADETODOS mide 88x20) y no por eso
+            // son fotos: se reconocen por la URL.
+            if (!ImagenEnTexto.esIcono(anchoReal, altoReal) && !EmoticonosForoPlus.esDeForoPlus(fuente)) continue
             val ini = texto.getSpanStart(img)
             val fin = texto.getSpanEnd(img)
             val flags = texto.getSpanFlags(img)

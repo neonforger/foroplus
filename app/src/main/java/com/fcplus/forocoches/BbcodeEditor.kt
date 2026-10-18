@@ -14,6 +14,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.bottomsheet.BottomSheetDialog
+import com.google.android.material.tabs.TabLayout
 import org.json.JSONObject
 
 data class Smiley(val code: String, val src: String)
@@ -187,29 +188,83 @@ class BbcodeEditor(private val context: Context, private val input: EditText) {
     }
 
     // ── Modal de smilies ─────────────────────────────────────────────────────
-    // Bottom sheet scrolleable poco invasivo: rejilla de emoticonos reales de FC;
-    // tocar uno inserta su código (se pueden meter varios sin cerrar).
+    // Bottom sheet scrolleable poco invasivo, en pestañas como los stickers de WhatsApp:
+    // "Forocoches" (los reales de FC) y "ForoPlus" (los propios, ver [EmoticonosForoPlus]).
+    // Tocar uno inserta su código (se pueden meter varios sin cerrar).
+
+    /** La pestaña que se dejó abierta, para volver a ella la próxima vez. */
+    private var pestanaSmileys = 0
 
     fun showSmilies(items: List<Smiley>) {
         val dlg = BottomSheetDialog(context)
-        val rv = RecyclerView(context).apply {
-            layoutManager = GridLayoutManager(context, 7)
-            adapter = SmileyAdapter(items) { code ->
-                insert("$code ")
-            }
-            setPadding(dp(10), dp(12), dp(10), dp(12))
-            clipToPadding = false
+        val vista = android.view.LayoutInflater.from(context).inflate(R.layout.sheet_smileys, null)
+        val tabs = vista.findViewById<TabLayout>(R.id.smiley_tabs)
+        val nota = vista.findViewById<View>(R.id.smiley_nota)
+        val rv = vista.findViewById<RecyclerView>(R.id.smiley_rejilla)
+        val deFc = SmileyAdapter(items) { code -> insert("$code ") }
+        val propios = ForoPlusAdapter(EmoticonosForoPlus.TODOS) { e -> insert("${e.bbcode} ") }
+        fun mostrar(pestana: Int) {
+            pestanaSmileys = pestana
+            val foroPlus = pestana == 1
+            nota.visibility = if (foroPlus) View.VISIBLE else View.GONE
+            // Los de ForoPlus son anchos (88x20): a 7 por fila no se verían.
+            rv.layoutManager = GridLayoutManager(context, if (foroPlus) 3 else 7)
+            rv.adapter = if (foroPlus) propios else deFc
         }
-        val holder = FrameLayout(context).apply {
-            layoutParams = ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(380)
-            )
-            addView(rv, FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT
-            ))
-        }
-        dlg.setContentView(holder)
+        tabs.addTab(tabs.newTab().setText("Forocoches"), false)
+        tabs.addTab(tabs.newTab().setText("ForoPlus"), false)
+        tabs.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
+            override fun onTabSelected(tab: TabLayout.Tab) = mostrar(tab.position)
+            override fun onTabUnselected(tab: TabLayout.Tab) {}
+            override fun onTabReselected(tab: TabLayout.Tab) {}
+        })
+        tabs.getTabAt(pestanaSmileys)?.select()
+        mostrar(pestanaSmileys)
+        dlg.setContentView(vista)
         dlg.show()
+    }
+
+    /**
+     * La rejilla de los de ForoPlus. Salen del propio APK y animados (en Android 9+), no de
+     * [PostImages]: el selector no tiene por qué esperar a la red para algo que ya llevamos.
+     */
+    private inner class ForoPlusAdapter(
+        private val items: List<EmoticonosForoPlus.Emoticono>,
+        private val onPick: (EmoticonosForoPlus.Emoticono) -> Unit
+    ) : RecyclerView.Adapter<ForoPlusAdapter.Holder>() {
+
+        inner class Holder(val img: ImageView) : RecyclerView.ViewHolder(img)
+
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
+            val img = ImageView(parent.context).apply {
+                layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(64))
+                scaleType = ImageView.ScaleType.FIT_CENTER
+                setPadding(dp(10), dp(14), dp(10), dp(14))
+                isClickable = true
+                isFocusable = true
+                val onda = android.util.TypedValue()
+                context.theme.resolveAttribute(android.R.attr.selectableItemBackground, onda, true)
+                setBackgroundResource(onda.resourceId)
+            }
+            return Holder(img)
+        }
+
+        override fun getItemCount() = items.size
+
+        override fun onBindViewHolder(h: Holder, pos: Int) {
+            val e = items[pos]
+            h.img.contentDescription = e.nombre
+            val bytes = EmoticonosForoPlus.bytesDe(e.url)
+            val animado = bytes?.let { GifAnimado.decodificar(it) }
+            if (animado != null && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                animado.repeatCount = android.graphics.drawable.AnimatedImageDrawable.REPEAT_INFINITE
+                h.img.setImageDrawable(animado)
+                animado.start()
+            } else {
+                h.img.setImageBitmap(bytes?.let { android.graphics.BitmapFactory.decodeByteArray(it, 0, it.size) })
+            }
+            h.img.setOnClickListener { onPick(e) }
+        }
     }
 
     private inner class SmileyAdapter(

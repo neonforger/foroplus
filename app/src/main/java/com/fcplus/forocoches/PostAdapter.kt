@@ -245,6 +245,8 @@ object PostImages {
 
     private fun descargar(url: String, maxBytes: Long, saltos: Int): ByteArray {
         origenLocal?.invoke(url)?.let { return it }
+        // Los emoticonos de ForoPlus van dentro de la app: ni red ni proxy de FC.
+        EmoticonosForoPlus.bytesDe(url)?.let { return it }
         val conn = URL(url).openConnection() as HttpURLConnection
         conn.setRequestProperty("User-Agent", UA)
         val conCookie = TrustedOrigins.llevaCookieDeFc(url)
@@ -915,6 +917,7 @@ class PostAdapter(
             val tam = PostImages.tamano(img.source.orEmpty())
             // Un smiley va DENTRO del renglón: no añade altura y cuenta como un carácter.
             if (tam != null && ImagenEnTexto.esIcono(tam.first, tam.second)) continue
+            if (EmoticonosForoPlus.esDeForoPlus(img.source.orEmpty())) continue
             val alto = img.drawable?.bounds?.height() ?: continue
             costes[sb.getSpanStart(img)] = RecorteCita.costeDeImagen(alto, alturaLinea)
         }
