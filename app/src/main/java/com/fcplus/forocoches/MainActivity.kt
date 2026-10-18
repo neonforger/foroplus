@@ -8124,6 +8124,15 @@ class MainActivity : AppCompatActivity() {
         ViewCompat.requestApplyInsets(capa)
         visorOverlay = capa
 
+        // Un GIF va animado, como en el hilo (Juan lo vio quieto aquí, 2556). Sus bytes ya están en
+        // la caché de PostImages: sin ellos el hilo tampoco lo animaría. Si no están (un GIF más
+        // grande que la caché), se queda en el fotograma de siempre.
+        val animado = PostImages.gif(url)?.let { GifAnimado.decodificar(it) }
+        if (animado != null) {
+            cargando.visibility = View.GONE
+            visor.ponerAnimado(animado)
+            return
+        }
         // Se enseña YA la versión que hay en la lista para que no haya un fogonazo negro, y se
         // sustituye por la grande cuando termine de decodificarse. Ampliar la de la lista se ve
         // borroso (está reducida a 1600 px), por eso se vuelve a decodificar más grande.

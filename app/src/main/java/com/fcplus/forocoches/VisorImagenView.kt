@@ -4,6 +4,9 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Matrix
+import android.graphics.drawable.Animatable
+import android.graphics.drawable.AnimatedImageDrawable
+import android.os.Build
 import android.util.AttributeSet
 import android.view.GestureDetector
 import android.view.MotionEvent
@@ -84,6 +87,27 @@ class VisorImagenView @JvmOverloads constructor(
         super.setImageBitmap(bm)
         // Foto nueva (o el reemplazo en alta resolución): se vuelve al encuadre inicial.
         encuadrar()
+    }
+
+    /**
+     * Un GIF animado. El `ImageView` ya hace de `Callback` del drawable (avanza los fotogramas
+     * solo), así que basta con arrancarlo. Pinza, doble toque y arrastre van igual que en una foto:
+     * la `Matrix` no distingue.
+     */
+    fun ponerAnimado(d: AnimatedImageDrawable) {
+        // decodificar() ya devuelve null por debajo de Android 9; la guarda es para Lint.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) return
+        setImageDrawable(d)
+        // Casi todos los GIF declaran bucle infinito; el que no, se quedaría quieto tras una pasada.
+        d.repeatCount = AnimatedImageDrawable.REPEAT_INFINITE
+        d.start()
+        encuadrar()
+    }
+
+    override fun onDetachedFromWindow() {
+        // Al cerrar el visor: que el GIF no siga pidiendo fotogramas para una vista que ya no está.
+        (drawable as? Animatable)?.stop()
+        super.onDetachedFromWindow()
     }
 
     override fun onSizeChanged(w: Int, h: Int, anchoAnt: Int, altoAnt: Int) {
