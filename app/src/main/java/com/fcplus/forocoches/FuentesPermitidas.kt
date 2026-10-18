@@ -3,12 +3,16 @@ package com.fcplus.forocoches
 import java.net.URI
 
 /**
- * De dónde puede descargar la app la lista de la sección +18. Es el requisito de transparencia:
- * la app NO se conecta a ningún servidor nuestro, ni aunque se cambie la config remota. Si un día
- * la lista se muda (un CDN), su prefijo se añade AQUÍ, en el código, y se ve en el diff público.
+ * De dónde puede descargar la app lo que anuncia la config remota: la lista de la sección +18 y
+ * los emoticonos de ForoPlus ([EmoticonosRemotos]). Es el requisito de transparencia: la app NO se
+ * conecta a ningún servidor nuestro, ni aunque se cambie la config remota. Si un día algo se muda
+ * (un CDN), su prefijo se añade AQUÍ, en el código, y se ve en el diff público.
  */
 object FuentesPermitidas {
-    private val PREFIJOS = listOf("https://raw.githubusercontent.com/neonforger/foroplus-mas18/")
+    private val PREFIJOS = listOf(
+        "https://raw.githubusercontent.com/neonforger/foroplus-mas18/",
+        EmoticonosRemotos.ORIGEN,
+    )
 
     fun aceptada(url: String): Boolean {
         // Rechazo de escape del repo con caracteres codificados (..), hex (%), barras invertidas,

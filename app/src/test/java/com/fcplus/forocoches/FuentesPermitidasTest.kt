@@ -36,6 +36,13 @@ class FuentesPermitidasTest {
     @Test fun `rechazo de interrogante`() =
         assertFalse(FuentesPermitidas.aceptada("https://raw.githubusercontent.com/neonforger/foroplus-mas18/datos?x=1"))
 
+    @Test fun `los emoticonos del repo publico valen`() =
+        assertTrue(FuentesPermitidas.aceptada(EmoticonosRemotos.ORIGEN + "roto_oro.gif"))
+    @Test fun `pero no otra carpeta del repo publico`() =
+        assertFalse(FuentesPermitidas.aceptada("https://raw.githubusercontent.com/neonforger/foroplus/main/app/build.gradle"))
+    @Test fun `ni salirse de la carpeta de emoticonos`() =
+        assertFalse(FuentesPermitidas.aceptada(EmoticonosRemotos.ORIGEN + "../../app/x.gif"))
+
     private fun cfg(s: String) = JSONObject(s)
 
     @Test fun `sin bloque no hay seccion`() = assertNull(ConfigMas18Parser.de(cfg("""{"version":2}""")))

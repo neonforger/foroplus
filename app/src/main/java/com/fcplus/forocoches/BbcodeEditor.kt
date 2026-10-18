@@ -202,7 +202,7 @@ class BbcodeEditor(private val context: Context, private val input: EditText) {
         val nota = vista.findViewById<View>(R.id.smiley_nota)
         val rv = vista.findViewById<RecyclerView>(R.id.smiley_rejilla)
         val deFc = SmileyAdapter(items) { code -> insert("$code ") }
-        val propios = ForoPlusAdapter(EmoticonosForoPlus.TODOS) { e -> insert("${e.bbcode} ") }
+        val propios = ForoPlusAdapter(EmoticonosForoPlus.listos()) { e -> insert("${e.bbcode} ") }
         fun mostrar(pestana: Int) {
             pestanaSmileys = pestana
             val foroPlus = pestana == 1

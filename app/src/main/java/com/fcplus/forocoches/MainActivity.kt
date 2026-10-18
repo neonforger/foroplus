@@ -3366,6 +3366,9 @@ class MainActivity : AppCompatActivity() {
         // Los emoticonos de ForoPlus se pintan desde el APK, nunca desde la red.
         val assetsApp = applicationContext.assets
         EmoticonosForoPlus.lector = { f -> assetsApp.open("emoticonos/$f").use { it.readBytes() } }
+        // Y los que anuncia la config (se bajan una vez de raw.githubusercontent y se guardan).
+        EmoticonosRemotos.iniciar(this)
+        EmoticonosRemotos.sincronizar(this, RemoteConfig.cached(this))
 
         swipeRefresh = findViewById(R.id.swipe_refresh)
         webView = findViewById(R.id.webview)
@@ -7738,6 +7741,7 @@ class MainActivity : AppCompatActivity() {
         // caído no retrase nada.
         RemoteConfig.cuandoEsteFresca(3_000, skinHandler) {
             runOnUiThread { pintarAviso(); pintarPestanas() }   // la config fresca puede traer/quitar +18
+            EmoticonosRemotos.sincronizar(this, RemoteConfig.cached(this))   // y emoticonos nuevos
             actualizador.comprobar { nueva ->
                 if (nueva == null) return@comprobar
                 runOnUiThread { mostrarDialogoActualizacion(nueva) }
