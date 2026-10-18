@@ -7,23 +7,23 @@ package com.fcplus.forocoches
  */
 object ResumenOpciones {
 
-    private val LETRA = arrayOf("pequeña", "normal", "grande")
-    private val TITULOS = arrayOf("pequeños", "normales", "grandes")
 
-    fun apariencia(tema: String, idxMensajes: Int, idxTitulos: Int, estilo: String = EstiloApp.COMPACTA): String {
+    /** [spMensajes] y [spTitulos], ya leídos con [TamanoTexto.leer]. */
+    fun apariencia(tema: String, spMensajes: Int, spTitulos: Int, estilo: String = EstiloApp.COMPACTA): String {
         val nombreTema = when (tema) {
             TemaApp.CLARO -> "Tema claro"
             TemaApp.OSCURO -> "Tema oscuro"
             else -> "Tema del sistema"
         }
-        val m = idxMensajes.coerceIn(0, 2)
-        val t = idxTitulos.coerceIn(0, 2)
         val partes = mutableListOf(nombreTema)
         // La compacta es la de fábrica: decirlo sería ruido.
         if (estilo == EstiloApp.TARJETAS) partes.add("estilo tarjetas")
-        partes.add("letra ${LETRA[m]}")
+        val letra = TamanoTexto.palabra(spMensajes)
+        partes.add("letra $letra")
         // Si los títulos van como los mensajes, decirlo otra vez es ruido.
-        if (t != m) partes.add("títulos ${TITULOS[t]}")
+        if (TamanoTexto.palabra(spTitulos) != letra) {
+            partes.add("títulos ${TamanoTexto.palabra(spTitulos, plural = true)}")
+        }
         return partes.joinToString(" · ")
     }
 

@@ -8,6 +8,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.widget.SwitchCompat
 import androidx.core.content.ContextCompat
+import com.google.android.material.slider.Slider
 
 /**
  * Controlador del panel de Opciones (nativo): tamaño de fuente, cuenta (avatar/perfil),
@@ -56,19 +57,32 @@ class OptionsController(
     private val mas18Disponible: () -> Boolean = { true }
 ) {
     companion object {
+        /**
+         * El tamaño se guarda en sp desde que son barras (2026-10-18, ver [TamanoTexto]). Las
+         * claves `*_IDX` son las de los tres botones de antes: solo se LEEN, para que quien ya
+         * tenía un tamaño elegido lo conserve al actualizar.
+         */
+        const val PREF_FONT_SP = "post_font_sp"
         const val PREF_FONT_IDX = "post_font_idx"
-        private val SP = floatArrayOf(13f, 15f, 18f)   // pequeña / normal / grande
-        fun fontSp(prefs: SharedPreferences): Float =
-            SP[prefs.getInt(PREF_FONT_IDX, 1).coerceIn(0, 2)]
+        fun fontSpEntero(prefs: SharedPreferences): Int = leerTamano(prefs, PREF_FONT_SP, PREF_FONT_IDX)
+        fun fontSp(prefs: SharedPreferences): Float = fontSpEntero(prefs).toFloat()
+
+        private fun leerTamano(prefs: SharedPreferences, clave: String, claveVieja: String): Int =
+            TamanoTexto.leer(
+                if (prefs.contains(clave)) prefs.getInt(clave, TamanoTexto.NORMAL) else null,
+                if (prefs.contains(claveVieja)) prefs.getInt(claveVieja, 1) else null
+            )
 
         /**
          * Tamaño de los títulos del listado, APARTE del de los mensajes (lo pidió Márquez): se
          * puede querer leer los mensajes grandes y ver más hilos de un vistazo, o al revés.
          * "Normal" es el 15sp que tenían desde siempre en `item_thread`.
          */
+        const val PREF_TITLE_FONT_SP = "title_font_sp"
         const val PREF_TITLE_FONT_IDX = "title_font_idx"
-        fun tituloSp(prefs: SharedPreferences): Float =
-            SP[prefs.getInt(PREF_TITLE_FONT_IDX, 1).coerceIn(0, 2)]
+        fun tituloSpEntero(prefs: SharedPreferences): Int =
+            leerTamano(prefs, PREF_TITLE_FONT_SP, PREF_TITLE_FONT_IDX)
+        fun tituloSp(prefs: SharedPreferences): Float = tituloSpEntero(prefs).toFloat()
 
         /**
          * "Último que escribe" bajo la hora de cada fila del listado. Encendido por defecto (lo
@@ -106,12 +120,8 @@ class OptionsController(
             prefs.getBoolean(ClavesPorCuenta.clave(PREF_SIGNATURE, uidActivo(prefs)), false)
     }
 
-    private val fontSmall: TextView = panel.findViewById(R.id.opt_font_small)
-    private val fontNormal: TextView = panel.findViewById(R.id.opt_font_normal)
-    private val fontLarge: TextView = panel.findViewById(R.id.opt_font_large)
-    private val titleSmall: TextView = panel.findViewById(R.id.opt_title_small)
-    private val titleNormal: TextView = panel.findViewById(R.id.opt_title_normal)
-    private val titleLarge: TextView = panel.findViewById(R.id.opt_title_large)
+    private val fontBarra: Slider = panel.findViewById(R.id.opt_font_barra)
+    private val titleBarra: Slider = panel.findViewById(R.id.opt_title_barra)
     private val temaClaro: TextView = panel.findViewById(R.id.opt_tema_claro)
     private val temaOscuro: TextView = panel.findViewById(R.id.opt_tema_oscuro)
     private val temaSistema: TextView = panel.findViewById(R.id.opt_tema_sistema)
@@ -184,12 +194,8 @@ class OptionsController(
             prefs.edit().putBoolean(PREF_OCULTAR_MAS18, checked).apply()
             onMas18Changed()
         }
-        fontSmall.setOnClickListener { setFont(0) }
-        fontNormal.setOnClickListener { setFont(1) }
-        fontLarge.setOnClickListener { setFont(2) }
-        titleSmall.setOnClickListener { setTitleFont(0) }
-        titleNormal.setOnClickListener { setTitleFont(1) }
-        titleLarge.setOnClickListener { setTitleFont(2) }
+        prepararBarra(fontBarra, PREF_FONT_SP, "Tamaño de los mensajes") { onFontChanged() }
+        prepararBarra(titleBarra, PREF_TITLE_FONT_SP, "Tamaño de los títulos") { onTitleFontChanged() }
 
         temaClaro.setOnClickListener { setTema(TemaApp.CLARO) }
         temaOscuro.setOnClickListener { setTema(TemaApp.OSCURO) }
@@ -249,7 +255,7 @@ class OptionsController(
     /** Cómo lo tienes, bajo cada categoría. Se repinta al volver a la pantalla de categorías. */
     private fun pintarResumenes() {
         ponerResumen(catApariencia, ResumenOpciones.apariencia(
-            TemaApp.guardado(prefs), prefs.getInt(PREF_FONT_IDX, 1), prefs.getInt(PREF_TITLE_FONT_IDX, 1),
+            TemaApp.guardado(prefs), fontSpEntero(prefs), tituloSpEntero(prefs),
             EstiloApp.guardado(prefs)))
         ponerResumen(catFiltros, ResumenOpciones.filtros(
             palabras = keywordRepo.getKeywords().size,
@@ -299,8 +305,8 @@ class OptionsController(
         kwAbierto = false
         igAbierto = false
         popurriAbierto = false
-        paintFont(prefs.getInt(PREF_FONT_IDX, 1))
-        paintChips(listOf(titleSmall, titleNormal, titleLarge), prefs.getInt(PREF_TITLE_FONT_IDX, 1))
+        fontBarra.value = fontSpEntero(prefs).toFloat()
+        titleBarra.value = tituloSpEntero(prefs).toFloat()
         pintarPrevia()
         signSwitch.isChecked = signatureEnabled(prefs)
         ultimoSwitch.isChecked = ultimoEnLista(prefs)
@@ -314,18 +320,36 @@ class OptionsController(
         pintarPopurri()
     }
 
-    private fun setFont(idx: Int) {
-        prefs.edit().putInt(PREF_FONT_IDX, idx).apply()
-        paintFont(idx)
-        pintarPrevia()
-        onFontChanged()
-    }
-
-    private fun setTitleFont(idx: Int) {
-        prefs.edit().putInt(PREF_TITLE_FONT_IDX, idx).apply()
-        paintChips(listOf(titleSmall, titleNormal, titleLarge), idx)
-        pintarPrevia()
-        onTitleFontChanged()
+    /**
+     * Una barra de tamaño, sin número a la vista (dueño: "el usuario no necesita tanta info"; la
+     * vista previa ya enseña el tamaño). El valor solo lo dice TalkBack. Mientras arrastras solo
+     * cambia la vista previa; la app
+     * (hilo, listado, caja de escribir) se repinta al SOLTAR: rehacer un hilo entero en cada paso
+     * del arrastre sería tirones para nada.
+     */
+    private fun prepararBarra(
+        barra: Slider, clave: String, nombre: String, alSoltar: () -> Unit
+    ) {
+        barra.valueFrom = TamanoTexto.MIN.toFloat()
+        barra.valueTo = TamanoTexto.MAX.toFloat()
+        barra.stepSize = 1f
+        barra.contentDescription = nombre
+        barra.setLabelFormatter { TamanoTexto.etiqueta(it.toInt()) }
+        var arrastrando = false
+        barra.addOnChangeListener { _, v, deUsuario ->
+            if (!deUsuario) return@addOnChangeListener
+            prefs.edit().putInt(clave, v.toInt()).apply()
+            pintarPrevia()
+            // Con TalkBack o con teclado no hay dedo que soltar: cada paso es definitivo.
+            if (!arrastrando) alSoltar()
+        }
+        barra.addOnSliderTouchListener(object : Slider.OnSliderTouchListener {
+            override fun onStartTrackingTouch(slider: Slider) { arrastrando = true }
+            override fun onStopTrackingTouch(slider: Slider) {
+                arrastrando = false
+                alSoltar()
+            }
+        })
     }
 
     /** La vista previa de Apariencia con los tamaños elegidos (los mismos que usa la app). */
@@ -367,10 +391,6 @@ class OptionsController(
         val modos = listOf(TemaApp.CLARO, TemaApp.OSCURO, TemaApp.SISTEMA)
         Segmentado.pintar(listOf(temaClaro, temaOscuro, temaSistema), modos.indexOf(modo))
     }
-
-    private fun paintFont(idx: Int) = paintChips(listOf(fontSmall, fontNormal, fontLarge), idx)
-
-    private fun paintChips(chips: List<TextView>, idx: Int) = Segmentado.pintar(chips, idx)
 
     private fun addKeyword() {
         val w = kwInput.text.toString().trim()

@@ -1703,19 +1703,74 @@
                             </LinearLayout>
                         </LinearLayout>
 
+                        <!-- Dos barras de 12 a 22 sp (OptionsController.prepararBarra, TamanoTexto). -->
                         <TextView style="@style/OptSection" android:text="Tamaño de los mensajes" />
-                        <LinearLayout style="@style/Segmentado">
-                            <TextView android:id="@+id/opt_font_small" style="@style/SegmentoOpcion" android:text="Pequeña" />
-                            <TextView android:id="@+id/opt_font_normal" style="@style/SegmentoOpcion" android:text="Normal" />
-                            <TextView android:id="@+id/opt_font_large" style="@style/SegmentoOpcion" android:text="Grande" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="A"
+                                android:textSize="13sp"
+                                android:textColor="@color/fc_texto_2"
+                                android:importantForAccessibility="no" />
+
+                            <com.google.android.material.slider.Slider
+                                android:id="@+id/opt_font_barra"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                app:labelBehavior="gone"
+                                app:tickVisible="true" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="A"
+                                android:textSize="22sp"
+                                android:textColor="@color/fc_texto_2"
+                                android:importantForAccessibility="no" />
                         </LinearLayout>
 
                         <!-- Títulos del listado: ajuste APARTE del de los mensajes (Márquez). -->
                         <TextView style="@style/OptSection" android:text="Tamaño de los títulos" />
-                        <LinearLayout style="@style/Segmentado">
-                            <TextView android:id="@+id/opt_title_small" style="@style/SegmentoOpcion" android:text="Pequeña" />
-                            <TextView android:id="@+id/opt_title_normal" style="@style/SegmentoOpcion" android:text="Normal" />
-                            <TextView android:id="@+id/opt_title_large" style="@style/SegmentoOpcion" android:text="Grande" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="A"
+                                android:textSize="13sp"
+                                android:textColor="@color/fc_texto_2"
+                                android:importantForAccessibility="no" />
+
+                            <com.google.android.material.slider.Slider
+                                android:id="@+id/opt_title_barra"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                app:labelBehavior="gone"
+                                app:tickVisible="true" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="A"
+                                android:textSize="22sp"
+                                android:textColor="@color/fc_texto_2"
+                                android:importantForAccessibility="no" />
                         </LinearLayout>
 
                         <!-- Cómo se verá, con los dos tamaños elegidos (OptionsController.pintarPrevia). -->

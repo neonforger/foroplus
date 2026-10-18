@@ -8,38 +8,35 @@ class ResumenOpcionesTest {
     @Test
     fun `apariencia con los titulos igual que los mensajes no repite el tamaño`() {
         assertEquals("Tema oscuro · letra normal",
-            ResumenOpciones.apariencia(TemaApp.OSCURO, 1, 1))
+            ResumenOpciones.apariencia(TemaApp.OSCURO, 15, 15))
+        assertEquals("sin números: 17 y 20 son los dos \"grande\"", "Tema oscuro · letra grande",
+            ResumenOpciones.apariencia(TemaApp.OSCURO, 17, 20))
     }
 
     @Test
     fun `apariencia con los titulos distintos lo dice`() {
         assertEquals("Tema claro · letra grande · títulos pequeños",
-            ResumenOpciones.apariencia(TemaApp.CLARO, 2, 0))
+            ResumenOpciones.apariencia(TemaApp.CLARO, 18, 13))
+        assertEquals("Tema claro · letra grande · títulos normales",
+            ResumenOpciones.apariencia(TemaApp.CLARO, 20, 15))
     }
 
     @Test
     fun `apariencia con tarjetas lo dice tras el tema`() {
         assertEquals("Tema oscuro · estilo tarjetas · letra normal",
-            ResumenOpciones.apariencia(TemaApp.OSCURO, 1, 1, EstiloApp.TARJETAS))
+            ResumenOpciones.apariencia(TemaApp.OSCURO, 15, 15, EstiloApp.TARJETAS))
     }
 
     @Test
     fun `apariencia con la compacta no dice nada del estilo`() {
-        assertEquals(ResumenOpciones.apariencia(TemaApp.OSCURO, 1, 1),
-            ResumenOpciones.apariencia(TemaApp.OSCURO, 1, 1, EstiloApp.COMPACTA))
+        assertEquals(ResumenOpciones.apariencia(TemaApp.OSCURO, 15, 15),
+            ResumenOpciones.apariencia(TemaApp.OSCURO, 15, 15, EstiloApp.COMPACTA))
     }
 
     @Test
     fun `el tema del sistema se nombra como tal`() {
         assertEquals("Tema del sistema · letra pequeña · títulos grandes",
-            ResumenOpciones.apariencia(TemaApp.SISTEMA, 0, 2))
-    }
-
-    @Test
-    fun `un indice fuera de rango se recorta como al leer la preferencia`() {
-        // Mismo coerceIn que OptionsController.fontSp: el resumen dice lo que se aplica.
-        assertEquals("Tema oscuro · letra grande · títulos pequeños",
-            ResumenOpciones.apariencia(TemaApp.OSCURO, 7, -3))
+            ResumenOpciones.apariencia(TemaApp.SISTEMA, 13, 18))
     }
 
     @Test

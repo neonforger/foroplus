@@ -109,6 +109,15 @@ class OptionsControllerTest {
     }
 
     @Test
+    fun `lo que guarda la barra manda sobre el boton de antes`() {
+        shellPrefs.edit().putInt(OptionsController.PREF_FONT_IDX, 0).commit()
+        assertEquals("sin barra tocada, se conserva el botón viejo", 13f, OptionsController.fontSp(shellPrefs))
+        shellPrefs.edit().putInt(OptionsController.PREF_FONT_SP, 17).commit()
+        assertEquals(17f, OptionsController.fontSp(shellPrefs))
+        assertEquals("los títulos siguen a lo suyo", 15f, OptionsController.tituloSp(shellPrefs))
+    }
+
+    @Test
     fun `la seccion +18 y ocultar en listas vienen APAGADAS`() {
         val prefs = ApplicationProvider.getApplicationContext<Context>()
             .getSharedPreferences("t_opts_mas18", Context.MODE_PRIVATE).also { it.edit().clear().commit() }
