@@ -1,6 +1,18 @@
 {
   "versiones": [
     {
+      "code": 52,
+      "nombre": "1.14.0",
+      "fecha": "2026-10-18",
+      "notas": [
+        "Emoticonos propios de ForoPlus: el selector tiene ahora dos pestañas, Forocoches y ForoPlus, que estrena el SEÑORADETODOS. Quien lea el foro desde la web también lo ve",
+        "El tamaño de la letra se ajusta con dos barras en Opciones → Apariencia: una para los mensajes y otra para los títulos de la lista",
+        "Los mensajes editados lo dicen al pie, con la fecha, y los GIF se mueven también al abrirlos a pantalla completa",
+        "Privados: se ven las imágenes, y tocar el nombre de quien te escribe abre su ficha",
+        "Multicita entre hilos, el texto con [SIZE] sale a su tamaño y los enlaces cortos de TikTok ya no dan error al publicar"
+      ]
+    },
+    {
       "code": 51,
       "nombre": "1.13.0",
       "fecha": "2026-10-11",
