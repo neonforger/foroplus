@@ -66,4 +66,10 @@ class ErrorPublicarTest {
         assertEquals(true, r.endsWith("…"))
         assertEquals(false, r.endsWith(" …"))
     }
+
+    @Test
+    fun `un hilo borrado se dice, no se tapa con el generico`() {
+        val r = ErrorPublicar.corto(ErrorPublicar.HILO_BORRADO, "No se pudo enviar la respuesta")
+        assertEquals("No se pudo enviar: el hilo ya no existe, lo han borrado", r)
+    }
 }

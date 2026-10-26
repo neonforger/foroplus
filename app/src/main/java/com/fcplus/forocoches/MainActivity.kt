@@ -6852,6 +6852,14 @@ class MainActivity : AppCompatActivity() {
                 } catch (_: Exception) { }
                 showRestricted(msg, meta, invite)
             }
+            reason == "borrado" -> {
+                // FC dice que el hilo no existe: lo han borrado. Se dice tal cual (Juan,
+                // 2026-10-25: con el genérico no sabías si era la app o el foro). Si ya había
+                // una página cargada (pasando de página) se queda a la vista para seguir
+                // leyéndola; si no, de vuelta a la lista.
+                toast("Este hilo ya no existe: lo han borrado")
+                if (postAdapter.itemCount == 0) showNative()
+            }
             else -> {
                 android.util.Log.w("FC_SHELL", "thread error: $reason (styleid=$skinStyleid)")
                 // Un hilo que llega vacío es el síntoma de que FC nos sirve un diseño que no

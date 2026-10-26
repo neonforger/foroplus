@@ -20,6 +20,9 @@ object ErrorPublicar {
     /** Aviso genérico: FC dijo que no, pero no en un idioma que sirva para enseñar. */
     const val GENERICO = "FC no aceptó el mensaje. Inténtalo de nuevo"
 
+    /** Código de `fcSubmitReply` cuando FC dice que el hilo no existe (`hiloBorrado`). */
+    const val HILO_BORRADO = "hilo-borrado"
+
     private val CADA = Regex("""al menos\s+(\d+)\s*segundos""", RegexOption.IGNORE_CASE)
     private val FALTAN = Regex("""de nuevo en\s+(\d+)\s*segundos""", RegexOption.IGNORE_CASE)
 
@@ -29,6 +32,9 @@ object ErrorPublicar {
      */
     fun corto(bruto: String, siNoSeSabe: String = GENERICO): String {
         val t = bruto.replace(Regex("\\s+"), " ").trim()
+        // El hilo ya no existe (lo han borrado). Sin esto salía el genérico y no sabías si
+        // era la app o el foro (Juan, 2026-10-25).
+        if (t == HILO_BORRADO) return "No se pudo enviar: el hilo ya no existe, lo han borrado"
         if (esTecnico(t)) return siNoSeSabe
 
         val faltan = FALTAN.find(t)?.groupValues?.get(1)

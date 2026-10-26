@@ -93,6 +93,19 @@
     return em ? em[1].replace(/\s+/g, ' ').trim() : '';
   }
 
+  /**
+   * ¿FC dice que el hilo no existe? Es lo que ve un usuario normal cuando lo han borrado
+   * ("echenique"): FC no distingue un hilo borrado de uno que nunca existió. Medido el
+   * 2026-10-26 con `t=99999999`: showthread trae "Ningún Tema especificado." (200, sin posts)
+   * y newreply "Tema especificado inválido" (200, sin formulario). Sin esto la app decía "no se
+   * pudo cargar el hilo" o "no se pudo enviar la respuesta" y había que ir a la web a ver qué
+   * pasaba (Juan, 2026-10-25).
+   */
+  function hiloBorrado(doc) {
+    var t = (doc && doc.body ? doc.body.textContent : '') || '';
+    return /Ning[uú]n Tema especificado|Tema especificado inv[aá]lido/i.test(t);
+  }
+
   // El primer form del doc que contiene el selector dado (p. ej. el textarea message).
   function formWith(doc, selector) {
     var fs = [].slice.call(doc.querySelectorAll('form'));
@@ -1191,6 +1204,9 @@
           });
         });
         if (!posts.length) {
+          // Antes que el login: de invitado la página del hilo borrado también trae el
+          // formulario de entrar, y se le pediría la sesión para nada.
+          if (hiloBorrado(doc)) { fallo('borrado'); return; }
           // Sin posts + form de login en la página = hilo que requiere cuenta (+HD
           // de invitado, p. ej.). La app enseña NUESTRO login nativo, nunca el foro.
           if (doc.querySelector('input[name="vb_login_username"]')) {
@@ -1334,7 +1350,10 @@
         var doc = new DOMParser().parseFromString(html, 'text/html');
         var forms = [].slice.call(doc.querySelectorAll('form'));
         var f = forms.filter(function (x) { return x.querySelector('textarea[name="message"]'); })[0];
-        if (!f) { AndroidShell.onReplyResult(JSON.stringify({ ok: false, error: 'no-form' })); return null; }
+        if (!f) {
+          AndroidShell.onReplyResult(JSON.stringify({ ok: false, error: hiloBorrado(doc) ? 'hilo-borrado' : 'no-form' }));
+          return null;
+        }
         var params = new URLSearchParams();
         f.querySelectorAll('input, textarea, select').forEach(function (el) {
           var nm = el.getAttribute('name'); if (!nm) return;
