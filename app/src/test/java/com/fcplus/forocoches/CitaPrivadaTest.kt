@@ -90,4 +90,22 @@ class CitaPrivadaTest {
     fun `sin nada no se manda nada`() {
         assertEquals("", CitaPrivada.montar("", ""))
     }
+
+    @Test
+    fun `las fotos de la cita se ven como en los hilos, no como una URL`() {
+        val cita = "[QUOTE=Iznogud;1]mira [IMG]https://i.imgur.com/x.png[/IMG] esto[/QUOTE]"
+        assertEquals("mira ${CitaBbcode.MARCA_IMAGEN} esto", CitaPrivada.previsualizacion(cita))
+    }
+
+    @Test
+    fun `recortar conserva de quien es la cita y tira lo anidado`() {
+        val cita = "[QUOTE=Iznogud;123][QUOTE=neonforger]lo mio[/QUOTE]uno dos tres[/QUOTE]"
+        assertEquals("[QUOTE=Iznogud;123]dos[/QUOTE]", CitaPrivada.recortada(cita, "dos"))
+    }
+
+    @Test
+    fun `recortar quita la marca de foto en vez de publicarla`() {
+        val r = CitaPrivada.recortada("[QUOTE=A]x[/QUOTE]", "hola ${CitaBbcode.MARCA_IMAGEN} adios")
+        assertEquals("[QUOTE=A]hola adios[/QUOTE]", r)
+    }
 }

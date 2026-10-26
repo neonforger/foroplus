@@ -48,10 +48,27 @@ object CitaPrivada {
         var antes: String
         do { antes = t; t = anidada.replace(t, " ") } while (t != antes)
         return t
+            // Las fotos como en la cita de un hilo (ver [CitaBbcode.previsualizacion]): una URL
+            // pelada no dice nada, y al recortar la cita la marca se quita sola.
+            .replace(Regex("""\[IMG\][^\[]*\[/IMG\]""", RegexOption.IGNORE_CASE), CitaBbcode.MARCA_IMAGEN)
             .replace(Regex("""\[/?QUOTE[^\]]*\]""", RegexOption.IGNORE_CASE), " ")
             .replace(Regex("""\[/?[A-Za-z*]+(=[^\]]*)?\]"""), " ")
             .replace(Regex("""\s+"""), " ")
             .trim()
+    }
+
+    /**
+     * La cita recortada a mano: la apertura de FC (`[QUOTE=Fulano;12345]`, para que siga
+     * diciendo de quién es) con el texto que ha dejado el usuario dentro.
+     *
+     * Lo pidió Juan el 2026-10-20: al responder un privado la cita no se podía recortar, y en
+     * los hilos sí. Lo de dentro es el texto de la ventanita, que parte de [previsualizacion]:
+     * las citas anidadas ya no van, que es justo lo que quiere quien recorta.
+     */
+    fun recortada(original: String, texto: String): String {
+        val abre = Regex("""^\[QUOTE[^\]]*\]""", RegexOption.IGNORE_CASE).find(original.trim())?.value
+            ?: "[QUOTE]"
+        return abre + CitaBbcode.sinMarcas(texto) + "[/QUOTE]"
     }
 
     /** Quita el `[QUOTE=…]` de fuera y su cierre, si los hay. */

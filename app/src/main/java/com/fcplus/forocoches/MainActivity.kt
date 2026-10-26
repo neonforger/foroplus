@@ -300,6 +300,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var pmComposeQuotes: android.widget.LinearLayout
     /** Cita del MP al que se responde, en BBCode tal y como la escribe FC. "" = sin cita. */
     private var pmQuote = ""
+    /** La cita tal y como la dio FC, para volver a ella después de recortarla. */
+    private var pmQuoteOriginal = ""
     private lateinit var pmComposeSubject: android.widget.EditText
     private lateinit var pmComposeMessage: android.widget.EditText
     private lateinit var pmComposeSend: TextView
@@ -1770,6 +1772,7 @@ class MainActivity : AppCompatActivity() {
         pmComposeSend.text = "Enviar"
         pmComposeMessage.setText("")
         pmQuote = ""
+        pmQuoteOriginal = ""
         pintarCitaMp()
         if (mode == "reply") {
             pmComposeTitle.text = "Responder"
@@ -1814,17 +1817,69 @@ class MainActivity : AppCompatActivity() {
     private fun pintarCitaMp() {
         pmComposeQuotes.removeAllViews()
         if (pmQuote.isEmpty()) return
+        // Lo mismo que en los hilos (Juan, 2026-10-20): el lápiz recorta la cita y el botón la
+        // pasa como texto a la caja. Antes el lápiz estaba pintado y no hacía nada.
+        pmComposeQuotes.addView(pastillaCitasComoTexto(plural = false) { citaMpATexto() })
         val card = layoutInflater.inflate(R.layout.item_reply_quote, pmComposeQuotes, false)
         val autor = CitaPrivada.autor(pmQuote)
+        val editada = pmQuote != pmQuoteOriginal
+        val preview = CitaPrivada.previsualizacion(pmQuote)
         card.findViewById<TextView>(R.id.quote_author).text =
             if (autor.isNotEmpty()) "@$autor" else "(mensaje citado)"
         card.findViewById<TextView>(R.id.quote_preview).text =
-            CitaPrivada.previsualizacion(pmQuote)
+            if (editada) "✎ $preview" else preview
+        card.setOnClickListener { editarCitaMp() }
+        card.findViewById<View>(R.id.quote_edit).setOnClickListener { editarCitaMp() }
         card.findViewById<View>(R.id.quote_remove).setOnClickListener {
             pmQuote = ""
             pintarCitaMp()
         }
         pmComposeQuotes.addView(card)
+    }
+
+    /** Ventanita para recortar la cita del MP, la misma que [editarCita] en los hilos. */
+    private fun editarCitaMp() {
+        val caja = EditText(this)
+        val original = CitaPrivada.previsualizacion(pmQuote)
+        caja.setText(original)
+        caja.setTextColor(color(R.color.fc_texto))
+        caja.setBackgroundColor(0x00000000)
+        caja.textSize = 14f
+        caja.setPadding(dp(20), dp(12), dp(20), dp(12))
+        caja.setSelection(caja.text.length)
+        val autor = CitaPrivada.autor(pmQuote)
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle(if (autor.isNotEmpty()) "Cita de @$autor" else "Cita")
+            .setView(caja)
+            .setPositiveButton("Guardar") { _, _ ->
+                val texto = caja.text.toString().trim()
+                // Vaciarla entera es quitarla, como con la ✕.
+                if (texto.isEmpty()) pmQuote = ""
+                // Sin tocar: se queda la cita que escribió FC, con su formato y sus fotos.
+                else if (texto != original.trim()) pmQuote = CitaPrivada.recortada(pmQuoteOriginal, texto)
+                pintarCitaMp()
+            }
+            .setNegativeButton("Cancelar", null)
+            .apply {
+                if (pmQuote != pmQuoteOriginal) {
+                    setNeutralButton("Original") { _, _ ->
+                        pmQuote = pmQuoteOriginal
+                        pintarCitaMp()
+                    }
+                }
+            }
+            .show()
+    }
+
+    /** La cita del MP pasa a la caja como BBCode, como [citasATexto] en los hilos. */
+    private fun citaMpATexto() {
+        if (pmQuote.isEmpty()) return
+        val (nuevo, cursor) = CitaBbcode.aTexto(listOf(pmQuote), pmComposeMessage.text.toString())
+        pmQuote = ""
+        pintarCitaMp()
+        pmComposeMessage.setText(nuevo)
+        pmComposeMessage.setSelection(cursor.coerceIn(0, pmComposeMessage.text.length))
+        pmComposeMessage.requestFocus()
     }
 
     private fun cancelPmCompose() {
@@ -1875,6 +1930,7 @@ class MainActivity : AppCompatActivity() {
                 if (!isPmComposeVisible || pmComposeMode != "reply") return
                 if (o.optString("pmid") != currentPmId) return
                 pmQuote = o.optString("cita").trim()
+                pmQuoteOriginal = pmQuote
                 pintarCitaMp()
             }
             "inbox" -> {
@@ -4856,24 +4912,7 @@ class MainActivity : AppCompatActivity() {
         // Las citas como TEXTO, para recortarlas con formato o ponerlas donde quieras (ver
         // CitaBbcode.aTexto). Todas a la vez: una sola dejaría el orden al revés al publicar.
         if (replyQuotes.isNotEmpty()) {
-            // Botón secundario contorneado (fase 3), no un enlace suelto.
-            replyQuotesContainer.addView(TextView(this).apply {
-                text = if (replyQuotes.size == 1) "Editar la cita como texto" else "Editar las citas como texto"
-                textSize = 13.5f
-                setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL))
-                setTextColor(color(R.color.fc_rojo))
-                setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_editar, 0, 0, 0)
-                compoundDrawableTintList = android.content.res.ColorStateList.valueOf(color(R.color.fc_rojo))
-                compoundDrawablePadding = dp(6)
-                gravity = android.view.Gravity.CENTER_VERTICAL
-                minHeight = dp(36)
-                setPadding(dp(12), 0, dp(14), 0)
-                setBackgroundResource(R.drawable.bg_pastilla_contorno)
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT
-                ).apply { bottomMargin = dp(10) }
-                setOnClickListener { citasATexto() }
-            })
+            replyQuotesContainer.addView(pastillaCitasComoTexto(replyQuotes.size > 1) { citasATexto() })
         }
         for (post in replyQuotes.values.toList()) {
             val card = inflater.inflate(R.layout.item_reply_quote, replyQuotesContainer, false)
@@ -4896,6 +4935,27 @@ class MainActivity : AppCompatActivity() {
             replyQuotesContainer.addView(card)
         }
     }
+
+    /** El botón "Editar la cita como texto" de encima de las citas (hilos y privados). */
+    private fun pastillaCitasComoTexto(plural: Boolean, alPulsar: () -> Unit): TextView =
+        // Botón secundario contorneado (fase 3), no un enlace suelto.
+        TextView(this).apply {
+            text = if (plural) "Editar las citas como texto" else "Editar la cita como texto"
+            textSize = 13.5f
+            setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL))
+            setTextColor(color(R.color.fc_rojo))
+            setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_editar, 0, 0, 0)
+            compoundDrawableTintList = android.content.res.ColorStateList.valueOf(color(R.color.fc_rojo))
+            compoundDrawablePadding = dp(6)
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            minHeight = dp(36)
+            setPadding(dp(12), 0, dp(14), 0)
+            setBackgroundResource(R.drawable.bg_pastilla_contorno)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = dp(10) }
+            setOnClickListener { alPulsar() }
+        }
 
     /**
      * Las tarjetas de cita pasan a la caja como BBCode (`[QUOTE=autor;pid]…[/QUOTE]`) y dejan de
