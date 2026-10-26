@@ -17,6 +17,7 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.view.doOnNextLayout
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -6252,10 +6253,38 @@ class MainActivity : AppCompatActivity() {
         // Se apila el DESTINO: como la entrada actual guarda por dónde ibas leyendo, el atrás
         // te devuelve ahí en vez de dejarte tirado en mitad del hilo.
         (nav.current as? Screen.Thread)?.let { nav.push(it.copy(anchorPid = pid, anchorOffset = 0)) }
-        val lm = postList.layoutManager as LinearLayoutManager
-        postList.post { lm.scrollToPositionWithOffset(pos, 0) }
+        ponerArriba(pos)
         postAdapter.highlightPid = pid
         postList.postDelayed({ postAdapter.clearHighlight() }, 1200L)
+    }
+
+    /**
+     * Lleva el post [pos] arriba de la lista, y que se VEA.
+     *
+     * Un post de los últimos de la página no puede subir hasta arriba: la lista lo deja pegado
+     * a su final. Y con la cabecera desplegada, el final de la lista está FUERA de la pantalla
+     * (`appbar_scrolling_view_behavior` desplaza la lista bajo la cabecera, no la encoge), así
+     * que el post quedaba debajo de las barras y lo que se veía era el ANTERIOR. Lo reportó Juan
+     * el 2026-10-15 ("al pulsar una cita me lleva al post inmediatamente anterior", y lo mismo
+     * al publicar); medido el 2026-10-26 saltando al último post de `t=10847624`: su cabecera en
+     * y=1933, debajo de "Responder…". Se pliega la cabecera, que es lo que habría pasado si
+     * hubieras bajado tú hasta ahí.
+     */
+    private fun ponerArriba(pos: Int) {
+        val lm = postList.layoutManager as LinearLayoutManager
+        postList.post {
+            lm.scrollToPositionWithOffset(pos, 0)
+            // Tras el layout que pide el salto, y fuera de él: tocar la cabecera dentro de un
+            // paso de layout es pedir que se pierda (gotcha de la barra de páginas).
+            postList.doOnNextLayout {
+                postList.post {
+                    val v = lm.findViewByPosition(pos) ?: return@post
+                    if (!postList.canScrollVertically(1) && v.top > postList.paddingTop + dp(8)) {
+                        threadAppbar.setExpanded(false, true)
+                    }
+                }
+            }
+        }
     }
 
     /**
@@ -6737,9 +6766,9 @@ class MainActivity : AppCompatActivity() {
         if (pendingIrAlFinal) {
             pendingIrAlFinal = false
             // `post` y no directo: la lista acaba de recibir los datos y aún no ha medido nada.
-            if (postAdapter.itemCount > 0) {
-                postList.post { postList.scrollToPosition(postAdapter.itemCount - 1) }
-            }
+            // El último no puede subir arriba: ponerArriba lo deja pegado al final y pliega la
+            // cabecera para que ese final se vea (si no, queda debajo de las barras).
+            if (postAdapter.itemCount > 0) ponerArriba(postAdapter.itemCount - 1)
         }
 
         // Tu mensaje abrió una página nueva: la que ha llegado era la última de ANTES de
@@ -6773,8 +6802,12 @@ class MainActivity : AppCompatActivity() {
                 val offset = pendingScrollOffset ?: 0
                 pendingScrollPid = ""
                 pendingScrollOffset = null
-                val lm = postList.layoutManager as LinearLayoutManager
-                postList.post { lm.scrollToPositionWithOffset(pos, offset) }
+                if (restaurando) {
+                    val lm = postList.layoutManager as LinearLayoutManager
+                    postList.post { lm.scrollToPositionWithOffset(pos, offset) }
+                } else {
+                    ponerArriba(pos)
+                }
                 if (!restaurando) {
                     // Resaltado de 1,2 s para que se vea cuál es tu mensaje.
                     postAdapter.highlightPid = pid
