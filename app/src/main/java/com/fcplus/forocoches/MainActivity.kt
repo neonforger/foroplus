@@ -7470,7 +7470,10 @@ class MainActivity : AppCompatActivity() {
         // hilos: si el diseño del foro es el problema, se dice (canario, ver ForumSkin).
         listEmpty.text = skinWarning()
             ?: if (listSource == "favs") "No tienes hilos suscritos"
-               else "No hay hilos que mostrar"
+               // Llegaron hilos y el filtro de ignorados se los llevó todos: se dice (Juan,
+               // buscando los hilos de alguien a quien tiene ignorado).
+               else AvisoListaVacia.porIgnorados(parsed.threads.map { it.author }, repo.getIgnoredUsers())
+                   ?: "No hay hilos que mostrar"
     }
 
     /** Badges de la barra inferior: MP en Perfil, citas en Citas, menciones en Menciones.
