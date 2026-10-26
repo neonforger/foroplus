@@ -91,6 +91,21 @@ object GifAnimado {
     }
 
     /**
+     * Engancha a [tv] los GIF de su texto, que se cargaron enganchados a OTRO TextView.
+     *
+     * Pasa con el texto que va detrás de un reproductor ([TramosEmbed]): el mensaje se pinta
+     * entero en el TextView principal y luego se reparte, así que esos GIF repintaban el
+     * principal y en el suyo se quedaban quietos.
+     */
+    fun reenganchar(tv: TextView) {
+        if (!soportado()) return
+        val t = tv.text as? Spanned ?: return
+        for (s in t.getSpans(0, t.length, ImageSpan::class.java)) {
+            (s.drawable as? AnimatedImageDrawable)?.let { animar(it, tv) }
+        }
+    }
+
+    /**
      * Para los GIFs que estuvieran animándose en [tv] y los desengancha.
      *
      * Obligatorio al reciclar el mensaje o al volver a pintarlo: el drawable viejo sigue

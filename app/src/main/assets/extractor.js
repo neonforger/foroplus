@@ -225,30 +225,45 @@
     return true;
   }
 
+  /**
+   * Saca un embed del mensaje y deja en su sitio una MARCA de texto, `\uE002<n>\uE003`, con
+   * `n` su posición en la lista de embeds (\uE000/\uE001 ya son de los spoilers).
+   *
+   * Los reproductores son vistas y no caben dentro del texto, así que antes se pintaban todos
+   * al FINAL del mensaje, dejando huecos en blanco donde iban (Juan, 2026-10-20: "texto,
+   * YouTube, «Y de propina», YouTube" salía como texto, texto y los dos vídeos apilados). Con
+   * la marca, Kotlin parte el texto por ahí y mete cada reproductor en su sitio
+   * (TramosEmbed.kt). Son caracteres de uso privado: no salen nunca en un mensaje de verdad y
+   * `fromHtml` los deja pasar tal cual.
+   */
+  function enSuSitio(el, doc, embeds, spec) {
+    var n = embeds.push(spec) - 1;
+    if (el.parentNode) el.parentNode.replaceChild(doc.createTextNode('\uE002' + n + '\uE003'), el);
+  }
+
   function collectEmbeds(m, doc) {
     var embeds = [];
     m.querySelectorAll('blockquote.twitter-tweet').forEach(function (bq) {
       var a = bq.querySelector('a[href*="/status/"]') || bq.querySelector('a[href]');
       var href = a ? a.getAttribute('href') : '';
       if (dentroDeCita(bq)) { enlaceEnCita(bq, doc, href, 'Ver tweet'); return; }
-      if (href) embeds.push({ kind: 'twitter', url: href.split('?')[0], id: '' });
-      quitarEmbed(bq, m);
+      if (href) enSuSitio(bq, doc, embeds, { kind: 'twitter', url: href.split('?')[0], id: '' });
+      else quitarEmbed(bq, m);
     });
     m.querySelectorAll('blockquote.instagram-media, [data-instgrm-permalink]').forEach(function (bq) {
       var href = bq.getAttribute('data-instgrm-permalink') ||
         (bq.querySelector('a[href]') ? bq.querySelector('a[href]').getAttribute('href') : '');
       href = (href || '').split('?')[0];
       if (dentroDeCita(bq)) { enlaceEnCita(bq, doc, href, 'Ver publicación de Instagram'); return; }
-      if (href) embeds.push({ kind: 'instagram', url: href, id: '' });
-      quitarEmbed(bq, m);
+      if (href) enSuSitio(bq, doc, embeds, { kind: 'instagram', url: href, id: '' });
+      else quitarEmbed(bq, m);
     });
     m.querySelectorAll('blockquote.tiktok-embed').forEach(function (bq) {
       var vid = bq.getAttribute('data-video-id') || '';
       var cite = bq.getAttribute('cite') ||
         (bq.querySelector('a[href]') ? bq.querySelector('a[href]').getAttribute('href') : '');
       if (dentroDeCita(bq)) { enlaceEnCita(bq, doc, (cite || '').split('?')[0], 'Ver TikTok'); return; }
-      embeds.push({ kind: 'tiktok', url: (cite || '').split('?')[0], id: vid });
-      quitarEmbed(bq, m);
+      enSuSitio(bq, doc, embeds, { kind: 'tiktok', url: (cite || '').split('?')[0], id: vid });
     });
     // YouTube "oficial" de FC: NO es un iframe ni un enlace, sino un <div id=NNN></div> vacío
     // seguido de <script>verVideo('IDVIDEO','NNN')</script> que monta el iframe en runtime.
@@ -264,9 +279,10 @@
         s.remove();
         return;
       }
-      embeds.push({ kind: 'youtube', url: '', id: mm[1] });
-      if (holder) quitarEmbed(holder, m);
-      else if (s.previousElementSibling) quitarEmbed(s.previousElementSibling, m);
+      var ytSpec = { kind: 'youtube', url: '', id: mm[1] };
+      if (holder) enSuSitio(holder, doc, embeds, ytSpec);
+      else if (s.previousElementSibling) enSuSitio(s.previousElementSibling, doc, embeds, ytSpec);
+      else { enSuSitio(s, doc, embeds, ytSpec); return; }
       s.remove();
     });
     m.querySelectorAll('iframe[src*="youtube"], iframe[src*="youtu.be"], iframe[src*="ytimg"]').forEach(function (f) {
@@ -275,22 +291,22 @@
         enlaceEnCita(f, doc, 'https://www.youtube.com/watch?v=' + id, 'Ver vídeo de YouTube');
         return;
       }
-      if (id) embeds.push({ kind: 'youtube', url: '', id: id });
-      quitarEmbed(f, m);
+      if (id) enSuSitio(f, doc, embeds, { kind: 'youtube', url: '', id: id });
+      else quitarEmbed(f, m);
     });
     m.querySelectorAll('a[href*="youtube.com/watch"], a[href*="youtu.be/"], a[href*="youtube.com/shorts"]').forEach(function (a) {
       var id = ytIdFrom(a.getAttribute('href') || '');
       // Dentro de una cita ya ES un enlace: se queda tal cual y se ahorra el reproductor.
       if (dentroDeCita(a)) return;
-      if (id) { embeds.push({ kind: 'youtube', url: '', id: id }); quitarEmbed(a, m); }
+      if (id) enSuSitio(a, doc, embeds, { kind: 'youtube', url: '', id: id });
     });
     m.querySelectorAll('video').forEach(function (v) {
       var src = v.getAttribute('src') ||
         (v.querySelector('source') ? v.querySelector('source').getAttribute('src') : '');
       if (src) { try { src = new URL(src, 'https://forocoches.com/foro/').href; } catch (e) {} }
       if (dentroDeCita(v)) { enlaceEnCita(v, doc, src, 'Ver vídeo'); return; }
-      if (src) embeds.push({ kind: 'video', url: src, id: '', alto: altoDeclarado(v) });
-      quitarEmbed(v, m);
+      if (src) enSuSitio(v, doc, embeds, { kind: 'video', url: src, id: '', alto: altoDeclarado(v) });
+      else quitarEmbed(v, m);
     });
     // VOCAROO. FC lo monta en TRES piezas (verificado por CDP sobre un post real):
     //   <div><iframe width="300" height="60" src="vocaroo.com/embed/ID"></iframe></div>
@@ -302,14 +318,21 @@
       .forEach(function (f) {
         var src = f.getAttribute('src') || '';
         try { src = new URL(src, 'https://forocoches.com/foro/').href; } catch (e) {}
-        embeds.push({ kind: 'iframe', url: src, id: '', alto: altoDeclarado(f) || 60 });
         var pie = f.parentElement ? f.parentElement.nextElementSibling : null;
+        var enlacePie = '';
         if (pie && /voca\.ro|vocaroo/i.test(pie.innerHTML || '')) {
+          var aPie = pie.querySelector('a[href]');
+          enlacePie = aPie ? aPie.getAttribute('href') : '';
           var salto = pie.nextElementSibling;
           if (salto && salto.tagName === 'BR') salto.remove();
           pie.remove();
         }
-        quitarEmbed(f, m);
+        // Dentro de una cita, enlace en su sitio como los demás (gotcha 43). Este bloque no
+        // lo miraba y el audio del citado salía FUERA del recuadro, debajo de tu respuesta,
+        // como si fuera tuyo (Juan, 2026-10-26: `[QUOTE]…[VOCAROO]…[/QUOTE]` + otro propio
+        // pintaba los dos reproductores bajo su texto).
+        if (dentroDeCita(f)) { enlaceEnCita(f, doc, enlacePie || src, 'Escuchar audio de Vocaroo'); return; }
+        enSuSitio(f, doc, embeds, { kind: 'iframe', url: src, id: '', alto: altoDeclarado(f) || 60 });
       });
     m.querySelectorAll('iframe,embed,object').forEach(function (f) {
       var src = f.src || f.getAttribute('src') || f.getAttribute('data') || '';
@@ -317,8 +340,8 @@
       // se le daba el alto generico (200 px), de ahi el ladrillo verde que reportaron.
       if (src) { try { src = new URL(src, 'https://forocoches.com/foro/').href; } catch (e) {} }
       if (dentroDeCita(f)) { enlaceEnCita(f, doc, src, 'Ver contenido'); return; }
-      if (src) embeds.push({ kind: 'iframe', url: src, id: '', alto: altoDeclarado(f) });
-      quitarEmbed(f, m);
+      if (src) enSuSitio(f, doc, embeds, { kind: 'iframe', url: src, id: '', alto: altoDeclarado(f) });
+      else quitarEmbed(f, m);
     });
     return embeds;
   }

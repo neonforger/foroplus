@@ -479,7 +479,8 @@ class PostAdapter(
         const val ESPERA_TANDA = 120L
 
         fun textoDeHtml(html: String): String {
-            val sinCitas = html.replace(Regex("(?is)<blockquote.*?</blockquote>"), " ")
+            val sinCitas = TramosEmbed.sinMarcas(html)
+                .replace(Regex("(?is)<blockquote.*?</blockquote>"), " ")
             val texto = HtmlCompat.fromHtml(sinCitas, HtmlCompat.FROM_HTML_MODE_LEGACY).toString()
             // Las imágenes dejan un U+FFFC que el sistema dibuja como una cajita "OBJ".
             // Aquí NO es cosmético: este texto es el que se PUBLICA al citar. Ver [TextoPlano].
@@ -571,6 +572,13 @@ class PostAdapter(
         val divider: View = v.findViewById(R.id.post_divider)
         var boundPid: String = ""
 
+        /**
+         * El texto que va DETRÁS de cada reproductor, por índice de embed (ver [TramosEmbed]).
+         * Viven en [embeds], intercalados con los reproductores; los monta [bindEmbeds] y les
+         * pone el texto [renderContent].
+         */
+        val textosTras = HashMap<Int, TextView>()
+
         /** Repintado pendiente por imágenes recién llegadas. Ver [PostAdapter.pedirRepintado]. */
         var repintado: Runnable? = null
 
@@ -613,9 +621,11 @@ class PostAdapter(
      */
     override fun onViewRecycled(h: Holder) {
         apartarOLiberar(h)
-        h.embeds.removeAllViews()
         // Un GIF fuera de pantalla no tiene que seguir gastando batería ni repintando.
         GifAnimado.parar(h.content)
+        for (t in h.textosTras.values) GifAnimado.parar(t)
+        h.textosTras.clear()
+        h.embeds.removeAllViews()
         h.retenidas.clear()
         h.retenidasPid = ""
     }
@@ -657,7 +667,13 @@ class PostAdapter(
         val donde = aparcadero ?: return
         val item = items.getOrNull(h.bindingAdapterPosition) ?: return
         if (!donde.tieneDe(item.pid)) return
-        h.itemView.post { if (h.boundPid == item.pid) bindEmbeds(h, item) }
+        h.itemView.post {
+            if (h.boundPid != item.pid) return@post
+            // Montar los embeds rehace también los textos que van entre ellos: hay que volver
+            // a ponérselos.
+            bindEmbeds(h, item)
+            renderContent(h, item)
+        }
     }
 
     /**
@@ -732,23 +748,33 @@ class PostAdapter(
         h.author.isClickable = hasProfile
         h.avatar.isClickable = hasProfile
         bindAvatar(h, item)
-        renderContent(h, item)
+        // Los embeds ANTES que el texto: montan los TextView que van entre reproductores, y
+        // renderContent es quien los rellena.
         bindEmbeds(h, item)
+        renderContent(h, item)
         h.quote.setOnClickListener { onQuote(item) }
         paintMultiquote(h, isSelected(item.pid))
         h.multiquote.setOnClickListener { onMultiquoteToggle(item) }
         // El ⋮ ahora aparece SIEMPRE: en posts propios da Editar/Borrar; en ajenos, Reportar.
         h.menu.visibility = View.VISIBLE
         h.menu.setOnClickListener { onMenu(item, h.menu) }
+        engancharGestos(h.content, h, item)
+    }
+
+    /**
+     * Pulsación larga y reparto del dedo de un trozo de texto del mensaje: el principal y los
+     * que van detrás de cada reproductor ([Holder.textosTras]) se comportan igual.
+     */
+    private fun engancharGestos(tv: TextView, h: Holder, item: PostItem) {
         // Pulsación larga = acciones de ESTE mensaje, como en cualquier app de mensajería.
         // Es el mismo menú del ⋮ (ahí vive "Copiar mensaje"), así que no hay pantalla nueva que
         // mantener. Seleccionar texto DENTRO de la lista se probó y se descartó: ver el gotcha.
-        h.content.setOnLongClickListener { onMenu(item, h.content); true }
+        tv.setOnLongClickListener { onMenu(item, tv); true }
         // Sin esto, el `RecyclerView` y el mensaje compiten por el mismo dedo y **gana la
         // lista**: en cuanto derivas unos píxeles sujetando, te roba el gesto y la pulsación
         // larga nunca llega a dispararse. Es la pieza estándar de Android para que un hijo
         // reclame un gesto, y es lo que faltaba desde el principio.
-        h.content.setOnTouchListener { v, ev ->
+        tv.setOnTouchListener { v, ev ->
             when (ev.actionMasked) {
                 android.view.MotionEvent.ACTION_DOWN -> {
                     h.dedoX = ev.rawX; h.dedoY = ev.rawY
@@ -814,13 +840,20 @@ class PostAdapter(
         h.insigniaAutor.visibility = if (isOp) View.VISIBLE else View.GONE
     }
 
-    /** Monta un EmbedView por cada embed del post (tarjeta → toca → reproductor inline). */
+    /**
+     * Monta un EmbedView por cada embed del post (tarjeta → toca → reproductor inline), en el
+     * orden en que van en el mensaje y cada uno seguido del TextView con el texto que le sigue
+     * (ver [TramosEmbed]). El texto lo pone [renderContent].
+     */
     private fun bindEmbeds(h: Holder, item: PostItem) {
         apartarOLiberar(h)
+        for (t in h.textosTras.values) GifAnimado.parar(t)
+        h.textosTras.clear()
         h.embeds.removeAllViews()
         if (item.embeds.isEmpty()) { h.embeds.visibility = View.GONE; return }
         h.embeds.visibility = View.VISIBLE
-        for ((i, spec) in item.embeds.withIndex()) {
+        for (i in TramosEmbed.orden(item.html, item.embeds.size)) {
+            val spec = item.embeds[i]
             val clave = "${item.pid}#$i"
             // Si este es el reproductor que el usuario dejó en marcha, se devuelve el MISMO
             // (con su vídeo por donde iba) en vez de montar uno nuevo desde cero: vuelve de la
@@ -841,6 +874,27 @@ class PostAdapter(
                 android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
             )
             h.embeds.addView(ev)
+            val tras = tramoDeTexto(h, item)
+            h.textosTras[i] = tras
+            h.embeds.addView(tras)
+        }
+    }
+
+    /** Un TextView como el del mensaje, para el texto que va detrás de un reproductor. */
+    private fun tramoDeTexto(h: Holder, item: PostItem): TextView {
+        val c = h.content
+        val dp = c.resources.displayMetrics.density
+        return TextView(c.context).apply {
+            setTextColor(c.textColors)
+            setLinkTextColor(c.linkTextColors)
+            setLineSpacing(c.lineSpacingExtra, c.lineSpacingMultiplier)
+            typeface = c.typeface
+            layoutParams = android.widget.LinearLayout.LayoutParams(
+                android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = (6 * dp).toInt(); bottomMargin = (2 * dp).toInt() }
+            visibility = View.GONE
+            engancharGestos(this, h, item)
         }
     }
 
@@ -1066,6 +1120,7 @@ class PostAdapter(
         // Lo que hubiera animándose en esta vista es de OTRO mensaje (o de una pasada anterior
         // de este): si no se para, sigue encolando repintados para siempre.
         GifAnimado.parar(tv)
+        for (t in h.textosTras.values) GifAnimado.parar(t)
         tv.textSize = postTextSp
         val maxW = (tv.context.resources.displayMetrics.widthPixels * 0.78f).toInt()
         val pid = item.pid
@@ -1149,8 +1204,26 @@ class PostAdapter(
                 }, ini, fin, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
             }
         }
-        tv.text = spanned
+        // Al final, y no antes: todas las pasadas de arriba trabajan sobre el mensaje entero.
+        // Aquí solo se reparte entre el TextView principal y los que van tras cada reproductor.
+        val partido = TramosEmbed.partir(spanned, item.embeds.size)
+        tv.text = partido.cabeza
         tv.movementMethod = LinkMovementMethod.getInstance()
+        for ((i, extra) in h.textosTras) {
+            val texto = partido.tras[i]
+            if (texto == null || texto.isBlank()) {
+                extra.text = ""
+                extra.visibility = View.GONE
+                continue
+            }
+            extra.textSize = postTextSp
+            extra.text = texto
+            extra.movementMethod = LinkMovementMethod.getInstance()
+            extra.visibility = View.VISIBLE
+            // Un GIF de este trozo se enganchó al TextView principal al cargarse: repintaría
+            // el que no es y se quedaría quieto.
+            GifAnimado.reenganchar(extra)
+        }
     }
 
 }
