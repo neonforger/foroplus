@@ -1,6 +1,18 @@
 {
   "versiones": [
     {
+      "code": 53,
+      "nombre": "1.15.0",
+      "fecha": "2026-10-29",
+      "notas": [
+        "Lupa en los hilos: busca un texto en la página que estás leyendo, sin preocuparte de tildes ni mayúsculas, y salta de uno a otro con las flechas",
+        "Los vídeos, tweets y audios salen en su sitio dentro del mensaje, no todos al final, y un Vocaroo citado se queda dentro de la cita",
+        "Al responder un privado puedes recortar la cita con el lápiz o pasarla a texto para editarla, igual que en los hilos",
+        "Tocar una cita o publicar te lleva al mensaje correcto, sin que se quede escondido bajo las barras",
+        "Si un hilo lo han borrado, la app lo dice; y también si una lista sale vacía porque sus hilos son de gente que tienes en ignorados"
+      ]
+    },
+    {
       "code": 52,
       "nombre": "1.14.0",
       "fecha": "2026-10-18",
