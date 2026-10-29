@@ -49,6 +49,8 @@ class ContrasteTest {
         "fc_rojo" to "fc_fondo",
         "fc_rojo" to "fc_tarjeta",
         "fc_rojo" to "fc_rojo_suave",
+        "fc_texto" to "fc_busca",
+        "fc_texto" to "fc_busca_actual",
     )
 
     @Test

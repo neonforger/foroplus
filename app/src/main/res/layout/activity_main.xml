@@ -332,6 +332,15 @@
                         android:visibility="gone" />
                     </FrameLayout>
 
+                    <!-- La lupa: buscar en la página cargada (BuscarEnPaginaController). -->
+                    <ImageButton
+                        android:id="@+id/thread_buscar"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:src="@drawable/ic_search"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="Buscar en esta página" />
+
                     <ImageButton
                         android:id="@+id/thread_fav"
                         android:layout_width="48dp"
@@ -507,6 +516,86 @@
                 android:background="@color/fc_divisoria"
                 android:visibility="gone" />
             </LinearLayout>
+
+            <!-- La barra de la lupa (BuscarEnPaginaController). Va FUERA del bloque que se
+                 esconde al bajar (sin scrollFlags): mientras buscas se queda fija arriba. La
+                 barra y su raya se encienden y apagan juntas, solo desde pintarBarra(). -->
+            <LinearLayout
+                android:id="@+id/busca_bar"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@color/fc_fondo"
+                android:paddingStart="4dp"
+                android:paddingEnd="4dp"
+                android:visibility="gone">
+
+                <ImageView
+                    android:layout_width="40dp"
+                    android:layout_height="24dp"
+                    android:src="@drawable/ic_search"
+                    android:importantForAccessibility="no" />
+
+                <EditText
+                    android:id="@+id/busca_texto"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:background="@null"
+                    android:hint="Buscar en esta página"
+                    android:inputType="text"
+                    android:imeOptions="actionSearch|flagNoExtractUi"
+                    android:singleLine="true"
+                    android:textSize="15sp"
+                    android:textColor="@color/fc_texto"
+                    android:textColorHint="@color/fc_texto_3" />
+
+                <TextView
+                    android:id="@+id/busca_cuenta"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:paddingStart="6dp"
+                    android:paddingEnd="2dp"
+                    android:textSize="13sp"
+                    android:textColor="@color/fc_texto_2" />
+
+                <ImageButton
+                    android:id="@+id/busca_anterior"
+                    android:layout_width="44dp"
+                    android:layout_height="48dp"
+                    android:src="@drawable/ic_desplegar"
+                    android:rotation="180"
+                    android:scaleX="1.3"
+                    android:scaleY="1.3"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Anterior" />
+
+                <ImageButton
+                    android:id="@+id/busca_siguiente"
+                    android:layout_width="44dp"
+                    android:layout_height="48dp"
+                    android:src="@drawable/ic_desplegar"
+                    android:scaleX="1.3"
+                    android:scaleY="1.3"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Siguiente" />
+
+                <ImageButton
+                    android:id="@+id/busca_cerrar"
+                    android:layout_width="44dp"
+                    android:layout_height="48dp"
+                    android:src="@drawable/ic_cerrar"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Cerrar la búsqueda" />
+            </LinearLayout>
+
+            <View
+                android:id="@+id/busca_bar_raya"
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="@color/fc_divisoria"
+                android:visibility="gone" />
             </com.google.android.material.appbar.AppBarLayout>
 
 

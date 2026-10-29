@@ -138,6 +138,8 @@ class MainActivity : AppCompatActivity() {
     private var threadForumFid = 0
     private var threadForumName = ""
     private lateinit var postAdapter: PostAdapter
+    /** La lupa del hilo (ver [BuscarEnPaginaController]). Se crea con la lista de posts. */
+    private lateinit var buscador: BuscarEnPaginaController
 
     // ── Aviso del autor de la app (fc_config.json) ──
     private lateinit var noticeBar: android.widget.LinearLayout
@@ -4067,6 +4069,19 @@ class MainActivity : AppCompatActivity() {
         val lm = FixedThumbLayoutManager(this)
         postList.layoutManager = lm
         postList.adapter = postAdapter
+        buscador = BuscarEnPaginaController(
+            findViewById(R.id.busca_bar), findViewById(R.id.busca_bar_raya), postAdapter, postList,
+            limiteInferior = { IntArray(2).also { threadAbajo.getLocationOnScreen(it) }[1] },
+            // Con el teclado fuera, la cabecera desplegada y las barras de abajo, a la lista le
+            // quedaban ~140 px a la vista (medido en el Samsung): se le hace sitio mientras buscas.
+            hacerSitio = {
+                threadAppbar.setExpanded(false, true)
+                barrasAbajo.slideDown(threadAbajo)
+                moverSecciones(mostrar = false)
+            },
+            devolverBarras = { mostrarBarrasHilo(conCabecera = false) }
+        )
+        findViewById<View>(R.id.thread_buscar).setOnClickListener { buscador.abrir() }
         // Barra de desplazamiento arrastrable (la de Android era solo un indicador).
         findViewById<BarraDesplazamiento>(R.id.post_scrollbar).enlazar(postList)
         // Reproductor flotante: el vídeo que estás viendo se muda aquí cuando su mensaje se
@@ -6763,6 +6778,10 @@ class MainActivity : AppCompatActivity() {
         // lista solo conviven posts de una misma página.
         postAdapter.submit(visible)
         postList.scrollToPosition(0)
+        // Con la lupa abierta se busca también en la página nueva, y se salta a la primera
+        // salvo que esta carga ya vaya a llevarte a un mensaje concreto.
+        buscador.paginaNueva(saltar = !pendingIrAlFinal && !pendingScrollToLast &&
+            pendingScrollPid.isEmpty() && !buscandoMiMensaje)
         if (pendingIrAlFinal) {
             pendingIrAlFinal = false
             // `post` y no directo: la lista acaba de recibir los datos y aún no ha medido nada.
@@ -7028,6 +7047,7 @@ class MainActivity : AppCompatActivity() {
             postAdapter.pausarEmbeds(postList, pausar = true)
         }
         isThreadVisible = false
+        if (::buscador.isInitialized) buscador.cerrar()
         // Salir de un hilo cierra la copia si la había: si no, `requestThreadPage` seguiría
         // sirviendo páginas del fichero al SIGUIENTE hilo que abrieras, y sus imágenes
         // saldrían del disco de otra copia. Es el único sitio por el que se sale de un hilo.
@@ -8399,6 +8419,9 @@ class MainActivity : AppCompatActivity() {
         if (isNovedadesVisible) { hideNovedades(); return }
         if (isOptionsVisible) { if (!options.volver()) hideOptions(); return }
         if (isPmComposeVisible) { cancelPmCompose(); return }
+
+        // La lupa es algo que se CIERRA, no una pantalla: atrás la quita y te deja donde estás.
+        if (isThreadVisible && ::buscador.isInitialized && buscador.abierta) { buscador.cerrar(); return }
 
         // "Sus mensajes" no es una pantalla de la pila: es el MISMO hilo mirado de otra forma.
         // Atrás te devuelve al hilo donde estabas, no a la lista.

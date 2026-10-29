@@ -501,6 +501,9 @@ class PostAdapter(
         // Cada página SUSTITUYE a la anterior: lo desplegado era de mensajes que ya no están.
         citasDesplegadas.clear()
         spoilersDestapados.clear()
+        textoBuscable.clear()
+        actualPid = ""
+        actualN = -1
         // La página cambia entera: el reproductor que se hubiera salvado es de un mensaje que
         // ya no está en la lista y nadie lo va a reclamar.
         soltarEmbedEnUso()
@@ -554,6 +557,99 @@ class PostAdapter(
         }
 
     fun clearHighlight() { highlightPid = "" }
+
+    // ── La lupa (ver [BuscarEnPagina] y [BuscarEnPaginaController]) ─────────────
+
+    /** Lo que se busca, ya preparado. "" = no se busca nada y no se marca nada. */
+    var busqueda: String = ""
+        private set
+
+    /** La coincidencia actual: en qué mensaje y cuál de las suyas. Se pinta más fuerte. */
+    private var actualPid = ""
+    private var actualN = -1
+
+    /** Texto plegado y zonas tapadas (spoilers) de cada mensaje, para no reparsear al teclear. */
+    private val textoBuscable = HashMap<String, Pair<CharSequence, List<IntRange>>>()
+
+    /**
+     * Los cambios de la lupa repintan SOLO el texto (ver [onBindViewHolder] con payload): un
+     * repintado entero vuelve a montar los reproductores, y buscar cortaría el vídeo que suena.
+     */
+    private object SoloTexto
+
+    fun buscar(consulta: String) {
+        if (consulta == busqueda && actualPid.isEmpty()) return
+        busqueda = consulta
+        actualPid = ""
+        actualN = -1
+        notifyItemRangeChanged(0, items.size, SoloTexto)
+    }
+
+    fun marcarActual(pid: String, n: Int) {
+        val antes = actualPid
+        actualPid = pid
+        actualN = n
+        if (antes.isNotEmpty() && antes != pid) indexOfPid(antes).takeIf { it >= 0 }?.let { notifyItemChanged(it, SoloTexto) }
+        indexOfPid(pid).takeIf { it >= 0 }?.let { notifyItemChanged(it, SoloTexto) }
+    }
+
+    /**
+     * Cuántas veces sale lo buscado en cada mensaje, en el orden de la lista.
+     *
+     * Sobre el MISMO texto que pinta [renderContent] (el `fromHtml` del mensaje y sus spoilers
+     * marcados), para que el "3 de 7" cuente exactamente lo que se ve resaltado. Las citas
+     * plegadas no lo cambian: la que lleva algo encontrado no se pliega.
+     */
+    fun contarCoincidencias(): List<Int> {
+        if (busqueda.isEmpty()) return items.map { 0 }
+        return items.map { item ->
+            val (texto, fuera) = textoBuscable.getOrPut(item.pid) {
+                val sb = SpannableStringBuilder(HtmlCompat.fromHtml(item.html, HtmlCompat.FROM_HTML_MODE_LEGACY))
+                Spoilers.marcar(sb)
+                sb to zonasDeSpoiler(sb)
+            }
+            BuscarEnPagina.coincidencias(texto, busqueda, fuera).size
+        }
+    }
+
+    private fun zonasDeSpoiler(sb: Spanned): List<IntRange> =
+        sb.getSpans(0, sb.length, SpoilerSpan::class.java)
+            .map { sb.getSpanStart(it) until sb.getSpanEnd(it) }
+
+    /**
+     * Marca lo encontrado en el texto del mensaje. Va ANTES de plegar las citas (para no
+     * plegar la que lo lleva dentro) y como spans, que se mueven solos con los recortes de
+     * las pasadas siguientes.
+     */
+    private fun marcarBusqueda(sb: SpannableStringBuilder, item: PostItem, tv: TextView) {
+        if (busqueda.isEmpty()) return
+        val tramos = BuscarEnPagina.coincidencias(sb, busqueda, zonasDeSpoiler(sb))
+        if (tramos.isEmpty()) return
+        val normal = col(tv, R.color.fc_busca)
+        val fuerte = col(tv, R.color.fc_busca_actual)
+        for ((n, t) in tramos.withIndex()) {
+            val actual = item.pid == actualPid && n == actualN
+            sb.setSpan(MarcaBusqueda(actual, if (actual) fuerte else normal),
+                t.first, t.last + 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        }
+    }
+
+    /**
+     * Dónde ha quedado pintada la coincidencia actual dentro de [h]: el trozo de texto que la
+     * lleva (el principal o uno de detrás de un reproductor) y la altura de su renglón dentro
+     * de él. null si no está en este mensaje o aún no tiene renglones.
+     */
+    fun dondeEstaLaActual(h: Holder): Pair<TextView, Int>? {
+        for (tv in listOf(h.content) + h.textosTras.values) {
+            val texto = tv.text as? Spanned ?: continue
+            val marca = texto.getSpans(0, texto.length, MarcaBusqueda::class.java)
+                .firstOrNull { it.actual } ?: continue
+            val layout = tv.layout ?: return null
+            val linea = layout.getLineForOffset(texto.getSpanStart(marca))
+            return tv to (tv.totalPaddingTop + layout.getLineTop(linea))
+        }
+        return null
+    }
 
     override fun getItemCount() = items.size
 
@@ -724,6 +820,15 @@ class PostAdapter(
         val v = LayoutInflater.from(parent.context)
             .inflate(R.layout.item_post, parent, false)
         return Holder(v)
+    }
+
+    override fun onBindViewHolder(h: Holder, pos: Int, payloads: MutableList<Any>) {
+        // Solo la lupa: se repinta el texto del mismo mensaje y nada más (ver [SoloTexto]).
+        if (payloads.isNotEmpty() && payloads.all { it === SoloTexto } && h.boundPid == items[pos].pid) {
+            renderContent(h, items[pos])
+            return
+        }
+        onBindViewHolder(h, pos)
     }
 
     override fun onBindViewHolder(h: Holder, pos: Int) {
@@ -981,6 +1086,9 @@ class PostAdapter(
             val clave = "${item.pid}#$i"
             if (clave in citasDesplegadas) continue
             val ini = citas[i].first
+            // Una cita con algo de lo que buscas dentro no se pliega: lo tienes que ver.
+            if (sb.getSpans(ini, citas[i].second, MarcaBusqueda::class.java)
+                    .any { sb.getSpanStart(it) in ini until citas[i].second }) continue
             val fin = RecorteCita.sinSaltosFinales(sb, ini, citas[i].second)
             val corte = RecorteCita.corte(sb, ini, fin, costeDe = costeDe)
             if (corte >= fin) continue
@@ -1148,6 +1256,8 @@ class PostAdapter(
         CitaSpan.vestir(
             spanned, col(tv, R.color.fc_cita_barra), AtributosTema.color(tv.context, R.attr.fcCitaFondo), densidad
         )
+        // La lupa, antes de plegar (ver [marcarBusqueda]).
+        marcarBusqueda(spanned, item, tv)
         // Después el plegado: el resto de pasadas (enlaces, fotos) trabajan sobre los índices
         // que queden tras recortar.
         plegarCitasLargas(spanned, item, h, tv)

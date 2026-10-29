@@ -61,6 +61,10 @@
     <!-- Fondo del mensaje recién publicado (el resaltado de 1,2 s). -->
     <color name="fc_resaltado">#FFF3F4</color>
 
+    <!-- La lupa del hilo: todo lo encontrado, y más fuerte en el que estás (como el navegador). -->
+    <color name="fc_busca">#FFE58A</color>
+    <color name="fc_busca_actual">#FF9F43</color>
+
     <!-- Raya de 1dp bajo la barra de avisos. Va sobre el rosa del aviso, así que
          no puede ser la divisoria normal o desaparece. -->
     <color name="fc_aviso_linea">#E8D0D3</color>

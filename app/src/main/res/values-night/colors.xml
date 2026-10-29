@@ -35,6 +35,10 @@
          negro sería un fogonazo blanco. -->
     <color name="fc_resaltado">#3A2126</color>
 
+    <!-- La lupa: los mismos amarillo y naranja, apagados para que el texto claro se lea encima. -->
+    <color name="fc_busca">#5A4B00</color>
+    <color name="fc_busca_actual">#A65400</color>
+
     <color name="fc_aviso_linea">#55323C</color>
 
     <color name="fc_error_fondo">#3A1F1D</color>
