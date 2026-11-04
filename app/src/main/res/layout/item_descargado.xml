@@ -56,6 +56,14 @@
         </LinearLayout>
 
         <ImageButton
+            android:id="@+id/desc_pdf"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@drawable/ic_pdf"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Guardar este hilo como PDF" />
+
+        <ImageButton
             android:id="@+id/desc_borrar"
             android:layout_width="48dp"
             android:layout_height="48dp"

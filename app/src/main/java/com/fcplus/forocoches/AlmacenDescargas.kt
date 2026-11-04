@@ -152,6 +152,10 @@ class AlmacenDescargas(context: Context) {
         }
     }
 
+    /** Si esta copia tiene guardada esa imagen (sin leerla). */
+    fun tieneImagen(tid: String, url: String): Boolean =
+        Descargas.tidValido(tid) && File(carpetaImagenes(tid), Descargas.nombreDeImagen(url)).isFile
+
     /** Los bytes guardados de una imagen de esta copia, o null. */
     fun imagen(tid: String, url: String): ByteArray? {
         val f = File(carpetaImagenes(tid), Descargas.nombreDeImagen(url))

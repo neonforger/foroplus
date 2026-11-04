@@ -10,9 +10,10 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-/** La lista de copias guardadas. Cada fila dice cuánto ocupa y deja borrarla. */
+/** La lista de copias guardadas. Cada fila dice cuánto ocupa y deja exportarla a PDF o borrarla. */
 class DescargadosAdapter(
     private val onAbrir: (HiloDescargado) -> Unit,
+    private val onPdf: (HiloDescargado) -> Unit,
     private val onBorrar: (HiloDescargado) -> Unit
 ) : RecyclerView.Adapter<DescargadosAdapter.Holder>() {
 
@@ -29,6 +30,7 @@ class DescargadosAdapter(
         val titulo: TextView = v.findViewById(R.id.desc_titulo)
         val resumen: TextView = v.findViewById(R.id.desc_resumen)
         val meta: TextView = v.findViewById(R.id.desc_meta)
+        val pdf: ImageButton = v.findViewById(R.id.desc_pdf)
         val borrar: ImageButton = v.findViewById(R.id.desc_borrar)
     }
 
@@ -46,6 +48,7 @@ class DescargadosAdapter(
         h.meta.text = "${fecha(d.guardadoEn)} · ${Descargas.tamanoLegible(d.bytes)}"
         h.fila.setOnClickListener { onAbrir(d) }
         h.itemView.setOnClickListener { onAbrir(d) }
+        h.pdf.setOnClickListener { onPdf(d) }
         h.borrar.setOnClickListener { onBorrar(d) }
     }
 

@@ -413,6 +413,7 @@ class MainActivity : AppCompatActivity() {
 
     // ── Descarga de un hilo (ver Descargas / AlmacenDescargas) ──────────────
     private val almacenDescargas by lazy { AlmacenDescargas(this) }
+    private val exportarPdf by lazy { ExportarPdf(this, almacenDescargas, ::toast) }
     private lateinit var descargaBar: View
     private lateinit var descargaTexto: TextView
     private lateinit var descargaCancelar: TextView
@@ -3720,6 +3721,7 @@ class MainActivity : AppCompatActivity() {
         descargadosList = findViewById(R.id.descargados_list)
         descargadosAdapter = DescargadosAdapter(
             onAbrir = { d -> abrirCopia(d.tid) },
+            onPdf = { d -> exportarPdf.exportar(d.tid) },
             onBorrar = { d -> confirmarBorrarCopia(d) }
         )
         descargadosList.layoutManager = LinearLayoutManager(this)
@@ -4221,11 +4223,14 @@ class MainActivity : AppCompatActivity() {
     private fun menuDelHiloAbierto(ancla: View) {
         val menu = androidx.appcompat.widget.PopupMenu(this, ancla)
         menu.menu.add(0, 1, 1, "Descargar este hilo")
-        menu.menu.add(0, 2, 2, "Compartir hilo")
+        // Solo con copia: el PDF sale de lo descargado (fotos incluidas), no de lo que hay en pantalla.
+        if (almacenDescargas.existe(currentThreadTid)) menu.menu.add(0, 3, 2, "Guardar como PDF")
+        menu.menu.add(0, 2, 3, "Compartir hilo")
         menu.setOnMenuItemClickListener { mi ->
             when (mi.itemId) {
                 1 -> { descargarHiloActual(); true }
                 2 -> { compartirHilo(); true }
+                3 -> { exportarPdf.exportar(currentThreadTid); true }
                 else -> false
             }
         }
