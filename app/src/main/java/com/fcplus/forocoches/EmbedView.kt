@@ -216,8 +216,31 @@ class EmbedView(context: Context) : FrameLayout(context) {
             // "he tocado esto" y "he pasado el dedo por encima".
             //
             // Devuelve false SIEMPRE: el WebView tiene que seguir recibiendo el gesto.
-            setOnTouchListener { _, e ->
-                if (e.actionMasked == android.view.MotionEvent.ACTION_UP) enUso = true
+            //
+            // El gesto HORIZONTAL es del embed (Hermione, 2026-10-31: "cuando ponen Instagram de
+            // varias fotos es casi imposible pasarlas"). Medido en el móvil con el translateX del
+            // carrusel: un deslizamiento recto pasaba una foto justa (-326 px), pero con 40-60 px
+            // de deriva vertical —la de cualquier dedo— la lista del hilo se quedaba el gesto, al
+            // carrusel le llegaba CANCEL y se congelaba A MEDIAS (-414, -546 px). En cuanto el
+            // dedo va claramente de lado, se le pide a la lista que no lo robe hasta soltar (el
+            // mismo remedio que la pulsación larga del mensaje, gotcha de Android). Se decide con
+            // la mitad del touchSlop para adelantarse a la lista, que intercepta al pasar el
+            // slop entero en vertical. Lo vertical sigue siendo de la lista.
+            val slop = android.view.ViewConfiguration.get(context).scaledTouchSlop
+            var x0 = 0f
+            var y0 = 0f
+            setOnTouchListener { v, e ->
+                when (e.actionMasked) {
+                    android.view.MotionEvent.ACTION_DOWN -> { x0 = e.x; y0 = e.y }
+                    android.view.MotionEvent.ACTION_MOVE -> {
+                        val dx = kotlin.math.abs(e.x - x0)
+                        val dy = kotlin.math.abs(e.y - y0)
+                        if (GestoEmbed.esHorizontal(dx, dy, slop)) {
+                            v.parent?.requestDisallowInterceptTouchEvent(true)
+                        }
+                    }
+                    android.view.MotionEvent.ACTION_UP -> enUso = true
+                }
                 false
             }
             addJavascriptInterface(HeightBridge(), "AndroidEmbed")
