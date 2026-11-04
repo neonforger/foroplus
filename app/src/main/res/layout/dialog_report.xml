@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Diálogo NATIVO de reporte. Replica el formulario real de FC (report.php): motivo + comentario.
-     El comentario aparece SOLO al elegir "Otros" (detalle del reporte). El envío pasa el Cloudflare
-     por un WebView tapado con capa nativa (ver MainActivity). -->
+     El comentario va SIEMPRE y es obligatorio: FC rechaza en el servidor un reporte sin él, con
+     cualquier motivo (ver ResultadoReporte). El envío pasa el Cloudflare por un WebView tapado con
+     capa nativa (ver ReporteController). -->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content">
@@ -39,14 +40,13 @@
             <RadioButton android:id="@+id/reason_other" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="?android:attr/textColorPrimary" android:paddingStart="4dp" android:text="Otros · detalle en el comentario" />
         </RadioGroup>
 
-        <!-- Comentario: OCULTO por defecto; aparece al marcar "Otros". -->
+        <!-- Comentario: siempre a la vista, como en la web. -->
         <LinearLayout
             android:id="@+id/report_comment_box"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:layout_marginTop="10dp"
-            android:visibility="gone">
+            android:layout_marginTop="10dp">
 
             <TextView
                 android:layout_width="wrap_content"
@@ -62,7 +62,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:hint="Detalle del reporte…"
+                android:hint="Explícaselo a los moderadores…"
                 android:textColor="?android:attr/textColorPrimary"
                 android:textColorHint="?android:attr/textColorSecondary"
                 android:gravity="top"

@@ -30,6 +30,9 @@ class ReporteController(
 
         /** El `tipo` del formulario para un motivo; lo desconocido va como "Otros". */
         fun tipoDe(motivo: String): String = reportTipo[motivo] ?: "4"
+
+        /** Lo que se espera a que FC conteste al envío antes de decir que no se sabe. */
+        private const val PLAZO_RESPUESTA_MS = 25_000L
     }
 
     /** Hay un envío en marcha (la capa está puesta): el botón atrás lo cancela. */
@@ -42,17 +45,12 @@ class ReporteController(
     fun mostrarDialogo(post: PostItem) {
         val view = activity.layoutInflater.inflate(R.layout.dialog_report, null)
         val comment = view.findViewById<EditText>(R.id.report_comment)
-        val commentBox = view.findViewById<View>(R.id.report_comment_box)
         val group = view.findViewById<android.widget.RadioGroup>(R.id.report_reasons)
         // Etiqueta FC de cada motivo: el auto-submit la empareja con el radio real del formulario.
         val reasonLabels = mapOf(
             R.id.reason_18 to "+18", R.id.reason_spam to "Spam", R.id.reason_troll to "Troll",
             R.id.reason_flood to "Flood", R.id.reason_content to "Contenido", R.id.reason_other to "Otros"
         )
-        // El comentario solo tiene sentido en "Otros" (detalle del reporte): aparece al marcarlo.
-        group.setOnCheckedChangeListener { _, checkedId ->
-            commentBox.visibility = if (checkedId == R.id.reason_other) View.VISIBLE else View.GONE
-        }
         androidx.appcompat.app.AlertDialog.Builder(activity)
             .setTitle("Reportar mensaje de ${post.author}")
             .setView(view)
@@ -62,11 +60,14 @@ class ReporteController(
                 setOnShowListener {
                     getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener {
                         val reason = reasonLabels[group.checkedRadioButtonId]
-                        if (reason == null) { toast("Elige un motivo"); return@setOnClickListener }
                         val txt = comment.text.toString().trim()
-                        if (reason == "Otros" && txt.isEmpty()) { toast("Escribe el motivo del reporte"); return@setOnClickListener }
+                        ResultadoReporte.validar(reason, txt)?.let { aviso ->
+                            toast(aviso)
+                            if (reason != null) comment.requestFocus()
+                            return@setOnClickListener
+                        }
                         dismiss()
-                        submitReport(post, reason, txt)
+                        submitReport(post, reason!!, txt)
                     }
                 }
             }.show()
@@ -108,10 +109,33 @@ class ReporteController(
             settings.userAgentString = userAgent()
             // Sin WebViewClient, el redirect post-reporte (a showthread) abriría CHROME. Este lo
             // mantiene TODO dentro del WebView tapado (devolver false = lo carga el propio WebView).
+            // Tras enviar, es también quien lee la respuesta: ir al hilo = FC lo aceptó, y esa
+            // carga se corta (bajo la capa relanzaba un Cloudflare que colgaba, gotcha 12);
+            // quedarse en report.php = FC lo rechazó, y se lee el porqué.
             webViewClient = object : android.webkit.WebViewClient() {
                 override fun shouldOverrideUrlLoading(
                     view: android.webkit.WebView, req: android.webkit.WebResourceRequest
-                ): Boolean = false
+                ): Boolean {
+                    if (enviado && ResultadoReporte.esRedireccionDeExito(req.url.toString())) {
+                        // isRedirect = la mandó el SERVIDOR (HTTP 3xx), no un salto de la página.
+                        terminar(ResultadoReporte.Resultado.Enviado,
+                            "redirección ${if (req.isRedirect) "HTTP del servidor" else "de la página"} a ${req.url}")
+                        return true
+                    }
+                    return false
+                }
+
+                override fun onPageStarted(view: android.webkit.WebView, url: String?, favicon: android.graphics.Bitmap?) {
+                    log("carga ${if (enviado) "tras enviar" else "antes de enviar"}: $url")
+                    if (enviado && ResultadoReporte.esRedireccionDeExito(url)) {
+                        view.stopLoading()
+                        terminar(ResultadoReporte.Resultado.Enviado, "carga de $url")
+                    }
+                }
+
+                override fun onPageFinished(view: android.webkit.WebView, url: String?) {
+                    if (enviado && url?.contains("report.php") == true) leerRespuesta(view, url)
+                }
             }
         }
         overlay.addView(wv, android.widget.FrameLayout.LayoutParams(-1, -1))
@@ -123,10 +147,12 @@ class ReporteController(
         overlay.addView(cover, android.widget.FrameLayout.LayoutParams(-1, -1))
         root.addView(overlay, android.view.ViewGroup.LayoutParams(-1, -1))
         reportOverlay = overlay; reportWeb = wv; reportCover = cover
+        enviado = false; resuelto = false
 
         wv.loadUrl("https://forocoches.com/foro/report.php?do=report&p=${post.pid}")
         val started = System.currentTimeMillis()
         var submitted = false
+        var ultimoEstado = ""
         val poll = object : Runnable {
             override fun run() {
                 val w = reportWeb ?: return
@@ -148,6 +174,8 @@ class ReporteController(
                     // Cover ARRIBA salvo cuando hay CF interactivo (y aún no cayó el form): solo
                     // entonces se baja para que el usuario pulse la casilla del Cloudflare.
                     reportCover?.visibility = if (cf && !form) View.GONE else View.VISIBLE
+                    val estado = "cf=$cf form=$form capa=${if (cf && !form) "bajada" else "puesta"}"
+                    if (estado != ultimoEstado) { ultimoEstado = estado; log("${elapsed} ms: $estado ($res)") }
                     when {
                         form && !submitted -> { submitted = true; onReportFormReady(post, reason, comment) }
                         elapsed > 90000 -> { toast("No se pudo completar la verificación"); cerrar() }
@@ -213,16 +241,85 @@ class ReporteController(
             var r=f.querySelector('input[name="tipo"][value="$tipo"]'); if(!r) return 'no-tipo'; r.checked=true;
             f.submit(); return 'ok';
         })()"""
-        reportWeb?.evaluateJavascript(js) { res ->
-            if (res.contains("ok")) {
-                // f.submit() ya ha enviado el POST → el reporte queda hecho en el servidor. NO cargamos
-                // el redirect a showthread: bajo el cover (WebView ocluido) relanza un Cloudflare que
-                // no puede renderizar y colgaba el flujo. Cerramos con un timeout INDEPENDIENTE (no
-                // atado al callback de evaluateJavascript, que era lo que se quedaba sin responder).
-                reportPoll?.let { reportHandler.removeCallbacks(it) }; reportPoll = null
-                reportHandler.postDelayed({ toast("Reporte enviado ✓"); cerrar() }, 2500)
-            } else { toast("No se pudo enviar el reporte"); cerrar() }
+        // Se marca ANTES de enviar: la navegación del POST puede empezar antes que el callback.
+        enviado = true
+        reportPoll?.let { reportHandler.removeCallbacks(it) }; reportPoll = null
+        // Plazo INDEPENDIENTE del callback de evaluateJavascript, que en este WebView tapado a
+        // veces no vuelve (medido: la sonda del 2026-11-04 nunca recibió el suyo). Sin respuesta
+        // en ese tiempo NO se dice "enviado": no se sabe.
+        val plazoAgotado = Runnable {
+            terminar(ResultadoReporte.Resultado.Desconocido, "sin respuesta en $PLAZO_RESPUESTA_MS ms")
         }
+        plazo = plazoAgotado
+        reportHandler.postDelayed(plazoAgotado, PLAZO_RESPUESTA_MS)
+        reportWeb?.evaluateJavascript(js) { res ->
+            if (res?.contains("ok") != true) {
+                terminar(ResultadoReporte.Resultado.Rechazado("No se pudo enviar el reporte"), "form: $res")
+            }
+        }
+    }
+
+    // ── Respuesta de FC al envío ──────────────────────────────────────────────────────────────
+    private var enviado = false
+    private var resuelto = false
+    private var plazo: Runnable? = null
+
+    /**
+     * La página en la que se quedó el POST. Se espera un poco antes de leerla: si es un "gracias"
+     * con redirección diferida, la navegación al hilo llega sola y resuelve como éxito.
+     */
+    private fun leerRespuesta(view: android.webkit.WebView, url: String) {
+        reportHandler.postDelayed({
+            if (resuelto || reportWeb !== view) return@postDelayed
+            view.evaluateJavascript(
+                """(function(){
+                    var b=document.body?document.body.innerText:'';
+                    var form=!!document.querySelector('textarea[name="reason"]');
+                    var av=document.getElementById('st-error-main-error-message');
+                    return JSON.stringify({texto:b.slice(0,4000),form:form,aviso:av?av.innerText:''});
+                })()"""
+            ) { res ->
+                val r = try {
+                    (org.json.JSONTokener(res).nextValue() as? String)?.let { org.json.JSONObject(it) }
+                } catch (e: Exception) { null }
+                val texto = r?.optString("texto").orEmpty()
+                terminar(
+                    ResultadoReporte.clasificar(url, texto, r?.optBoolean("form") == true, r?.optString("aviso")),
+                    "página $url: ${texto.take(600)}"
+                )
+            }
+        }, 1500)
+    }
+
+    /** Cierra el envío con lo que de verdad pasó. Solo cuenta la primera señal que llega. */
+    private fun terminar(resultado: ResultadoReporte.Resultado, detalle: String) {
+        if (resuelto) return
+        resuelto = true
+        log("$resultado ← $detalle")
+        when (resultado) {
+            is ResultadoReporte.Resultado.Enviado -> toast("Reporte enviado ✓")
+            is ResultadoReporte.Resultado.Rechazado -> avisar("No se ha enviado el reporte", resultado.mensaje)
+            is ResultadoReporte.Resultado.Desconocido -> avisar(
+                "No se ha podido confirmar",
+                "ForoCoches no ha contestado a tiempo y no se sabe si el reporte ha llegado."
+            )
+        }
+        cerrar()
+    }
+
+    /** Traza del envío (Cloudflare, formulario, respuesta), solo en el build depurable. */
+    private fun log(msg: String) {
+        val depurable = (activity.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        if (depurable) android.util.Log.i("Reporte", msg)
+    }
+
+    private fun avisar(titulo: String, mensaje: String) {
+        if (activity.isFinishing) return
+        androidx.appcompat.app.AlertDialog.Builder(activity)
+            .setTitle(titulo)
+            .setMessage(mensaje)
+            .setPositiveButton("Vale", null)
+            .show()
     }
 
     /**
@@ -236,6 +333,9 @@ class ReporteController(
      */
     fun cerrar() {
         reportPoll?.let { reportHandler.removeCallbacks(it) }; reportPoll = null
+        plazo?.let { reportHandler.removeCallbacks(it) }; plazo = null
+        // Cerrado (por el fin o por "Cancelar"): lo que llegue después del WebView ya no cuenta.
+        resuelto = true
         val overlay = reportOverlay
         val wv = reportWeb
         reportOverlay = null; reportWeb = null; reportCover = null
