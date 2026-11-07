@@ -33,9 +33,9 @@ object MetadatosMusica {
     /** Nunca lanza: lo que no está, a null. */
     fun paginaSpotify(html: String): DatosPaginaSpotify = try {
         val metas = leerMetas(html)
-        val artista = metas["music:musician_description"]?.trim()?.ifEmpty { null }
-        val duracion = metas["music:duration"]?.trim()?.toIntOrNull()?.takeIf { it > 0 }
-        val album = metas["og:description"]?.split(" · ")?.getOrNull(1)?.trim()?.ifEmpty { null }
+        val artista = campo(metas, "music:musician_description")
+        val duracion = campo(metas, "music:duration")?.toIntOrNull()?.takeIf { it > 0 }
+        val album = campo(metas, "og:description")?.split(" · ")?.getOrNull(1)?.trim()?.ifEmpty { null }
         DatosPaginaSpotify(artista, duracion, album)
     } catch (e: Exception) {
         DatosPaginaSpotify(null, null, null)
@@ -58,9 +58,22 @@ object MetadatosMusica {
                     "content" -> valor = v
                 }
             }
-            if (clave != null && valor != null && clave !in res) res[clave] = decodificar(valor)
+            if (clave != null && valor != null && clave !in res) res[clave] = valor
         }
         return res
+    }
+
+    /** Entidad numérica inválida (fuera de rango, sustituto suelto...): se deja el texto tal cual. */
+    private fun codepoint(cp: Int?, original: String): String =
+        if (cp != null && Character.isValidCodePoint(cp)) {
+            try { String(Character.toChars(cp)) } catch (e: Exception) { original }
+        } else original
+
+    /** Un campo, decodificado y recortado; si falla, solo ese campo queda a null. */
+    private fun campo(metas: Map<String, String>, clave: String): String? = try {
+        metas[clave]?.let { decodificar(it) }?.trim()?.ifEmpty { null }
+    } catch (e: Exception) {
+        null
     }
 
     private val entidad = Regex("&(#[xX][0-9a-fA-F]+|#[0-9]+|[a-zA-Z]+);")
@@ -69,10 +82,8 @@ object MetadatosMusica {
     private fun decodificar(s: String): String = entidad.replace(s) { m ->
         val e = m.groupValues[1]
         when {
-            e.startsWith("#x") || e.startsWith("#X") ->
-                e.substring(2).toIntOrNull(16)?.let { cp -> String(Character.toChars(cp)) } ?: m.value
-            e.startsWith("#") ->
-                e.substring(1).toIntOrNull()?.let { cp -> String(Character.toChars(cp)) } ?: m.value
+            e.startsWith("#x") || e.startsWith("#X") -> codepoint(e.substring(2).toIntOrNull(16), m.value)
+            e.startsWith("#") -> codepoint(e.substring(1).toIntOrNull(), m.value)
             else -> when (e) {
                 "amp" -> "&"; "quot" -> "\""; "apos" -> "'"; "lt" -> "<"; "gt" -> ">"
                 "nbsp" -> " "; "middot" -> "·"

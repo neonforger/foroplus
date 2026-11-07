@@ -50,6 +50,23 @@ class MetadatosMusicaTest {
         assertNull(d.artista); assertNull(d.duracionSeg); assertNull(d.album)
     }
 
+    @Test fun entidadRotaEnUnCampoNoTumbaLosDemas() {
+        val html = """<meta property="og:image" content="x&#1114112;y&#xFFFFFFF;"/>
+            <meta name="music:duration" content="150"/>
+            <meta name="music:musician_description" content="Alguien"/>"""
+        val d = MetadatosMusica.paginaSpotify(html)
+        assertEquals("Alguien", d.artista)
+        assertEquals(150, d.duracionSeg)
+    }
+
+    @Test fun entidadInvalidaEnElArtistaSeQuedaTalCual() {
+        val html = """<meta name="music:musician_description" content="Ana &#1114112; Beto"/>
+            <meta name="music:duration" content="99"/>"""
+        val d = MetadatosMusica.paginaSpotify(html)
+        assertEquals("Ana &#1114112; Beto", d.artista)
+        assertEquals(99, d.duracionSeg)
+    }
+
     @Test fun entidadesYOrdenDeAtributos() {
         val html = """<meta content="Guns &amp; Roses &#x27;n&quot; Co" name="music:musician_description"/>
             <meta content="120" property='music:duration'>
