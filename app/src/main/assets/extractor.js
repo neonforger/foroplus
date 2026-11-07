@@ -68,6 +68,15 @@
     return params;
   }
 
+  // ¿Esta respuesta es el challenge de Cloudflare? Llega con 403 (medido el 2026-11-07, cuando
+  // FC lo puso en TODO el foro tras el ataque de los hilos "Zzb"), así que un `!r.ok` a secas lo
+  // convertía en un "http 403" y la app nunca enseñaba la verificación: "No se pudo cargar el
+  // listado" para siempre. Con esta marca el cuerpo pasa al chequeo de "Just a moment" de
+  // siempre. Petición same-origin: la cabecera se puede leer.
+  function esChallengeCf(r) {
+    try { return r.headers.get('cf-mitigated') === 'challenge'; } catch (e) { return false; }
+  }
+
   // Texto del mensaje de error de FC (validación, anti-flood, permisos).
   // Entidades HTML (&iacute;, &nbsp;…) → texto. Los errores de FC vienen con acentos así.
   function decodeEnt(s) {
@@ -999,7 +1008,7 @@
     }
     fetch(url, { credentials: 'same-origin' })
       .then(function (r) {
-        if (!r.ok) throw new Error('http ' + r.status);
+        if (!r.ok && !esChallengeCf(r)) throw new Error('http ' + r.status);
         return r.text().then(function (html) { return { html: html, finalUrl: r.url || '' }; });
       })
       .then(function (res) {
@@ -2534,7 +2543,7 @@
   window.fcLoadNotices = function (url, kind) {
     fetch(url, { credentials: 'same-origin' })
       .then(function (r) {
-        if (!r.ok) throw new Error('http ' + r.status);
+        if (!r.ok && !esChallengeCf(r)) throw new Error('http ' + r.status);
         return r.text();
       })
       .then(function (html) {
@@ -2742,7 +2751,7 @@
   window.fcLoadThreadList = function (url) {
     fetch(url, { credentials: 'same-origin' })
       .then(function (r) {
-        if (!r.ok) throw new Error('http ' + r.status);
+        if (!r.ok && !esChallengeCf(r)) throw new Error('http ' + r.status);
         return r.text().then(function (html) { return { html: html, finalUrl: r.url || url }; });
       })
       .then(function (res) {

@@ -12,7 +12,8 @@ class ForocochesWebViewClient(
     private val context: Context,
     private val repo: IgnoreListRepository,
     private val keywordRepo: KeywordRepository,
-    private val onPageLoad: ((String) -> Unit)? = null
+    private val onPageLoad: ((String) -> Unit)? = null,
+    private val onPageStart: ((String) -> Unit)? = null
 ) : WebViewClient() {
 
     private val contentJs: String by lazy {
@@ -25,10 +26,6 @@ class ForocochesWebViewClient(
 
     private val adblockCss: String by lazy {
         context.assets.open("adblock.css").bufferedReader().readText()
-    }
-
-    private val settingsPanelJs: String by lazy {
-        context.assets.open("settings-panel.js").bufferedReader().readText()
     }
 
     override fun shouldInterceptRequest(
@@ -56,8 +53,15 @@ class ForocochesWebViewClient(
         return true
     }
 
+    override fun onPageStarted(view: WebView, url: String, favicon: android.graphics.Bitmap?) {
+        onPageStart?.invoke(url)
+    }
+
     override fun onPageFinished(view: WebView, url: String) {
-        if (!TrustedOrigins.isTrustedForocochesUrl(url)) {
+        // En el challenge de Cloudflare no se inyecta NADA nuestro: es la única página de FC que
+        // el usuario ve (regla de oro), y meterle scripts ajenos a su verificación es darle
+        // motivos para desconfiar. Aquí salía el engranaje de la v1 (2026-11-07).
+        if (!TrustedOrigins.isTrustedForocochesUrl(url) || ChallengeCloudflare.esTitulo(view.title)) {
             onPageLoad?.invoke(url)
             return
         }
@@ -65,7 +69,9 @@ class ForocochesWebViewClient(
         // Config de selectores (remota o bundleada) ANTES de content.js, que la lee.
         view.evaluateJavascript("window.FC_CONFIG=${RemoteConfig.cachedJson(context)};", null)
         view.evaluateJavascript(contentJs, null)
-        view.evaluateJavascript(settingsPanelJs, null)
+        // settings-panel.js (el panel de ajustes de la v1, con su botón del engranaje) ya NO se
+        // inyecta: en la v2 nadie lo usa y solo se veía cuando la capa web estaba a la vista,
+        // o sea, en el challenge de Cloudflare.
         view.evaluateJavascript(extractorJs, null) // motor de datos del shell nativo (v2)
         onPageLoad?.invoke(url)
     }

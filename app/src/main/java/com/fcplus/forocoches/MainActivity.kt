@@ -516,6 +516,8 @@ class MainActivity : AppCompatActivity() {
     private var menuLinks: MenuLinks? = null
     private var isWebVisible = false
     private var engineReady = false      // el WebView ya cargó una página de FC con extractor
+    /** El motor se quedó en el challenge de Cloudflare: la próxima página real es que se superó. */
+    private var esperandoChallenge = false
     private var listLoaded = false
     private var currentPage = 1
     private var loadingPage = false      // evita ráfagas de peticiones con scroll rápido
@@ -3593,6 +3595,11 @@ class MainActivity : AppCompatActivity() {
         keywordRepo.fijarValorDeFabrica(esInstalacionNueva())
         webView.webViewClient = ForocochesWebViewClient(
             this, repo, keywordRepo,
+            // Tras el challenge, lo siguiente que carga suele ser el FORO: se carga transparente
+            // para que no llegue a pintarse ni un instante (onEnginePageReady decide si se
+            // enseña —otro challenge— o se vuelve a lo nativo). Transparente y no GONE: un
+            // WebView escondido frena su render (gotcha de Android del WebView ocluido).
+            onPageStart = { if (esperandoChallenge) webView.alpha = 0f },
             onPageLoad = { url ->
                 swipeRefresh.isRefreshing = false
                 onEnginePageReady(url)
@@ -6856,6 +6863,7 @@ class MainActivity : AppCompatActivity() {
                 // Único caso donde asoma el WebView: el challenge solo lo resuelve
                 // un navegador visible. Al pasarlo, atrás vuelve al hilo nativo.
                 cameFromThread = true
+                esperandoChallenge = true   // ver onThreadListError: el hilo web no se pinta
                 showWeb()
                 webView.loadUrl(threadPageUrl(threadPage))
             }
@@ -7147,7 +7155,36 @@ class MainActivity : AppCompatActivity() {
 
     /** El WebView terminó una página. Si es de FC, el extractor ya está inyectado. */
     private fun onEnginePageReady(url: String) {
-        if (!TrustedOrigins.isTrustedForocochesUrl(url)) return
+        if (!TrustedOrigins.isTrustedForocochesUrl(url)) { webView.alpha = 1f; return }
+        // El challenge de Cloudflare también "termina de cargar", y con la URL de FC. Tomarlo
+        // por el motor listo lanzaba el listado, su 403 volvía a abrir el challenge y este
+        // volvía a lanzarlo: un bucle que no dejaba resolverlo (2026-11-07, ChallengeCloudflare).
+        // Mientras sea el challenge no se pide nada y se enseña: es la única excepción de la
+        // regla de oro, y solo una persona puede pasarlo. Sin motor (en el challenge no se
+        // inyecta el extractor), así que lo que se pulse dice "Conectando con el foro…".
+        if (ChallengeCloudflare.esTitulo(webView.title)) {
+            esperandoChallenge = true
+            engineReady = false
+            if (!isWebVisible) showWeb()
+            webView.alpha = 1f
+            return
+        }
+        // Lo primero que termina después del challenge es la página de verdad: superado. Se
+        // vuelve solo a lo nativo, que el foro web no se quede a la vista (regla de oro). Ha
+        // cargado transparente (onPageStart): primero se tapa con lo nativo y luego se
+        // devuelve la opacidad, para la próxima vez que haga falta enseñar un challenge.
+        if (esperandoChallenge) {
+            esperandoChallenge = false
+            if (isWebVisible) {
+                if (cameFromThread && currentThreadUrl.isNotEmpty()) {
+                    cameFromThread = false
+                    showThread()
+                } else {
+                    showNative(); setSelectedNav(navIdForList())
+                }
+            }
+        }
+        webView.alpha = 1f
         engineReady = true
         // La lista de smileys, una vez por sesión: sin ella `:roto2:` no se puede convertir en
         // el emoticono mientras escribes (y el selector abre al instante).
@@ -7571,7 +7608,10 @@ class MainActivity : AppCompatActivity() {
         when (reason) {
             "cloudflare" -> {
                 // Challenge de CF: solo un navegador visible puede resolverlo. Enseñamos
-                // la web; al pasarlo, el usuario vuelve a Inicio y la lista carga.
+                // la web; al pasarlo, se vuelve sola a Inicio y la lista carga. Se marca ya
+                // como pendiente: si CF deja pasar sin challenge, lo que carga es el foro y
+                // tiene que llegar transparente y devolvernos a lo nativo (onEnginePageReady).
+                esperandoChallenge = true
                 showWeb()
                 webView.loadUrl(buildListUrl(1))
             }
