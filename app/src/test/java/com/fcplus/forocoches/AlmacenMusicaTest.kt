@@ -54,12 +54,15 @@ class AlmacenMusicaTest {
         val a = almacen()
         val p = a.crearPlaylist("Rock")!!
         a.guardar(Cancion(cancion(1).ref, "Ñu", "Ar", "Al", 99, "http://x/p.jpg", 5L), listOf(p.id))
+        val sp = Cancion(RefCancion(FuenteMusica.SPOTIFY, "4uLU6hMCjMI75M1A2tKUQC"), "Sp", null, null, null, null, 0L)
+        a.guardar(sp, listOf(p.id))
         a.marcarPublicada(p.id, "pub1")
         assertEquals(a.estado(), almacen().estado())
         val c = almacen().estado().canciones.getValue(cancion(1).ref.clave)
         assertEquals("Al", c.album)
         assertEquals(99, c.duracionSeg)
         assertEquals("Ñu", c.titulo)
+        assertEquals(FuenteMusica.SPOTIFY, almacen().estado().canciones.getValue(sp.ref.clave).ref.fuente)
         assertEquals("pub1", almacen().estado().playlists[0].publicadaId)
     }
 
@@ -210,5 +213,53 @@ class AlmacenMusicaTest {
         assertFalse(File(carpeta.root, "musica.json.tmp").exists())
         assertTrue(File(carpeta.root, "musica.json").isFile)
         assertTrue(File(carpeta.root, "musica.json").readText().contains("\"v\""))
+    }
+
+    private fun jsonDe(a: AlmacenMusica): String {
+        return File(carpeta.root, "musica.json").readText()
+    }
+
+    @Test fun soloTmpValidoSeRecuperaYSePromueve() {
+        val a = almacen()
+        a.guardar(cancion(1), emptyList())
+        val f = File(carpeta.root, "musica.json")
+        val tmp = File(carpeta.root, "musica.json.tmp")
+        tmp.writeText(jsonDe(a))
+        assertTrue(f.delete())
+        val e = almacen().estado()
+        assertEquals(1, e.playlists.size)
+        assertEquals(1, e.canciones.size)
+        assertTrue(f.isFile)
+        assertFalse(tmp.exists())
+    }
+
+    @Test fun tmpBasuraConMainAusenteDaVacio() {
+        File(carpeta.root, "musica.json.tmp").writeText("{{{")
+        assertTrue(almacen().estado().playlists.isEmpty())
+    }
+
+    @Test fun guardarSobreExistenteNoDejaTmp() {
+        val a = almacen()
+        repeat(3) { a.guardar(cancion(it + 1), emptyList()) }
+        assertFalse(File(carpeta.root, "musica.json.tmp").exists())
+        assertEquals(3, almacen().estado().canciones.size)
+    }
+
+    @Test fun hilosConcurrentesNoPierdenCanciones() {
+        val p = almacen().crearPlaylist("Rock")!!
+        val errores = java.util.concurrent.atomic.AtomicInteger()
+        val hilos = (0 until 4).map { h ->
+            Thread {
+                // Una instancia propia por hilo: el cerrojo es por carpeta, no por objeto.
+                val a = almacen()
+                for (i in 0 until 25) if (!a.guardar(cancion(h * 25 + i + 1), listOf(p.id))) errores.incrementAndGet()
+            }
+        }
+        hilos.forEach { it.start() }
+        hilos.forEach { it.join() }
+        assertEquals(0, errores.get())
+        val e = almacen().estado()
+        assertEquals(100, e.playlists[0].claves.size)
+        assertEquals(100, e.canciones.size)
     }
 }

@@ -14,22 +14,41 @@ import java.util.UUID
  * el disco si la regla no se cumple. Sin sincronización: se usa desde un solo hilo.
  *
  * Un fichero que no se puede leer NO se pisa: se aparta como `musica.json.roto` y se parte de
- * vacío, así una versión futura o un fallo de disco no se llevan por delante las playlists.
+* vacío, así una versión futura o un fallo de disco no se llevan por delante las playlists.
+ *
+ * **Hilos: seguro desde cualquiera.** Cada método (lecturas incluidas) corre entero bajo un
+ * cerrojo compartido por carpeta (ruta canónica), así que varias instancias sobre la misma
+ * carpeta también se serializan: una canción que llega de una descarga en segundo plano no
+ * pisa a un guardado de la interfaz. Sin cerrojo, dos lectura-modificación-escritura
+ * simultáneas pierden una de las dos y comparten el mismo `.tmp`.
  */
 class AlmacenMusica(
     private val dir: File,
     private val reloj: () -> Long = System::currentTimeMillis
 ) {
     private val fichero get() = File(dir, "musica.json")
+    private val cerrojo: Any = cerrojoDe(dir)
 
-    fun estado(): EstadoMusica = leer()
+    // API pública: cada llamada entera (lectura incluida) bajo el cerrojo de la carpeta.
+    // Los comentarios de cada regla están en las versiones privadas `...Sin`.
+    fun estado(): EstadoMusica = synchronized(cerrojo) { estadoSin() }
+    fun guardar(c: Cancion, playlistIds: List<String>): Boolean = synchronized(cerrojo) { guardarSin(c, playlistIds) }
+    fun crearPlaylist(nombre: String): Playlist? = synchronized(cerrojo) { crearPlaylistSin(nombre) }
+    fun renombrar(id: String, nombre: String): Boolean = synchronized(cerrojo) { renombrarSin(id, nombre) }
+    fun borrarPlaylist(id: String): Boolean = synchronized(cerrojo) { borrarPlaylistSin(id) }
+    fun quitar(id: String, clave: String): Boolean = synchronized(cerrojo) { quitarSin(id, clave) }
+    fun mover(id: String, desde: Int, hasta: Int): Boolean = synchronized(cerrojo) { moverSin(id, desde, hasta) }
+    fun importar(nombre: String, canciones: List<Cancion>): Playlist? = synchronized(cerrojo) { importarSin(nombre, canciones) }
+    fun marcarPublicada(id: String, publicadaId: String?): Boolean = synchronized(cerrojo) { marcarPublicadaSin(id, publicadaId) }
+
+    private fun estadoSin(): EstadoMusica = leer()
 
     /**
      * Guarda [c] en las playlists [playlistIds] (los ids desconocidos se ignoran). Con la lista
      * vacía va a "Mis favoritas", que se crea si hace falta. False, sin cambiar nada, si algún
      * destino ya está en [Musica.MAX_CANCIONES]; si ya la tenía, esa playlist se deja como está.
      */
-    fun guardar(c: Cancion, playlistIds: List<String>): Boolean {
+    private fun guardarSin(c: Cancion, playlistIds: List<String>): Boolean {
         val e = leer()
         val ahora = reloj()
         var listas = e.playlists
@@ -55,7 +74,7 @@ class AlmacenMusica(
         return escribir(EstadoMusica(canciones, listas))
     }
 
-    fun crearPlaylist(nombre: String): Playlist? {
+    private fun crearPlaylistSin(nombre: String): Playlist? {
         val limpio = Musica.nombreLimpio(nombre) ?: return null
         val e = leer()
         if (e.playlists.size >= Musica.MAX_PLAYLISTS) return null
@@ -68,7 +87,7 @@ class AlmacenMusica(
     }
 
     /** False si el nombre no vale o ya lo lleva OTRA playlist. */
-    fun renombrar(id: String, nombre: String): Boolean {
+    private fun renombrarSin(id: String, nombre: String): Boolean {
         val limpio = Musica.nombreLimpio(nombre) ?: return false
         val e = leer()
         if (e.playlists.none { it.id == id }) return false
@@ -79,13 +98,13 @@ class AlmacenMusica(
         }))
     }
 
-    fun borrarPlaylist(id: String): Boolean {
+    private fun borrarPlaylistSin(id: String): Boolean {
         val e = leer()
         if (e.playlists.none { it.id == id }) return false
         return escribir(sinHuerfanas(e.copy(playlists = e.playlists.filter { it.id != id })))
     }
 
-    fun quitar(id: String, clave: String): Boolean {
+    private fun quitarSin(id: String, clave: String): Boolean {
         val e = leer()
         val p = e.playlists.firstOrNull { it.id == id } ?: return false
         if (clave !in p.claves) return false
@@ -96,7 +115,7 @@ class AlmacenMusica(
     }
 
     /** Saca la canción de la posición [desde] y la deja en [hasta] (ambas índices válidos). */
-    fun mover(id: String, desde: Int, hasta: Int): Boolean {
+    private fun moverSin(id: String, desde: Int, hasta: Int): Boolean {
         val e = leer()
         val p = e.playlists.firstOrNull { it.id == id } ?: return false
         if (desde !in p.claves.indices || hasta !in p.claves.indices) return false
@@ -109,7 +128,7 @@ class AlmacenMusica(
     }
 
     /** Playlist nueva con las primeras [Musica.MAX_CANCIONES] de [canciones]; null si no cabe o el nombre no vale. */
-    fun importar(nombre: String, canciones: List<Cancion>): Playlist? {
+    private fun importarSin(nombre: String, canciones: List<Cancion>): Playlist? {
         val limpio = Musica.nombreLimpio(nombre) ?: return null
         val e = leer()
         if (e.playlists.size >= Musica.MAX_PLAYLISTS) return null
@@ -124,12 +143,21 @@ class AlmacenMusica(
         return if (escribir(EstadoMusica(todas, e.playlists + p))) p else null
     }
 
-    fun marcarPublicada(id: String, publicadaId: String?): Boolean {
+    private fun marcarPublicadaSin(id: String, publicadaId: String?): Boolean {
         val e = leer()
         if (e.playlists.none { it.id == id }) return false
         return escribir(e.copy(playlists = e.playlists.map {
             if (it.id == id) it.copy(publicadaId = publicadaId) else it
         }))
+    }
+
+    private companion object {
+        private val cerrojos = java.util.concurrent.ConcurrentHashMap<String, Any>()
+
+        fun cerrojoDe(dir: File): Any {
+            val ruta = try { dir.canonicalPath } catch (_: Exception) { dir.absolutePath }
+            return cerrojos.getOrPut(ruta) { Any() }
+        }
     }
 
     private fun nuevoId() = UUID.randomUUID().toString()
@@ -141,9 +169,27 @@ class AlmacenMusica(
 
     private fun leer(): EstadoMusica {
         val f = fichero
-        if (!f.isFile) return EstadoMusica(emptyMap(), emptyList())
+        val tmp = File(dir, "musica.json.tmp")
+        if (!f.isFile) {
+            // Si la escritura murió entre soltar el viejo y ponerse el nuevo, el .tmp (escrito
+            // entero antes de tocar nada) es la única copia: se recupera en vez de pisarla.
+            if (!tmp.isFile) return EstadoMusica(emptyMap(), emptyList())
+            val rec = try { parsear(tmp.readText()) } catch (_: Exception) { null }
+                ?: return EstadoMusica(emptyMap(), emptyList())
+            tmp.renameTo(f)
+            return rec
+        }
         return try {
-            val raiz = JSONObject(f.readText())
+            parsear(f.readText())
+        } catch (_: Exception) {
+            apartarRoto(f)
+            leer() // sin musica.json: si hay un .tmp válido se recupera, si no, vacío
+        }
+    }
+
+    private fun parsear(contenido: String): EstadoMusica {
+        return run {
+            val raiz = JSONObject(contenido)
             val canciones = LinkedHashMap<String, Cancion>()
             val arrC = raiz.optJSONArray("canciones") ?: JSONArray()
             for (i in 0 until arrC.length()) {
@@ -170,9 +216,6 @@ class AlmacenMusica(
                 )
             }
             EstadoMusica(canciones, playlists)
-        } catch (_: Exception) {
-            apartarRoto(f)
-            EstadoMusica(emptyMap(), emptyList())
         }
     }
 
@@ -216,9 +259,12 @@ class AlmacenMusica(
             val raiz = JSONObject().put("v", 1).put("canciones", canciones).put("playlists", playlists)
             val tmp = File(dir, "musica.json.tmp")
             tmp.writeText(raiz.toString())
-            // renameTo sobre un fichero existente falla en Windows y en algunos Android.
-            if (fichero.exists()) fichero.delete()
-            tmp.renameTo(fichero)
+            // En Linux/Android renameTo sobre el existente es atómico: primero eso. Solo si falla
+            // (Windows) se retira el viejo; y si muere ahí, leer() recupera el .tmp.
+            tmp.renameTo(fichero) || run {
+                if (fichero.exists()) fichero.delete()
+                tmp.renameTo(fichero)
+            }
         } catch (_: Exception) {
             false
         }
