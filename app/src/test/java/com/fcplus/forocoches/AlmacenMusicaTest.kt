@@ -273,4 +273,18 @@ class AlmacenMusicaTest {
         assertTrue(e.playlists.isEmpty() && e.canciones.isEmpty())
         assertEquals("basura", File(carpeta.root, "musica.json").readText())
     }
+
+    @Test fun ficheroRotoQueNoSePuedeApartarNoSePisaAlEscribir() {
+        val main = File(carpeta.root, "musica.json")
+        main.writeText("basura")
+        val roto = File(carpeta.root, "musica.json.roto")
+        assertTrue(roto.mkdirs())
+        File(roto, "x").writeText("x")
+        val a = almacen()
+        assertFalse(a.guardar(cancion(1), emptyList()))
+        assertNull(a.crearPlaylist("X"))
+        assertNull(a.importar("Y", listOf(cancion(2))))
+        assertEquals("basura", main.readText())
+        assertFalse(File(carpeta.root, "musica.json.tmp").exists())
+    }
 }

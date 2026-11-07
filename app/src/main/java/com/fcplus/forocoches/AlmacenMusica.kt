@@ -169,15 +169,22 @@ class AlmacenMusica(
         return e.copy(canciones = e.canciones.filterKeys { it in usadas })
     }
 
+    // true mientras musica.json exista, no se pueda leer y no se haya podido apartar: nada se escribe.
+    private var bloqueado = false
+
     private fun leer(): EstadoMusica {
         val f = fichero
+        bloqueado = false
         if (f.isFile) {
             try {
                 return parsear(f.readText())
             } catch (_: Exception) {
                 apartarRoto(f)
                 // Si no se pudo apartar, no se vuelve a leer: devolver vacío y no pisarlo.
-                if (f.exists()) return VACIO
+                if (f.exists()) {
+                    bloqueado = true
+                    return VACIO
+                }
             }
         }
         return recuperarTmp()
@@ -238,6 +245,7 @@ class AlmacenMusica(
     }
 
     private fun escribir(e: EstadoMusica): Boolean {
+        if (bloqueado) return false // el fichero ilegible no se pisa
         return try {
             if (!dir.isDirectory && !dir.mkdirs()) return false
             val canciones = JSONArray()
