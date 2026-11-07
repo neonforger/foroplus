@@ -15,7 +15,7 @@ object TituloCancion {
         "video oficial", "vídeo oficial", "hd", "hq", "4k", "4k remaster"
     )
 
-    // "{año}" son 4 dígitos. Solo las usa el servidor para la clave; viven aquí por el contrato.
+    // "{año}" son 4 dígitos. Solo las usa el servidor para la clave; viven aquí por el contrato. limpiar() NO las quita: en pantalla se ve el título tal cual.
     val ETIQUETAS_VERSION: List<String> = listOf(
         "remastered", "remaster", "remasterizado", "remasterizada",
         "remastered {año}", "{año} remaster", "{año} remastered"
@@ -31,14 +31,10 @@ object TituloCancion {
             .lowercase().trim().replace(ESPACIOS, " ")
 
     private val VIDEO_NORM = ETIQUETAS_VIDEO.map { norm(it) }.toSet()
-    // norm() quita la tilde de la ñ, así que el marcador normalizado es "{ano}".
-    private val VERSION_RES = ETIQUETAS_VERSION.map { e ->
-        Regex(norm(e).split("{ano}").joinToString("""\d{4}""") { Regex.escape(it) })
-    }
 
     private fun esEtiqueta(contenido: String): Boolean {
         val n = norm(contenido)
-        return n in VIDEO_NORM || VERSION_RES.any { it.matches(n) }
+        return n in VIDEO_NORM
     }
 
     private fun colapsar(s: String) = s.replace(ESPACIOS, " ").trim()

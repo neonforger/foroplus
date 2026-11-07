@@ -38,9 +38,9 @@ class TituloCancionTest {
     }
 
     @Test
-    fun limpiarQuitaEtiquetasConAnoYSinTildes() {
-        assertEquals("Tema", TituloCancion.limpiar("Tema [VIDEO OFICIAL]  (Remastered 2011)"))
-        assertEquals("Tema", TituloCancion.limpiar("Tema (2009 Remaster)"))
+    fun limpiarSoloQuitaEtiquetasDeVideoYConservaLasDeVersion() {
+        assertEquals("Tema (Remastered 2011)", TituloCancion.limpiar("Tema [VIDEO OFICIAL]  (Remastered 2011)"))
+        assertEquals("Tema (2009 Remaster)", TituloCancion.limpiar("Tema (2009 Remaster)"))
         assertEquals("Tema", TituloCancion.limpiar("Tema (Vídeo Oficial)"))
     }
 }
