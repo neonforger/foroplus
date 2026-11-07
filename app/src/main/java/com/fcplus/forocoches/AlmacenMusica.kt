@@ -11,7 +11,7 @@ import java.util.UUID
  * Mismo criterio que [AlmacenDescargas]: vive en `filesDir` (lo da quien lo construye), se
  * escribe en un temporal y se renombra, para que morir a mitad no deje un fichero a medias.
  * Todo método que cambia algo lee, modifica y escribe entero; devuelve false/null sin tocar
- * el disco si la regla no se cumple. Sin sincronización: se usa desde un solo hilo.
+ * el disco si la regla no se cumple.
  *
  * Un fichero que no se puede leer NO se pisa: se aparta como `musica.json.roto` y se parte de
 * vacío, así una versión futura o un fallo de disco no se llevan por delante las playlists.
@@ -152,6 +152,8 @@ class AlmacenMusica(
     }
 
     private companion object {
+        val VACIO = EstadoMusica(emptyMap(), emptyList())
+
         private val cerrojos = java.util.concurrent.ConcurrentHashMap<String, Any>()
 
         fun cerrojoDe(dir: File): Any {
@@ -169,22 +171,26 @@ class AlmacenMusica(
 
     private fun leer(): EstadoMusica {
         val f = fichero
+        if (f.isFile) {
+            try {
+                return parsear(f.readText())
+            } catch (_: Exception) {
+                apartarRoto(f)
+                // Si no se pudo apartar, no se vuelve a leer: devolver vacío y no pisarlo.
+                if (f.exists()) return VACIO
+            }
+        }
+        return recuperarTmp()
+    }
+
+    // Si la escritura murió entre soltar el viejo y ponerse el nuevo, el .tmp (escrito entero
+    // antes de tocar nada) es la única copia: se recupera en vez de pisarla. Una sola vez.
+    private fun recuperarTmp(): EstadoMusica {
         val tmp = File(dir, "musica.json.tmp")
-        if (!f.isFile) {
-            // Si la escritura murió entre soltar el viejo y ponerse el nuevo, el .tmp (escrito
-            // entero antes de tocar nada) es la única copia: se recupera en vez de pisarla.
-            if (!tmp.isFile) return EstadoMusica(emptyMap(), emptyList())
-            val rec = try { parsear(tmp.readText()) } catch (_: Exception) { null }
-                ?: return EstadoMusica(emptyMap(), emptyList())
-            tmp.renameTo(f)
-            return rec
-        }
-        return try {
-            parsear(f.readText())
-        } catch (_: Exception) {
-            apartarRoto(f)
-            leer() // sin musica.json: si hay un .tmp válido se recupera, si no, vacío
-        }
+        if (!tmp.isFile) return VACIO
+        val rec = try { parsear(tmp.readText()) } catch (_: Exception) { null } ?: return VACIO
+        tmp.renameTo(fichero)
+        return rec
     }
 
     private fun parsear(contenido: String): EstadoMusica {

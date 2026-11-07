@@ -262,4 +262,15 @@ class AlmacenMusicaTest {
         assertEquals(100, e.playlists[0].claves.size)
         assertEquals(100, e.canciones.size)
     }
+
+    @Test fun ficheroRotoQueNoSePuedeApartarNoRecursa() {
+        File(carpeta.root, "musica.json").writeText("basura")
+        // .roto es un directorio no vacío: ni delete ni renameTo pueden sustituirlo.
+        val roto = File(carpeta.root, "musica.json.roto")
+        assertTrue(roto.mkdirs())
+        File(roto, "x").writeText("x")
+        val e = almacen().estado()
+        assertTrue(e.playlists.isEmpty() && e.canciones.isEmpty())
+        assertEquals("basura", File(carpeta.root, "musica.json").readText())
+    }
 }
