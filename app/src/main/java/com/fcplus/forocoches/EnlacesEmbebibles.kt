@@ -40,14 +40,10 @@ object EnlacesEmbebibles {
     // URL incorrecta]" (medido 2026-10-16). Se resuelven antes de publicar (ver [TiktokCorto]);
     // el que no se pudo resolver se queda como enlace, que al menos se puede abrir.
     private val TIKTOK = Regex("""tiktok[.]com/(?:@[^/\s]+/)?video/\d+""", RegexOption.IGNORE_CASE)
-    private val YT = Regex(
-        """(?:youtube[.]com/(?:watch\?(?:[^ ]*&)?v=|shorts/|embed/)|youtu[.]be/)([A-Za-z0-9_-]{6,})""",
-        RegexOption.IGNORE_CASE
-    )
 
     /** El BBCode de [url], o null si no es de ninguna plataforma que FC sepa incrustar. */
     fun tarjetaDe(url: String): String? = when {
-        YT.containsMatchIn(url) -> "[YOUTUBE]" + YT.find(url)!!.groupValues[1] + "[/YOUTUBE]"
+        YoutubeId.de(url) != null -> "[YOUTUBE]" + YoutubeId.de(url) + "[/YOUTUBE]"
         IG.containsMatchIn(url) -> "[IG]$url[/IG]"
         TWEET.containsMatchIn(url) -> "[TWEET]$url[/TWEET]"
         TIKTOK.containsMatchIn(url) -> "[TIKTOK]$url[/TIKTOK]"
