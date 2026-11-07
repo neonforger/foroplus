@@ -1,6 +1,15 @@
 {
   "versiones": [
     {
+      "code": 55,
+      "nombre": "1.16.1",
+      "fecha": "2026-11-07",
+      "notas": [
+        "La app vuelve a cargar el foro: ForoCoches ha puesto la verificación de Cloudflare en todas sus páginas y la app se quedaba en 'No se pudo cargar el listado'. Ahora te enseña la verificación y, al superarla, vuelve sola a la lista",
+        "Casi siempre la verificación pasa sola en unos segundos: no tienes que tocar nada, solo esperar"
+      ]
+    },
+    {
       "code": 54,
       "nombre": "1.16.0",
       "fecha": "2026-11-04",

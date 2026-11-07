@@ -39,8 +39,8 @@ android {
         applicationId "com.foroplus.app"
         minSdk 24
         targetSdk 36
-        versionCode 54
-        versionName "1.16.0"
+        versionCode 55
+        versionName "1.16.1"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
