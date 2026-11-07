@@ -1,0 +1,31 @@
+name: Servidor de Música
+
+on:
+  push:
+    paths:
+      - 'servidor/musica/**'
+      - 'app/src/test/resources/contrato/musica-*.json'
+      - '.github/workflows/musica-servidor.yml'
+  pull_request:
+    paths:
+      - 'servidor/musica/**'
+      - 'app/src/test/resources/contrato/musica-*.json'
+      - '.github/workflows/musica-servidor.yml'
+  workflow_dispatch: {}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: servidor/musica
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: servidor/musica/package-lock.json
+      - run: npm ci
+      - run: npm run check
+      - run: npm test

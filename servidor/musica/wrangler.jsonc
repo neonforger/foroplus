@@ -1,0 +1,19 @@
+{
+  "name": "foroplus-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-11-04",
+  // Falla a propósito hasta que exista la cuenta nueva de ForoPlus (nunca la personal del dueño).
+  "account_id": "PENDIENTE-CUENTA-FOROPLUS",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "foroplus-musica",
+      "database_id": "PENDIENTE",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "triggers": { "crons": ["0 22,23 * * SUN", "30 3 * * *"] },
+  "vars": { "DIAS_MIN_VOTO": "90", "LECTOR_EN_VPS": "false" },
+  // Sin registros de peticiones: no guardamos nada que no haga falta.
+  "observability": { "enabled": false }
+}
