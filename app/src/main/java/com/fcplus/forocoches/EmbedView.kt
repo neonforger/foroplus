@@ -16,7 +16,7 @@ import org.json.JSONArray
 
 /** Un embed dentro de un post: red social o multimedia con su reproductor oficial. */
 data class EmbedSpec(
-    val kind: String,   // twitter | instagram | tiktok | youtube | video | iframe
+    val kind: String,   // twitter | instagram | tiktok | youtube | spotify | video | iframe
     val url: String,
     val id: String,
     /**
@@ -109,11 +109,23 @@ class EmbedView(context: Context) : FrameLayout(context) {
         private set
 
 
+    /**
+     * Avisos para el reproductor de Música: el vídeo de YouTube ha llegado al final / ha fallado
+     * (con el código de YouTube, ver [EstadoYoutube]). Valen null en los hilos del foro, que no
+     * los usan: ahí el comportamiento es el de siempre.
+     */
+    var alTerminar: (() -> Unit)? = null
+    var alFallar: ((codigo: Int) -> Unit)? = null
+
     /** Callback para pedir modo pantalla completa de vídeo al Activity anfitrión. */
     var onFullscreen: ((View?, WebChromeClient.CustomViewCallback?) -> Unit)? = null
 
     /** Alto de partida del reproductor: el que declare el foro, o el genérico de 220dp. */
-    private fun altoInicial(spec: EmbedSpec) = if (spec.alto > 0) dp(spec.alto) else dp(220)
+    private fun altoInicial(spec: EmbedSpec) = when {
+        spec.alto > 0 -> dp(spec.alto)
+        spec.kind == "spotify" -> dp(ALTO_SPOTIFY)
+        else -> dp(220)
+    }
 
     private fun dp(v: Int) = TypedValue.applyDimension(
         TypedValue.COMPLEX_UNIT_DIP, v.toFloat(), resources.displayMetrics
@@ -339,6 +351,32 @@ class EmbedView(context: Context) : FrameLayout(context) {
         )
     }
 
+    /**
+     * Carga [id] en el MISMO reproductor de YouTube (sin recrear el WebView, que es lo que
+     * conserva el permiso de audio que dio el toque del usuario). Medido el 2026-11-07: el
+     * comando `loadVideoById` por postMessage encadena los estados 3, -1, 3, 1 y suena.
+     *
+     * El id se valida antes de tocar el JS: solo el juego de caracteres de YouTube, nunca una
+     * cadena libre dentro de código.
+     */
+    fun cargarVideo(id: String) {
+        if (!EstadoYoutube.idValido(id)) return
+        val w = web ?: return
+        w.evaluateJavascript(
+            """
+            (function () {
+              try {
+                var f = document.querySelector('iframe');
+                if (f && f.contentWindow) {
+                  f.contentWindow.postMessage(
+                    '{"event":"command","func":"loadVideoById","args":["$id"]}', '*');
+                }
+              } catch (e) {}
+            })()
+            """.trimIndent(), null
+        )
+    }
+
     /** Lanza [url] fuera de la app (app nativa de la plataforma o navegador). true si era http(s). */
     private fun openExternal(url: String): Boolean {
         if (!url.startsWith("http")) return false
@@ -356,6 +394,18 @@ class EmbedView(context: Context) : FrameLayout(context) {
         @JavascriptInterface
         fun onEstado(activo: Boolean) {
             post { reproduciendo = activo }
+        }
+
+        /** El vídeo de YouTube ha llegado al final (la página ya evita avisar dos veces). */
+        @JavascriptInterface
+        fun onTerminado() {
+            post { alTerminar?.invoke() }
+        }
+
+        /** YouTube no ha podido reproducir el vídeo; [codigo] es el de la API IFrame. */
+        @JavascriptInterface
+        fun onFallo(codigo: Int) {
+            post { alFallar?.invoke(codigo) }
         }
 
         @JavascriptInterface
@@ -431,6 +481,13 @@ class EmbedView(context: Context) : FrameLayout(context) {
                 // reproductor se muda a la ventanita flotante (ver [reanudar]).
                 """<div class="yt"><iframe src="https://www.youtube.com/embed/${esc(spec.id)}?playsinline=1&rel=0&enablejsapi=1&origin=https%3A%2F%2Fforocoches.com"
                    frameborder="0" allow="encrypted-media; picture-in-picture" allowfullscreen></iframe></div>"""
+            "spotify" -> {
+                // Solo con un id de 22 caracteres base62: se monta una URL, no se copia texto libre.
+                val id = spec.id.takeIf { EstadoYoutube.idSpotifyValido(it) } ?: ""
+                """<iframe src="https://open.spotify.com/embed/track/$id" frameborder="0"
+                   allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                   style="width:100%;height:${ALTO_SPOTIFY}px;border:0"></iframe>"""
+            }
             "video" ->
                 """<video src="${esc(spec.url)}" controls playsinline preload="metadata" style="width:100%;height:auto"></video>"""
             else -> {
@@ -459,6 +516,14 @@ class EmbedView(context: Context) : FrameLayout(context) {
               // si hay que decirle "sigue" tras la mudanza — y para NO despertar un vídeo que
               // el usuario había pausado.
               function estado(v){try{AndroidEmbed.onEstado(!!v);}catch(e){}}
+              // Fin del vídeo: onStateChange e infoDelivery pueden dar los dos el 0, así que se
+              // avisa una sola vez hasta que el estado salga de 0 (p. ej. al cargar el siguiente).
+              var fin=false;
+              function estadoYt(st){
+                estado(st === 1);
+                if(st === 0){ if(!fin){ fin=true; try{AndroidEmbed.onTerminado();}catch(e){} } }
+                else fin=false;
+              }
               // <video> nuestro: sus eventos no burbujean, se escuchan en fase de captura.
               document.addEventListener('play',function(e){if(e.target.tagName==='VIDEO')estado(true);},true);
               document.addEventListener('pause',function(e){if(e.target.tagName==='VIDEO')estado(false);},true);
@@ -470,9 +535,10 @@ class EmbedView(context: Context) : FrameLayout(context) {
                 try{
                   var d = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
                   if(!d) return;
-                  if(d.event === 'onStateChange') estado(d.info === 1);
+                  if(d.event === 'onStateChange') estadoYt(d.info);
                   else if(d.event === 'infoDelivery' && d.info &&
-                          typeof d.info.playerState === 'number') estado(d.info.playerState === 1);
+                          typeof d.info.playerState === 'number') estadoYt(d.info.playerState);
+                  else if(d.event === 'onError'){ try{AndroidEmbed.onFallo(d.info|0);}catch(e){} }
                 }catch(err){}
               });
               function suscribir(){
@@ -495,4 +561,9 @@ class EmbedView(context: Context) : FrameLayout(context) {
 
     private fun esc(s: String) = s.replace("\\", "\\\\").replace("\"", "&quot;")
         .replace("<", "&lt;").replace(">", "&gt;")
+
+    private companion object {
+        /** Alto fijo del reproductor compacto de Spotify (CSS px). */
+        const val ALTO_SPOTIFY = 152
+    }
 }
