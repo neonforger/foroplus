@@ -7751,8 +7751,11 @@ class MainActivity : AppCompatActivity() {
                 // El swipe de subforo solo vale si arranca SOBRE la lista de hilos: así,
                 // deslizar la barra inferior (que scrollea en horizontal) o las pestañas
                 // ya no cambia de subforo por accidente. En Música la lista está tapada: vale su
-                // panel, que ocupa el mismo sitio.
-                swipeStartedInList = touchInside(if (listSource == "musica") panelMusica else threadList, ev)
+                // panel, que ocupa el mismo sitio, salvo donde Música dice que no (el reproductor
+                // y las asas de arrastrar de una playlist).
+                swipeStartedInList = if (listSource == "musica")
+                    touchInside(panelMusica, ev) && musica.dejaDeslizarDesde(ev.rawX.toInt(), ev.rawY.toInt())
+                    else touchInside(threadList, ev)
             }
             MotionEvent.ACTION_UP -> {
                 val diffX = ev.x - touchDownX
@@ -8084,6 +8087,8 @@ class MainActivity : AppCompatActivity() {
 
     override fun onPause() {
         super.onPause()
+        // Música: "La música se para al salir de la app" (nada suena en segundo plano).
+        if (::musica.isInitialized) musica.pausar()
         // Persiste las cookies de sesión a disco para que el NotificationWorker en
         // background no haga el fetch deslogueado.
         CookieManager.getInstance().flush()

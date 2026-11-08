@@ -101,6 +101,54 @@ class MusicaControllerTest {
     }
 
     @Test
+    fun `la duracion de una cancion va en minutos y segundos, y con horas si las hay`() {
+        assertEquals("0:00", MusicaController.duracion(0))
+        assertEquals("0:07", MusicaController.duracion(7))
+        assertEquals("3:25", MusicaController.duracion(205))
+        assertEquals("1:02:03", MusicaController.duracion(3723))
+    }
+
+    @Test
+    fun `el resumen solo lleva la duracion total si todas la tienen`() {
+        fun con(seg: Int?) = cancion(seg ?: 0).copy(duracionSeg = seg)
+        assertEquals("Sin canciones", MusicaController.resumen(emptyList()))
+        assertEquals("2 canciones · 7 min", MusicaController.resumen(listOf(con(200), con(220))))
+        // Una sin saber: el total sería mentira.
+        assertEquals("2 canciones", MusicaController.resumen(listOf(con(200), con(null))))
+        // Menos de medio minuto no se queda en "0 min".
+        assertEquals("1 canción · 1 min", MusicaController.resumen(listOf(con(10))))
+        assertEquals("20 canciones · 1 h 05 min", MusicaController.resumen(List(20) { con(195) }))
+    }
+
+    @Test
+    fun `tocar una playlist abre su pantalla y el atras vuelve a la portada`() {
+        val a = actividad()
+        val raiz = panel(a)
+        val almacen = AlmacenMusica(carpeta.root)
+        assertTrue(almacen.guardar(cancion(1), emptyList()))
+        val musica = MusicaController(a, raiz, almacen) {}
+        musica.mostrar()
+        assertEquals(View.VISIBLE, raiz.findViewById<View>(R.id.musica_portada).visibility)
+
+        raiz.findViewById<LinearLayout>(R.id.musica_playlists).getChildAt(0).performClick()
+
+        assertEquals(View.VISIBLE, raiz.findViewById<View>(R.id.musica_playlist).visibility)
+        assertEquals(View.GONE, raiz.findViewById<View>(R.id.musica_portada).visibility)
+        // El "+" es de la portada: en la playlist taparía el asa de la última canción.
+        assertEquals(View.GONE, raiz.findViewById<View>(R.id.musica_anadir).visibility)
+
+        // Ocultar y volver deja la playlist abierta.
+        musica.ocultar()
+        musica.mostrar()
+        assertEquals(View.VISIBLE, raiz.findViewById<View>(R.id.musica_playlist).visibility)
+
+        assertTrue(musica.atras())
+        assertEquals(View.VISIBLE, raiz.findViewById<View>(R.id.musica_portada).visibility)
+        assertEquals(View.GONE, raiz.findViewById<View>(R.id.musica_playlist).visibility)
+        assertFalse(musica.atras())
+    }
+
+    @Test
     fun `ocultar lo quita y volver a mostrar repinta lo guardado entre medias`() {
         val a = actividad()
         val raiz = panel(a)

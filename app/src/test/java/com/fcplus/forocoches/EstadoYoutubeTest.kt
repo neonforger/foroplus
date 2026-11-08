@@ -37,6 +37,17 @@ class EstadoYoutubeTest {
         assertFalse(EstadoYoutube.idValido("dQw4w9WgXcQ\"];alert(1)//"))
     }
 
+    @Test fun `el errorCode de videoData es un error real y auth es no incrustable`() {
+        // Medido el 2026-11-08: un vídeo de incrustar prohibido cargado con loadVideoById solo
+        // avisa con videoData.errorCode = "auth".
+        val auth = EstadoYoutube.codigoDeError("auth")
+        assertTrue(EstadoYoutube.esError(auth))
+        assertTrue(EstadoYoutube.noIncrustable(auth))
+        val otro = EstadoYoutube.codigoDeError("net.badstatus")
+        assertTrue(EstadoYoutube.esError(otro))
+        assertFalse(EstadoYoutube.noIncrustable(otro))
+    }
+
     @Test fun `ids de Spotify son 22 caracteres base62`() {
         assertTrue(EstadoYoutube.idSpotifyValido("4uLU6hMCjMI75M1A2tKUQC"))
         assertFalse(EstadoYoutube.idSpotifyValido("4uLU6hMCjMI75M1A2tKUQ"))

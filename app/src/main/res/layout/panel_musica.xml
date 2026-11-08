@@ -97,7 +97,35 @@
         </LinearLayout>
     </ScrollView>
 
-    <!-- Añadir canciones (la hoja de A10). Mismo botón que el de crear hilo en un subforo. -->
+    <!-- La pantalla de una playlist (A11): el reproductor arriba, a todo el ancho y 16:9, y la
+         lista debajo con la cabecera como primera fila. El reproductor va FUERA de la lista
+         para que no se desplace ni lo tape nada mientras suena (YouTube visible, gotcha del
+         WebView ocluido). El hueco lo llena ReproductorMusica. -->
+    <LinearLayout
+        android:id="@+id/musica_playlist"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:background="?attr/fcFondoLista"
+        android:visibility="gone">
+
+        <FrameLayout
+            android:id="@+id/musica_reproductor"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/musica_canciones"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:clipToPadding="false"
+            android:paddingTop="?attr/fcListaPaddingV"
+            android:paddingBottom="24dp" />
+    </LinearLayout>
+
+    <!-- Añadir canciones (la hoja de A10). Mismo botón que el de crear hilo en un subforo. Solo
+         en la portada: en una playlist taparía el ⋮ y el asa de la última canción. -->
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/musica_anadir"
         android:layout_width="wrap_content"

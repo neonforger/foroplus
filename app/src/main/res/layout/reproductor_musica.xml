@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- El reproductor de una playlist de Música (ReproductorMusica lo mete en su hueco, arriba de la
+     pantalla). Fondo OPACO: con Tarjetas el de la lista es gris y el reproductor no es una tarjeta.
+
+     - rep_caja: 16:9 a todo el ancho (CajaReproductor). En reposo enseña qué hacer; sonando, el
+       EmbedView de YouTube va encima. Nada lo tapa mientras suena (YouTube visible y > 200×200).
+     - rep_spotify: el reproductor oficial de Spotify (30 s) y el botón para escucharla entera
+       fuera. La cola se para aquí, así que la caja de YouTube se quita mientras tanto.
+     - rep_barra: lo que suena, con anterior y siguiente (ColaMusica). -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@color/fc_fondo">
+
+    <com.fcplus.forocoches.CajaReproductor
+        android:id="@+id/rep_caja"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/fc_chip">
+
+        <LinearLayout
+            android:id="@+id/rep_reposo"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:paddingStart="24dp"
+            android:paddingEnd="24dp"
+            android:background="?attr/selectableItemBackground">
+
+            <ImageView
+                android:id="@+id/rep_reposo_icono"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:padding="14dp"
+                android:background="@drawable/bg_circulo_rojo"
+                android:src="@drawable/ic_reproducir"
+                app:tint="@color/fc_sobre_rojo"
+                android:contentDescription="@null" />
+
+            <!-- fc_texto_2 sobre fc_chip: 5,4:1 en claro y 6,9:1 en oscuro. -->
+            <TextView
+                android:id="@+id/rep_reposo_texto"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:gravity="center"
+                android:maxLines="2"
+                android:ellipsize="end"
+                android:textSize="14sp"
+                android:textColor="@color/fc_texto_2" />
+        </LinearLayout>
+    </com.fcplus.forocoches.CajaReproductor>
+
+    <LinearLayout
+        android:id="@+id/rep_spotify"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:paddingTop="12dp"
+        android:paddingBottom="4dp"
+        android:visibility="gone">
+
+        <FrameLayout
+            android:id="@+id/rep_spotify_hueco"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
+        <TextView
+            android:id="@+id/rep_spotify_fuera"
+            style="@style/BotonPrimario"
+            android:layout_width="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="10dp"
+            android:text="Escuchar entera en Spotify" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/rep_barra"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:minHeight="56dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="4dp"
+        android:paddingEnd="4dp"
+        android:visibility="gone">
+
+        <ImageView
+            android:id="@+id/rep_anterior"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:padding="12dp"
+            android:src="@drawable/ic_anterior"
+            app:tint="@color/fc_texto"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Canción anterior" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="4dp"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/rep_titulo"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:textColor="@color/fc_texto" />
+
+            <TextView
+                android:id="@+id/rep_artista"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:textSize="12.5sp"
+                android:textColor="@color/fc_texto_2" />
+        </LinearLayout>
+
+        <ImageView
+            android:id="@+id/rep_siguiente"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:padding="12dp"
+            android:src="@drawable/ic_siguiente"
+            app:tint="@color/fc_texto"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Canción siguiente" />
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/fc_divisoria" />
+</LinearLayout>

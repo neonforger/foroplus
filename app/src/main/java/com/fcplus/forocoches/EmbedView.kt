@@ -117,6 +117,26 @@ class EmbedView(context: Context) : FrameLayout(context) {
     var alTerminar: (() -> Unit)? = null
     var alFallar: ((codigo: Int) -> Unit)? = null
 
+    /**
+     * Es el reproductor de la sección Música ([ReproductorMusica]), no un embed de un mensaje.
+     * Se pone ANTES de [bind] y cambia tres cosas:
+     * - **Arranca a sonar solo** (`autoplay=1` y sin gesto obligatorio). El toque fue en nuestro
+     *   "Reproducir" o en la canción, y un toque FUERA del WebView no cuenta como gesto para
+     *   Chromium: con el gesto obligatorio hacía falta tocar otra vez dentro del reproductor.
+     * - **Ocupa el hueco que le den** (16:9 a todo el ancho, lo mide ReproductorMusica): el
+     *   puente de altura no manda y el iframe llena la página.
+     * - **Sin pantalla completa** (`fs=0`): esa vista la pinta MainActivity encima de todo y
+     *   Música no la engancha, así que el botón se quedaría muerto.
+     */
+    var deMusica = false
+
+    /**
+     * ¿Ha hablado ya el reproductor de YouTube por postMessage? Hasta entonces sus órdenes
+     * ([cargarVideo]) se pierden, así que Música lo vuelve a montar en vez de mandárselas.
+     */
+    var respondio = false
+        private set
+
     /** Callback para pedir modo pantalla completa de vídeo al Activity anfitrión. */
     var onFullscreen: ((View?, WebChromeClient.CustomViewCallback?) -> Unit)? = null
 
@@ -146,6 +166,7 @@ class EmbedView(context: Context) : FrameLayout(context) {
     fun release() {
         pendingLoad?.let { removeCallbacks(it) }
         pendingLoad = null
+        respondio = false
         web?.let {
             it.stopLoading()
             it.loadUrl("about:blank")
@@ -193,14 +214,18 @@ class EmbedView(context: Context) : FrameLayout(context) {
         val w = WebView(context.applicationContext).apply {
             // Con alto declarado se arranca ya con el bueno: el reproductor no da el salto de
             // 220dp a 60dp delante del usuario.
-            layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, altoInicial(spec))
+            layoutParams = LayoutParams(
+                LayoutParams.MATCH_PARENT,
+                if (deMusica) LayoutParams.MATCH_PARENT else altoInicial(spec)
+            )
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
             settings.loadWithOverviewMode = true
             settings.useWideViewPort = true
             // El embed se muestra montado pero NO autoreproduce: el vídeo arranca al pulsar el
             // play del propio reproductor (un gesto del usuario), inline. Sin audio al scrollear.
-            settings.mediaPlaybackRequiresUserGesture = true
+            // En Música sí: ver [deMusica].
+            settings.mediaPlaybackRequiresUserGesture = !deMusica
             settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
             // Los embeds sociales (tweet, IG, TikTok, botón "Ver en YouTube") abren el enlace con
             // target="_blank"/window.open() DESDE SU PROPIO IFRAME: no es una navegación de
@@ -393,7 +418,7 @@ class EmbedView(context: Context) : FrameLayout(context) {
         /** La página avisa de si el vídeo está sonando. Ver [reproduciendo]. */
         @JavascriptInterface
         fun onEstado(activo: Boolean) {
-            post { reproduciendo = activo }
+            post { reproduciendo = activo; respondio = true }
         }
 
         /** El vídeo de YouTube ha llegado al final (la página ya evita avisar dos veces). */
@@ -408,11 +433,18 @@ class EmbedView(context: Context) : FrameLayout(context) {
             post { alFallar?.invoke(codigo) }
         }
 
+        /** El fallo que YouTube cuenta por `videoData.errorCode` y no por onError (ver [EstadoYoutube.codigoDeError]). */
+        @JavascriptInterface
+        fun onFalloYt(errorCode: String) {
+            post { alFallar?.invoke(EstadoYoutube.codigoDeError(errorCode)) }
+        }
+
         @JavascriptInterface
         fun onHeight(cssPx: Int) {
             if (cssPx <= 0) return
-            // Flotando manda el marco de la ventanita, no el contenido: ver [flotando].
-            if (flotando) return
+            // Flotando manda el marco de la ventanita, no el contenido: ver [flotando]. En Música,
+            // el hueco de 16:9 ([deMusica]).
+            if (flotando || deMusica) return
             post {
                 val w = web ?: return@post
                 // El suelo de 120dp evita que un embed que aún está montándose se quede
@@ -441,8 +473,9 @@ class EmbedView(context: Context) : FrameLayout(context) {
      * oscuro solo consigue un marco negro alrededor de una tarjeta blanca. Para esos se deja
      * el blanco, que es más honesto que fingir un modo oscuro que la plataforma no tiene.
      */
+    // Spotify también: su tarjeta tiene las esquinas redondeadas y por ellas se veía el blanco.
     private fun fondoEmbed(kind: String): Int =
-        if (esOscuro() && kind in setOf("twitter", "youtube", "video", "iframe"))
+        if (esOscuro() && kind in setOf("twitter", "youtube", "video", "iframe", "spotify"))
             col(R.color.fc_superficie) else Color.WHITE
 
     private fun hex(color: Int) = String.format("#%06X", 0xFFFFFF and color)
@@ -476,11 +509,15 @@ class EmbedView(context: Context) : FrameLayout(context) {
                 """<blockquote class="tiktok-embed" cite="${esc(spec.url)}"
                    data-video-id="${esc(spec.id)}" style="margin:0"><section></section></blockquote>
                    <script async src="https://www.tiktok.com/embed.js"></script>"""
-            "youtube" ->
+            "youtube" -> {
                 // enablejsapi=1: es lo que permite decirle "sigue" por postMessage cuando el
                 // reproductor se muda a la ventanita flotante (ver [reanudar]).
-                """<div class="yt"><iframe src="https://www.youtube.com/embed/${esc(spec.id)}?playsinline=1&rel=0&enablejsapi=1&origin=https%3A%2F%2Fforocoches.com"
-                   frameborder="0" allow="encrypted-media; picture-in-picture" allowfullscreen></iframe></div>"""
+                // En Música, que arranque solo y sin pantalla completa (ver [deMusica]).
+                val extra = if (deMusica) "&autoplay=1&fs=0" else ""
+                val permiso = if (deMusica) "autoplay; " else ""
+                """<div class="yt"><iframe src="https://www.youtube.com/embed/${esc(spec.id)}?playsinline=1&rel=0&enablejsapi=1&origin=https%3A%2F%2Fforocoches.com$extra"
+                   frameborder="0" allow="${permiso}encrypted-media; picture-in-picture" allowfullscreen></iframe></div>"""
+            }
             "spotify" -> {
                 // Solo con un id de 22 caracteres base62: se monta una URL, no se copia texto libre.
                 val id = spec.id.takeIf { EstadoYoutube.idSpotifyValido(it) } ?: ""
@@ -505,6 +542,7 @@ class EmbedView(context: Context) : FrameLayout(context) {
               .yt{position:relative;width:100%;padding-bottom:56.25%;height:0}
               .yt iframe{position:absolute;top:0;left:0;width:100%;height:100%}
               iframe,video{max-width:100%}
+              ${if (deMusica) ".yt{padding-bottom:0;height:100vh}" else ""}
             </style></head><body>$body
             <script>
               function rep(){try{AndroidEmbed.onHeight(document.body.scrollHeight);}catch(e){}}
@@ -531,14 +569,29 @@ class EmbedView(context: Context) : FrameLayout(context) {
               // YouTube va en un iframe de otro dominio: habla por postMessage. Con
               // enablejsapi=1 se le pide que nos suscriba a sus eventos y manda el estado
               // (1 = reproduciendo) por onStateChange y por infoDelivery.
+              // Fallos: un vídeo que no se deja ver aquí cargado con loadVideoById NO da onError,
+              // solo videoData.errorCode en infoDelivery (medido, ver EstadoYoutube.codigoDeError).
+              // Se avisa UNA vez por vídeo por cualquiera de las dos vías: dos avisos saltarían
+              // dos canciones.
+              var vidActual='', vidFallado='';
+              function falloYt(aviso){
+                if(vidActual && vidActual === vidFallado) return;
+                vidFallado = vidActual || '?';
+                try{ aviso(); }catch(e){}
+              }
               window.addEventListener('message',function(e){
                 try{
                   var d = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
                   if(!d) return;
+                  var vd = d.info && d.info.videoData;
+                  if(vd && vd.video_id && vd.video_id !== vidActual){ vidActual = vd.video_id; vidFallado=''; }
                   if(d.event === 'onStateChange') estadoYt(d.info);
                   else if(d.event === 'infoDelivery' && d.info &&
                           typeof d.info.playerState === 'number') estadoYt(d.info.playerState);
-                  else if(d.event === 'onError'){ try{AndroidEmbed.onFallo(d.info|0);}catch(e){} }
+                  else if(d.event === 'onError'){ var c=d.info|0; if(c) falloYt(function(){AndroidEmbed.onFallo(c);}); }
+                  if((d.event === 'infoDelivery' || d.event === 'initialDelivery') && vd && vd.errorCode){
+                    var ec=String(vd.errorCode); falloYt(function(){AndroidEmbed.onFalloYt(ec);});
+                  }
                 }catch(err){}
               });
               function suscribir(){

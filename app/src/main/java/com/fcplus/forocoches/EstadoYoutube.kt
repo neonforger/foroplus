@@ -16,6 +16,16 @@ object EstadoYoutube {
     /** 101 y 150: el dueño del vídeo no deja incrustarlo; hay que saltar al siguiente. */
     fun noIncrustable(codigo: Int): Boolean = codigo == 101 || codigo == 150
 
+    /**
+     * Un vídeo que no se deja ver aquí, cargado con `loadVideoById` en el reproductor de Música,
+     * NO dispara `onError`: YouTube manda un `infoDelivery` con `playerState` -1 y
+     * `videoData.errorCode` (medido el 2026-11-08 con uno de incrustar prohibido: `"auth"`, y la
+     * cola se quedaba parada en él). Se traduce a un código de la API IFrame para tratarlo igual:
+     * `"auth"` es el caso de 101/150 (no deja incrustarlo, o pide sesión o edad); cualquier otro,
+     * un fallo del reproductor (5). Los dos son errores de verdad: se salta la canción.
+     */
+    fun codigoDeError(errorCode: String): Int = if (errorCode == "auth") 150 else 5
+
     private val ID_YOUTUBE = Regex("^[A-Za-z0-9_-]{11}$")
     private val ID_SPOTIFY = Regex("^[A-Za-z0-9]{22}$")
 

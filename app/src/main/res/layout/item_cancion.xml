@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Una canción en la pantalla de una playlist de Música. La MISMA tarjeta para YouTube y Spotify
+     (spec: "para la app eso debe ser indistinto"): portada, canción, artista y duración si se sabe.
+     Fondo, márgenes y raya salen del TEMA (atributos fc*), como item_playlist: fila con raya en la
+     Compacta y tarjeta en Tarjetas.
+
+     El asa (☰) es una zona propia, como en Organizar: si se arrastrara desde toda la fila, no se
+     podría tocar la canción ni el ⋮ sin que la lista creyera que la estás moviendo. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginStart="?attr/fcFilaMargenH"
+    android:layout_marginEnd="?attr/fcFilaMargenH"
+    android:layout_marginTop="?attr/fcFilaMargenV"
+    android:layout_marginBottom="?attr/fcFilaMargenV"
+    android:orientation="vertical"
+    android:background="?attr/fcFilaFondo">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:minHeight="68dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="14dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp">
+
+        <!-- La portada, y encima la marca de "suena ahora". -->
+        <FrameLayout
+            android:layout_width="52dp"
+            android:layout_height="52dp">
+
+            <ImageView
+                android:id="@+id/cancion_portada"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/bg_icono_musica"
+                android:scaleType="centerCrop"
+                android:contentDescription="@null" />
+
+            <ImageView
+                android:id="@+id/cancion_sonando"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:padding="14dp"
+                android:background="@color/fc_capa_boton"
+                android:src="@drawable/ic_musica"
+                app:tint="@color/fc_sobre_capa"
+                android:contentDescription="@null"
+                android:visibility="gone" />
+        </FrameLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="12dp"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/cancion_titulo"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:maxLines="2"
+                android:ellipsize="end"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:textColor="@color/fc_texto" />
+
+            <!-- fc_texto_2 y no el 3: sobre el gris de Tarjetas el 3 no llega a 4,5:1. -->
+            <TextView
+                android:id="@+id/cancion_detalle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:textSize="12.5sp"
+                android:textColor="@color/fc_texto_2" />
+
+            <!-- YouTube no deja escucharla aquí (101/150): se salta y se ofrece fuera. -->
+            <TextView
+                android:id="@+id/cancion_fuera"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:drawableStart="@drawable/ic_open_web"
+                android:drawablePadding="4dp"
+                android:drawableTint="@color/fc_rojo"
+                android:gravity="center_vertical"
+                android:text="Abrir en YouTube"
+                android:textSize="12.5sp"
+                android:textStyle="bold"
+                android:textColor="@color/fc_rojo"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <ImageView
+            android:id="@+id/cancion_menu"
+            android:layout_width="44dp"
+            android:layout_height="48dp"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
+            android:paddingTop="12dp"
+            android:paddingBottom="12dp"
+            android:src="@drawable/ic_more"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Opciones de la canción" />
+
+        <TextView
+            android:id="@+id/cancion_asa"
+            android:layout_width="48dp"
+            android:layout_height="52dp"
+            android:gravity="center"
+            android:textSize="18sp"
+            android:textColor="@color/fc_texto_2"
+            android:text="☰" />
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="?attr/fcDivisoriaAlto"
+        android:background="@color/fc_divisoria" />
+</LinearLayout>
