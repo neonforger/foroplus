@@ -14,6 +14,12 @@ export interface Deps {
   lectorEnVps: boolean;
 }
 
+/** Ajustes al montar la app que no son dependencias (`Deps` no cambia): los tests bajan los topes. */
+export interface OpcionesApp {
+  /** Tope global de lecturas de fichas de FC por hora; sin él, `LECTURAS_FC_HORA` (600). */
+  lecturasFcHora?: number;
+}
+
 export interface App {
   fetch(req: Request): Promise<Response>;
   programado(cron: string): Promise<void>;
@@ -55,12 +61,12 @@ function casar(patron: string, ruta: string): Record<string, string> | null {
   return params;
 }
 
-function rutas(): Ruta[] {
-  return [["GET", "/v1/salud", () => json({ ok: true }), "publica"], ...rutasVerificacion()];
+function rutas(o: OpcionesApp): Ruta[] {
+  return [["GET", "/v1/salud", () => json({ ok: true }), "publica"], ...rutasVerificacion(o)];
 }
 
-export function crearApp(d: Deps): App {
-  const tabla = rutas();
+export function crearApp(d: Deps, o: OpcionesApp = {}): App {
+  const tabla = rutas(o);
   return {
     async fetch(req) {
       const url = new URL(req.url);

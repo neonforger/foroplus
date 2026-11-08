@@ -8,6 +8,7 @@ import { acceder } from "../src/auth";
 import { cocheEn, cochesIguales, totalCoches } from "../src/coches";
 import { uidHmac } from "../src/cripto";
 import { permitido } from "../src/limites";
+import { LECTURAS_FC_HORA } from "../src/rutas/verificacion";
 import { USER_AGENT } from "../src/tarjeta";
 import { semanaDe, semanaAnterior } from "../src/tiempo";
 
@@ -71,6 +72,8 @@ function deps(o: Partial<Deps> = {}): Deps {
 }
 const app = (o: Partial<Deps> = {}) => crearApp(deps(o));
 const en = (ms: number, o: Partial<Deps> = {}) => app({ ahora: () => new Date(T0 + ms), ...o });
+/** La app con el presupuesto global de lecturas de FC bajado a `tope` (el de verdad es LECTURAS_FC_HORA). */
+const conTope = (tope: number, o: Partial<Deps> = {}) => crearApp(deps(o), { lecturasFcHora: tope });
 
 function post(ruta: string, cuerpo: unknown, cab: Record<string, string> = {}): Request {
   return new Request("https://x" + ruta, {
@@ -101,6 +104,12 @@ async function verificar(a = app(), uid = UID, o: { nombre?: string; registro?: 
   expect(r.status).toBe(200);
   paginas.set(uid, ficha(r.cuerpo.coche, o));
   return comprobar(a, r.cuerpo.reto);
+}
+
+/** Deja el contador global de lecturas de FC de la hora de T0 en n (la siguiente lectura es la n+1). */
+async function llenarPresupuestoFc(n: number) {
+  const ventana = Math.floor(T0 / 1000 / 3600) * 3600;
+  await env.DB.prepare("INSERT INTO limites (clave, ventana, n) VALUES ('fc:global', ?, ?)").bind(ventana, n).run();
 }
 
 async function filaReto(id: string) {
@@ -225,14 +234,73 @@ describe("POST /v1/verificacion/reto", () => {
     expect((await app().fetch(sinIp)).status).toBe(200);
   });
 
+  it("límite por IP con IPv6: todo el /64 comparte cupo; otro /64 no", async () => {
+    // Un solo equipo IPv6 puede ir cambiando de dirección dentro de su /64.
+    for (let i = 0; i < 20; i++) {
+      expect((await pedirReto(app(), String(100000 + i), `2001:db8:1:2::${(i + 1).toString(16)}`)).status).toBe(200);
+    }
+    const mismo64 = await pedirReto(app(), "200000", "2001:DB8:1:2:ffff:eeee:dddd:cccc");
+    expect(mismo64.status).toBe(429);
+    expect(mismo64.cuerpo).toEqual({ error: "limite" });
+    expect((await pedirReto(app(), "200001", "2001:db8:1:3::1")).status).toBe(200);
+  });
+
+  it("límite por IP: la IPv4 mapeada en IPv6 es la misma IPv4", async () => {
+    for (let i = 0; i < 20; i++) expect((await pedirReto(app(), String(100000 + i), "198.51.100.7")).status).toBe(200);
+    expect((await pedirReto(app(), "200000", "::ffff:198.51.100.7")).status).toBe(429);
+  });
+
   it("las claves de límites llevan HMAC, nunca el uid ni la IP en claro", async () => {
     const r = await pedirReto();
     const { results } = await env.DB.prepare("SELECT clave, n FROM limites").all<{ clave: string; n: number }>();
+    // La IP va con el prefijo "ip:" antes del HMAC: nunca puede coincidir con el HMAC de un uid.
     expect(results.map((f) => f.clave).sort()).toEqual(
-      [`reto:ip:${await uidHmac(PEPPER, IP)}`, `reto:uid:${await uidHmac(PEPPER, UID)}`, `lectura:reto:${r.cuerpo.reto}`].sort(),
+      [
+        `reto:ip:${await uidHmac(PEPPER, "ip:" + IP)}`, `reto:uid:${await uidHmac(PEPPER, UID)}`,
+        `lectura:reto:${r.cuerpo.reto}`, "fc:global",
+      ].sort(),
     );
-    // La lectura de la ficha al dar el reto ya cuenta para el tope de lecturas de ese reto.
+    // La lectura de la ficha al dar el reto ya cuenta para el tope de lecturas de ese reto y el global.
     expect(results.find((f) => f.clave.startsWith("lectura:"))!.n).toBe(1);
+    expect(results.find((f) => f.clave === "fc:global")!.n).toBe(1);
+  });
+
+  it("presupuesto GLOBAL de lecturas de FC: lo comparten uids e IPs distintos; agotado, reto -> 503 sin reto y sin leer FC", async () => {
+    // Cada uid y cada IP con su cupo casi entero: lo único que frena es el presupuesto de todos.
+    const a = conTope(3);
+    for (let i = 0; i < 3; i++) {
+      expect((await pedirReto(a, String(100000 + i), `198.51.100.${i}`)).status).toBe(200);
+    }
+    const r = await pedirReto(a, "200000", "2001:db8:9::1");
+    expect(r.status).toBe(503);
+    expect(r.cuerpo).toEqual({ error: "challenge" });
+    expect(vistas).toHaveLength(3);
+    expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM retos").first("n")).toBe(3);
+    // A la hora siguiente vuelve a haber presupuesto.
+    const luego = conTope(3, { ahora: () => new Date(T0 + 60 * MIN) });
+    expect((await pedirReto(luego, "200000", "2001:db8:9::1")).status).toBe(200);
+  });
+
+  it("sin opciones, el presupuesto global es LECTURAS_FC_HORA (600 por hora)", async () => {
+    expect(LECTURAS_FC_HORA).toBe(600);
+    await llenarPresupuestoFc(LECTURAS_FC_HORA - 1);
+    expect((await pedirReto()).status).toBe(200); // la lectura 600.ª aún cabe
+    const r = await pedirReto(app(), "654321", "198.51.100.1");
+    expect(r.status).toBe(503);
+    expect(r.cuerpo).toEqual({ error: "challenge" });
+    expect(vistas).toHaveLength(1);
+  });
+
+  it("sin CF-Connecting-IP o con algo que no es una IP: un mismo cubo fijo, sin-ip", async () => {
+    const sinIp = (uid: string) =>
+      llamar(app(), new Request("https://x/v1/verificacion/reto", { method: "POST", body: JSON.stringify({ uid }) }));
+    for (let i = 0; i < 10; i++) expect((await sinIp(String(100000 + i))).status).toBe(200);
+    for (let i = 10; i < 20; i++) expect((await pedirReto(app(), String(100000 + i), "no-es-una-ip")).status).toBe(200);
+    const r = await pedirReto(app(), "200000", "1.2.3.999");
+    expect(r.status).toBe(429);
+    expect(r.cuerpo).toEqual({ error: "limite" });
+    const { results } = await env.DB.prepare("SELECT clave FROM limites WHERE clave LIKE 'reto:ip:%'").all<{ clave: string }>();
+    expect(results.map((f) => f.clave)).toEqual(["reto:ip:sin-ip"]);
   });
 
   it("si el perfil aún tiene el coche del reto anterior, el nuevo es otro", async () => {
@@ -284,6 +352,30 @@ describe("POST /v1/verificacion/comprobar", () => {
     }
     expect(filas).toBeGreaterThan(0);
     expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM retos").first("n")).toBe(0);
+  });
+
+  it("uidNuncaEnClaro con varios retos del mismo uid: verificar con uno borra todos los de ese uid", async () => {
+    // Un reto anterior (gastado con 429 intentos, app reiniciada, o pedido por otro con ese uid)
+    // también lleva el uid en claro.
+    const primero = await pedirReto();
+    for (let i = 0; i < 3; i++) expect((await comprobar(app(), primero.cuerpo.reto)).status).toBe(409);
+    expect((await comprobar(app(), primero.cuerpo.reto)).status).toBe(429);
+    const otroUsuario = await pedirReto(app(), "654321");
+    const segundo = await pedirReto();
+    expect(primero.cuerpo.reto).not.toBe(segundo.cuerpo.reto);
+    paginas.set(UID, ficha(segundo.cuerpo.coche));
+    expect((await comprobar(app(), segundo.cuerpo.reto)).status).toBe(200);
+
+    const { results: tablas } = await env.DB.prepare(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite%' AND name NOT LIKE '_cf%'",
+    ).all<{ name: string }>();
+    for (const { name } of tablas) {
+      const { results } = await env.DB.prepare(`SELECT * FROM "${name}"`).all();
+      for (const f of results) expect(JSON.stringify(f), name).not.toContain(UID);
+    }
+    // Los retos de OTRO uid no se tocan.
+    const quedan = await env.DB.prepare("SELECT id FROM retos").all<{ id: string }>();
+    expect(quedan.results.map((f) => f.id)).toEqual([otroUsuario.cuerpo.reto]);
   });
 
   it("las respuestas no devuelven ni el uid ni su HMAC", async () => {
@@ -366,6 +458,22 @@ describe("POST /v1/verificacion/comprobar", () => {
     expect(c.status).toBe(429);
     expect(c.cuerpo).toEqual({ error: "intentos" });
     expect(vistas).toHaveLength(10);
+    // Las llamadas rechazadas por el tope del reto no gastan el presupuesto global (solo las 10 lecturas).
+    const g = await env.DB.prepare("SELECT n FROM limites WHERE clave = 'fc:global'").first<number>("n");
+    expect(g).toBe(10);
+  });
+
+  it("presupuesto GLOBAL agotado: comprobar -> 503 challenge, sin leer FC y sin gastar intento", async () => {
+    const r = await pedirReto(conTope(1)); // la única lectura de esta hora
+    expect(r.status).toBe(200);
+    paginas.set(UID, ficha(r.cuerpo.coche));
+    const c = await comprobar(conTope(1), r.cuerpo.reto);
+    expect(c.status).toBe(503);
+    expect(c.cuerpo).toEqual({ error: "challenge" });
+    expect(vistas).toHaveLength(1); // solo la del reto
+    expect(await filaReto(r.cuerpo.reto)).toMatchObject({ intentos: 0, estado: "nuevo" });
+    // El reto sigue valiendo en cuanto vuelve a haber presupuesto.
+    expect((await comprobar(conTope(3), r.cuerpo.reto)).status).toBe(200);
   });
 
   it("comprobarCaducado: a los 11 minutos -> 410 caducado, sin leer FC", async () => {
@@ -572,6 +680,21 @@ describe("modoVps: el lector de fichas en el VPS", () => {
     expect((await filaReto(r.cuerpo.reto))!.intentos).toBe(0);
     expect((await comprobar(vps(), r.cuerpo.reto)).status).toBe(202);
     expect((await llamar(vps(), get("/v1/lector/pendientes", lector()))).cuerpo).toHaveLength(1);
+  });
+
+  it("presupuesto GLOBAL agotado: no se pide lectura al VPS -> 503 challenge, sin pendiente", async () => {
+    // El VPS lee FC igual que el Worker: lo que FC bloquee por exceso también lo pagaría su IP.
+    const a = conTope(1, { lectorEnVps: true });
+    const r1 = await pedirReto(a); // en modo VPS dar el reto no lee ni gasta presupuesto
+    const r2 = await pedirReto(a, "654321");
+    expect((await comprobar(a, r1.cuerpo.reto)).status).toBe(202); // la única lectura de esta hora
+    expect((await comprobar(a, r1.cuerpo.reto)).status).toBe(202); // ya pendiente: no pide otra
+    const c = await comprobar(a, r2.cuerpo.reto);
+    expect(c.status).toBe(503);
+    expect(c.cuerpo).toEqual({ error: "challenge" });
+    expect(await filaReto(r2.cuerpo.reto)).toMatchObject({ estado: "nuevo", intentos: 0 });
+    expect((await llamar(a, get("/v1/lector/pendientes", lector()))).cuerpo).toEqual([{ reto: r1.cuerpo.reto, uid: UID }]);
+    expect(vistas).toHaveLength(0);
   });
 
   it("una lectura con otro coche -> 409 y gasta intento, igual que en el Worker", async () => {

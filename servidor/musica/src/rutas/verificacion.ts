@@ -3,12 +3,13 @@
 // se lee la ficha SIN sesión. Si casa, se crea o actualiza la cuenta y se da un token.
 // Quien lee la ficha puede ser el Worker o el lector del VPS (`lectorEnVps`): las dos lecturas pasan
 // por el mismo `leerFicha` y por las mismas reglas (`evaluar`).
-import type { Contexto, Deps, Ruta } from "../app";
+import type { Contexto, Deps, OpcionesApp, Ruta } from "../app";
 import { permisoVoto, yo } from "../auth";
 import { cocheAleatorio, cochesIguales } from "../coches";
 import { hashToken, nuevoId, nuevoToken, uidHmac } from "../cripto";
 import { leerFicha, type Ficha } from "../ficha";
 import { cuerpoJson, error, json } from "../http";
+import { claveIp } from "../ip";
 import { contarUna, permitido, PROPUESTAS_POR_SEMANA, VOTOS_POR_SEMANA } from "../limites";
 import { USER_AGENT } from "../tarjeta";
 import { semanaDe } from "../tiempo";
@@ -23,6 +24,14 @@ const HORA_S = 3600;
 const DIA_S = 86_400;
 const RETOS_POR_UID_HORA = 5;
 const RETOS_POR_IP_HORA = 20;
+/**
+ * Lecturas de fichas de FC por hora entre TODOS los usuarios (las del Worker y las que se piden al
+ * VPS). Holgado para el uso real; frena que ForoPlus sirva de pasarela contra member.php aunque
+ * alguien reparta las peticiones entre muchas IPs, y que FC acabe poniéndonos el challenge o
+ * bloqueándonos. Pasado el tope: 503 challenge, sin crear reto ni gastar intento. Clave `fc:global`
+ * en `limites`. Los tests lo bajan con `crearApp(deps, { lecturasFcHora })`.
+ */
+export const LECTURAS_FC_HORA = 600;
 // Canónico: sin ceros delante. FC lee "0123456" como 123456 (intval), y un HMAC distinto haría una
 // segunda cuenta para el mismo usuario de FC (doble voto).
 const RE_UID = /^[1-9][0-9]{0,9}$/;
@@ -44,19 +53,26 @@ interface FilaReto {
   coche_antes: string | null;
 }
 
+/** Cuenta una lectura de FC en el presupuesto global; false = agotado esta hora. */
+function hayPresupuestoFc(d: Deps, ahora: Date, tope: number): Promise<boolean> {
+  return permitido(d.db, "fc:global", HORA_S, tope, ahora);
+}
+
 async function baneada(db: D1Database, hmac: string): Promise<boolean> {
   return (await db.prepare("SELECT baneada FROM cuentas WHERE uid_hmac = ?").bind(hmac).first<number>("baneada")) === 1;
 }
 
-async function reto(c: Contexto): Promise<Response> {
+async function reto(c: Contexto, lecturasFcHora: number): Promise<Response> {
   const d = c.deps;
   const uid = (await cuerpoJson(c.req, MAX_CUERPO))?.uid;
   if (typeof uid !== "string" || !RE_UID.test(uid)) return error("uid", 400);
   const ahora = d.ahora();
-  // Primero la IP: así quien satura la suya no gasta además el cupo del uid de otro.
-  const ip = c.req.headers.get("CF-Connecting-IP");
-  const claveIp = ip ? await uidHmac(d.pepper, ip) : "sin-ip";
-  if (!(await permitido(d.db, "reto:ip:" + claveIp, HORA_S, RETOS_POR_IP_HORA, ahora))) return error("limite", 429);
+  // Primero la IP: así quien satura la suya no gasta además el cupo del uid de otro. Con IPv6 cuenta
+  // el /64 entero (`claveIp`): un solo equipo puede ir cambiando de dirección dentro de él. "ip:"
+  // delante, para que nunca coincida con el HMAC de un uid. Sin IP o ilegible: un cubo fijo, "sin-ip".
+  const ip = claveIp(c.req.headers.get("CF-Connecting-IP"));
+  const ipHmac = ip === null ? "sin-ip" : await uidHmac(d.pepper, "ip:" + ip);
+  if (!(await permitido(d.db, "reto:ip:" + ipHmac, HORA_S, RETOS_POR_IP_HORA, ahora))) return error("limite", 429);
   const hmac = await uidHmac(d.pepper, uid);
   if (!(await permitido(d.db, "reto:uid:" + hmac, HORA_S, RETOS_POR_UID_HORA, ahora))) return error("limite", 429);
   // Después de los límites: preguntar en bucle "¿está baneado este uid?" también cuesta cupo.
@@ -79,6 +95,7 @@ async function reto(c: Contexto): Promise<Response> {
   } else {
     // Se lee la ficha ANTES de dar el reto. Los cupos ya se contaron: un 503 o un 404 también los
     // gastan, y así las lecturas de FC que hace `reto` siguen acotadas aunque FC esté con challenge.
+    if (!(await hayPresupuestoFc(d, ahora, lecturasFcHora))) return error("challenge", 503);
     const ficha = await leerFichaDe(d, uid);
     if (ficha.estado === "challenge" || ficha.estado === "error") return error("challenge", 503);
     if (ficha.estado === "no_existe") return error("no_existe", 404);
@@ -179,15 +196,16 @@ async function evaluar(d: Deps, id: string, r: FilaReto, ficha: Ficha, ahora: Da
     d.db
       .prepare("INSERT INTO tokens (hash, cuenta, creado, caduca) SELECT ?1, id, ?2, ?3 FROM cuentas WHERE uid_hmac = ?4 AND baneada = 0")
       .bind(await hashToken(token), t, t + TOKEN_MS, r.uid_hmac),
-    // Con el reto se va el último sitio donde estaba el uid en claro.
-    d.db.prepare("DELETE FROM retos WHERE id = ?").bind(id),
+    // Con los retos se va el último sitio donde estaba el uid en claro: TODOS los de ese uid, no solo
+    // este (uno anterior tras un 429, un reintento, la app reiniciada, o uno que pidió otro con ese uid).
+    d.db.prepare("DELETE FROM retos WHERE uid_hmac = ?").bind(r.uid_hmac),
   ]);
   if (cuenta.results.length === 0) return error("baneada", 403);
   const { diasCuenta, puedeVotar } = permisoVoto(registro, ahora, d.diasMinVoto);
   return json({ token, nombre: ficha.nombre, diasCuenta, puedeVotar }, 200, SIN_CACHE);
 }
 
-async function comprobar(c: Contexto): Promise<Response> {
+async function comprobar(c: Contexto, lecturasFcHora: number): Promise<Response> {
   const d = c.deps;
   const id = (await cuerpoJson(c.req, MAX_CUERPO))?.reto;
   if (typeof id !== "string" || !RE_ULID.test(id)) return error("reto", 400);
@@ -210,13 +228,17 @@ async function comprobar(c: Contexto): Promise<Response> {
   if (d.lectorEnVps) {
     if (r.estado !== "pendiente") {
       if (!(await permitido(d.db, "lectura:reto:" + id, DIA_S, LECTURAS_POR_RETO, ahora))) return error("intentos", 429);
+      // El VPS lee FC igual: su lectura también sale del presupuesto global.
+      if (!(await hayPresupuestoFc(d, ahora, lecturasFcHora))) return error("challenge", 503);
       // Solo si nadie lo ha cambiado entretanto (una lectura que entra a la vez no se pisa).
       await d.db.prepare("UPDATE retos SET estado = 'pendiente', ficha = NULL WHERE id = ? AND estado = ?").bind(id, r.estado).run();
     }
     return json({ estado: "pendiente" }, 202, SIN_CACHE);
   }
 
+  // Primero el tope del reto: las llamadas que rechaza no deben gastar el presupuesto de todos.
   if (!(await permitido(d.db, "lectura:reto:" + id, DIA_S, LECTURAS_POR_RETO, ahora))) return error("intentos", 429);
+  if (!(await hayPresupuestoFc(d, ahora, lecturasFcHora))) return error("challenge", 503);
   return evaluar(d, id, r, await leerFichaDe(d, r.uid), ahora);
 }
 
@@ -287,10 +309,11 @@ async function resultado(c: Contexto): Promise<Response> {
   return json({ ok: true });
 }
 
-export function rutasVerificacion(): Ruta[] {
+export function rutasVerificacion(o: OpcionesApp = {}): Ruta[] {
+  const lecturasFcHora = o.lecturasFcHora ?? LECTURAS_FC_HORA;
   return [
-    ["POST", "/v1/verificacion/reto", reto, "publica"],
-    ["POST", "/v1/verificacion/comprobar", comprobar, "publica"],
+    ["POST", "/v1/verificacion/reto", (c) => reto(c, lecturasFcHora), "publica"],
+    ["POST", "/v1/verificacion/comprobar", (c) => comprobar(c, lecturasFcHora), "publica"],
     ["GET", "/v1/yo", yoRuta, "cuenta"],
     ["GET", "/v1/lector/pendientes", pendientes, "lector"],
     ["POST", "/v1/lector/resultado", resultado, "lector"],
