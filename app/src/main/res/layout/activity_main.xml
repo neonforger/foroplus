@@ -244,6 +244,10 @@
                     app:backgroundTint="@color/fc_rojo"
                     app:tint="@color/fc_sobre_rojo"
                     android:visibility="gone" />
+
+                <!-- Música (MusicaController): hermano de list_refresh y el ÚLTIMO, para quedar
+                     encima de la lista que sustituye. Oculto salvo con listSource = "musica". -->
+                <include layout="@layout/panel_musica" />
             </FrameLayout>
         </LinearLayout>
 

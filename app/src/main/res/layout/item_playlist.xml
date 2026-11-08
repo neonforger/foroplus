@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Una playlist en la portada de Música: la nota, el nombre y cuántas canciones lleva. Fondo,
+     márgenes y raya salen del TEMA (atributos fc*, ver EstiloApp), igual que una fila de hilo:
+     en la Compacta es una fila con su raya y en Tarjetas una tarjeta. Las filas las mete
+     MusicaController por código (son 50 como mucho, ver Musica.MAX_PLAYLISTS). -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginStart="?attr/fcFilaMargenH"
+    android:layout_marginEnd="?attr/fcFilaMargenH"
+    android:layout_marginTop="?attr/fcFilaMargenV"
+    android:layout_marginBottom="?attr/fcFilaMargenV"
+    android:orientation="vertical"
+    android:background="?attr/fcFilaFondo">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:minHeight="64dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="14dp"
+        android:paddingEnd="14dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="10dp">
+
+        <ImageView
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:padding="10dp"
+            android:background="@drawable/bg_icono_musica"
+            android:src="@drawable/ic_musica"
+            app:tint="@color/fc_rojo"
+            android:contentDescription="@null" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="14dp"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/playlist_nombre"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:textColor="@color/fc_texto"
+                android:maxLines="2"
+                android:ellipsize="end" />
+
+            <TextView
+                android:id="@+id/playlist_cuantas"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="3dp"
+                android:textSize="12.5sp"
+                android:textColor="@color/fc_texto_2" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="?attr/fcDivisoriaAlto"
+        android:background="@color/fc_divisoria" />
+</LinearLayout>
