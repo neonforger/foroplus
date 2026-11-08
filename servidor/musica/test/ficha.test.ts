@@ -5,6 +5,7 @@ import noExiste from "./fixtures/ficha_no_existe.html?raw";
 import challenge from "./fixtures/ficha_challenge.html?raw";
 import { diasDesde, leerFicha } from "../src/ficha";
 
+// ficha_no_existe.html y ficha_challenge.html están hechos a mano a partir del título/cabecera medidos.
 const h = (o: Record<string, string> = {}) => new Headers(o);
 
 describe("leerFicha", () => {
@@ -34,8 +35,30 @@ describe("leerFicha", () => {
     expect(leerFicha(500, h(), "x")).toEqual({ estado: "error" });
     expect(leerFicha(403, h(), "<title>Forbidden</title>")).toEqual({ estado: "error" });
   });
-  it("perfil sin registro legible es error", () => {
-    expect(leerFicha(200, h(), "<title>Forocoches - Ver Perfil: Ana</title><p>nada</p>")).toEqual({ estado: "error" });
+  it("perfil sin registro legible sigue siendo ok, con registro vacío", () => {
+    expect(leerFicha(200, h(), "<title>Forocoches - Ver Perfil: Ana</title><p>nada</p>")).toEqual({
+      estado: "ok", nombre: "Ana", registro: "", coche: null,
+    });
+    expect(diasDesde("", new Date())).toBeNull();
+  });
+  it("un 'Registro:' en texto libre no gana al real", () => {
+    const html = conCoche.replace("<h3", "<p>Registro: 01-ene-2000 <b>x</b></p><h3");
+    expect(leerFicha(200, h(), html)).toMatchObject({ registro: "30-may-2026" });
+  });
+  it("un 'Registro:' falso con span distinto no desplaza al real", () => {
+    const html = conCoche.replace("<h3", "<p>Registro: <span>01-ene-2000</span></p><h3");
+    expect(leerFicha(200, h(), html)).toMatchObject({ registro: "30-may-2026" });
+  });
+  it("marcador del coche escrito como texto en otro campo no cuenta", () => {
+    const falso = "<p>background-image: var(--coches) &lt;span style=&quot;background-image: var(--coches)&quot;&gt; Fiat Panda 2000</p>";
+    const antes = conCoche.replace("<h3", falso + "<h3");
+    expect(leerFicha(200, h(), antes)).toMatchObject({ coche: "Seat Ibiza 1.9 TDI 2004" });
+    const solo = sinCoche.replace("<h3", falso + "<h3");
+    expect(leerFicha(200, h(), solo)).toMatchObject({ coche: null });
+  });
+  it("un marcador falso fuera del bloque (después) tampoco cuenta", () => {
+    const html = sinCoche.replace("</body>", "<div>var(--coches)</span> Fiat Panda 2000</div></body>");
+    expect(leerFicha(200, h(), html)).toMatchObject({ coche: null });
   });
   it("decodifica entidades en nombre y coche", () => {
     const html = conCoche
