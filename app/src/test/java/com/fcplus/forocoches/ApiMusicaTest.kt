@@ -60,7 +60,7 @@ class ApiMusicaTest {
         val b = ServidorMusica.BASE
         val esperado = listOf(
             "POST $b/v1/verificacion/reto", "POST $b/v1/verificacion/comprobar", "GET $b/v1/yo", "GET $b/v1/semana",
-            "POST $b/v1/semana/proponer", "POST $b/v1/semana/voto", "DELETE $b/v1/semana/voto",
+            "POST $b/v1/semana/proponer", "POST $b/v1/semana/voto", "DELETE $b/v1/semana/voto?cancion=C",
             "GET $b/v1/playlists?orden=guardadas&cursor=cur%2Bsor%2F%3D", "GET $b/v1/playlists/P1",
             "POST $b/v1/playlists", "POST $b/v1/playlists/P1/canciones", "DELETE $b/v1/playlists/P1",
             "POST $b/v1/playlists/P1/guardar", "POST $b/v1/denuncias", "DELETE $b/v1/cuenta"
@@ -74,7 +74,8 @@ class ApiMusicaTest {
         assertEquals("123456", JSONObject(llamadas[0].cuerpo!!).getString("uid"))
         val p = JSONObject(llamadas[1].cuerpo!!)
         assertEquals("Mi lista", p.getString("nombre")); assertEquals(2, p.getJSONArray("enlaces").length())
-        assertEquals("C1", JSONObject(llamadas[2].cuerpo!!).getString("cancion"))
+        assertNull(llamadas[2].cuerpo) // quitar el voto: sin cuerpo, la canción va en la URL
+        assertTrue(llamadas[2].url.endsWith("?cancion=C1"))
         val d = JSONObject(llamadas[3].cuerpo!!)
         assertEquals("playlist", d.getString("tipo")); assertEquals("P", d.getString("objetivo")); assertEquals("mal", d.getString("motivo"))
         assertEquals("application/json", llamadas[0].cabeceras["Content-Type"])

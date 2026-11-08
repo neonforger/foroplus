@@ -96,9 +96,9 @@ class ApiMusica(
 
     /** [si] = votar (POST) o quitar el voto (DELETE, también con cuerpo). */
     fun votar(cancion: String, si: Boolean): R<Voto> =
-        llamar(if (si) "POST" else "DELETE", "/v1/semana/voto", JSONObject().put("cancion", cancion)) {
-            Voto(it.getBoolean("votada"), it.getInt("votosRestantes"))
-        }
+        // Quitar el voto va con la canción en la URL y sin cuerpo (ver redConGuarda).
+        (if (si) llamar("POST", "/v1/semana/voto", JSONObject().put("cancion", cancion)) { j -> Voto(j.getBoolean("votada"), j.getInt("votosRestantes")) }
+        else llamar("DELETE", "/v1/semana/voto?cancion=" + enc(cancion)) { j -> Voto(j.getBoolean("votada"), j.getInt("votosRestantes")) })
 
     // ---- playlists públicas (listar y ver son públicas: no mandan token) ----
 
@@ -171,7 +171,7 @@ class ApiMusica(
     private fun enc(s: String) = URLEncoder.encode(s, "UTF-8")
 
     companion object {
-        private const val MAX_CUERPO = 2 * 1024 * 1024
+        internal const val MAX_CUERPO = 2 * 1024 * 1024
         private const val TIMEOUT_MS = 10_000
 
         /**
@@ -179,8 +179,15 @@ class ApiMusica(
          * `Authorization` a otro sitio), sin tocar `CookieHandler` y sin cabecera `Cookie`, y con
          * el cuerpo cortado a 2 MB. Solo habla con [ServidorMusica.aceptada].
          */
-        fun redReal(metodo: String, url: String, cuerpo: String?, cabeceras: Map<String, String>): Respuesta {
-            require(ServidorMusica.aceptada(url)) { "dirección no permitida" }
+        fun redReal(metodo: String, url: String, cuerpo: String?, cabeceras: Map<String, String>): Respuesta =
+            redConGuarda(metodo, url, cuerpo, cabeceras, ServidorMusica::aceptada)
+
+        /** [aceptada] es inyectable solo para probar la red contra un servidor local. */
+        internal fun redConGuarda(
+            metodo: String, url: String, cuerpo: String?, cabeceras: Map<String, String>,
+            aceptada: (String) -> Boolean
+        ): Respuesta {
+            require(aceptada(url)) { "dirección no permitida" }
             val c = URL(url).openConnection() as HttpURLConnection
             try {
                 c.requestMethod = metodo
@@ -189,17 +196,33 @@ class ApiMusica(
                 c.instanceFollowRedirects = false
                 c.useCaches = false
                 for ((k, v) in cabeceras) if (!k.equals("Cookie", true)) c.setRequestProperty(k, v)
-                if (cuerpo != null) {
+                // Nunca cuerpo en un DELETE: algunas versiones de Android lanzan "DELETE does not
+                // support writing". Quien necesite mandar algo con DELETE lo manda en la URL.
+                if (cuerpo != null && !metodo.equals("DELETE", true)) {
                     c.doOutput = true
                     c.outputStream.use { it.write(cuerpo.toByteArray(Charsets.UTF_8)) }
                 }
-                val status = c.responseCode
+                val hayAuth = cabeceras.keys.any { it.equals("Authorization", true) }
+                val status = try {
+                    c.responseCode
+                } catch (e: java.io.IOException) {
+                    return respuestaDeFallo(e, hayAuth) ?: throw e
+                }
                 val flujo = if (status >= 400) c.errorStream else c.inputStream
                 return Respuesta(status, flujo?.use { leerTope(it) } ?: "")
             } finally {
                 c.disconnect()
             }
         }
+
+        /**
+         * Android lanza "No authentication challenges found" al leer el código de un 401 sin
+         * `WWW-Authenticate`. El servidor ya lo manda, pero por si acaso (proxies, versiones) eso
+         * es, para la app, un 401 `token`: el token que mandamos no vale. Null = otro fallo, que siga.
+         */
+        internal fun respuestaDeFallo(e: java.io.IOException, hayAuth: Boolean): Respuesta? =
+            if (hayAuth && e.message?.contains("authentication challenge", ignoreCase = true) == true)
+                Respuesta(401, """{"error":"token"}""") else null
 
         private fun leerTope(f: java.io.InputStream): String {
             val sal = java.io.ByteArrayOutputStream()

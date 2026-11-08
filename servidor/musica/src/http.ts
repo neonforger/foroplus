@@ -8,7 +8,9 @@ export function json(cuerpo: unknown, status = 200, cabeceras: Record<string, st
 
 /** Error uniforme: {"error": codigo, ...extra}. El código es lo que lee la app, no el texto. */
 export function error(codigo: string, status: number, extra: Record<string, unknown> = {}): Response {
-  return json({ error: codigo, ...extra }, status);
+  // Todo 401 lleva WWW-Authenticate: sin él, HttpURLConnection de Android lanza "No authentication
+  // challenges found" al leer el código y la app nunca llega a ver el 401 (no borraría el token muerto).
+  return json({ error: codigo, ...extra }, status, status === 401 ? { "WWW-Authenticate": "Bearer" } : {});
 }
 
 /**

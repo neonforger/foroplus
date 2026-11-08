@@ -128,7 +128,10 @@ async function votar(c: Contexto, poner: boolean): Promise<Response> {
   const { d, ahora } = conReloj(c.deps);
   await asegurarCierres(d);
   if (!permisoVoto(cuenta.registro, ahora, d.diasMinVoto).puedeVotar) return error("antiguedad", 403);
-  const cancion = (await cuerpoJson(c.req, MAX_CUERPO))?.cancion;
+  // DELETE: la app no puede mandar cuerpo (Android lo rechaza en algunas versiones), así que acepta
+  // también ?cancion=<ULID>; el cuerpo sigue valiendo por compatibilidad.
+  const deQuery = poner ? null : new URL(c.req.url).searchParams.get("cancion");
+  const cancion = deQuery ?? (await cuerpoJson(c.req, MAX_CUERPO))?.cancion;
   if (typeof cancion !== "string" || !RE_ULID.test(cancion)) return error("cancion", 400);
 
   const semana = semanaDe(ahora);

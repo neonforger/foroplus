@@ -337,6 +337,25 @@ describe("POST /v1/semana/proponer", () => {
 });
 
 describe("POST y DELETE /v1/semana/voto", () => {
+  it("DELETE acepta la canción en la query, sin cuerpo; sigue valiendo el cuerpo; query mala -> 400", async () => {
+    const yo = await shur();
+    const id = await propuesta(yo, tema(1));
+    await votar(yo, id);
+    const sinCuerpo = await llamar(en(), peticion("DELETE", "/v1/semana/voto?cancion=" + id, undefined, conToken(yo)));
+    expect(sinCuerpo.status).toBe(200);
+    expect(sinCuerpo.cuerpo).toEqual({ votada: false, votosRestantes: 10 });
+    const mala = await llamar(en(), peticion("DELETE", "/v1/semana/voto?cancion=nada", undefined, conToken(yo)));
+    expect(mala.status).toBe(400);
+    expect((await quitarVoto(yo, id)).status).toBe(200);
+  });
+
+  it("un 401 lleva WWW-Authenticate: Bearer (Android no lee el código sin él)", async () => {
+    const r = await semana(en(), { token: "x".repeat(43) } as unknown as Shur);
+    expect(r.status).toBe(401);
+    expect(r.cuerpo).toEqual({ error: "token" });
+    expect(r.cabeceras.get("WWW-Authenticate")).toBe("Bearer");
+  });
+
   it("votar, votar otra vez la misma (sin duplicar) y quitar el voto (idempotente)", async () => {
     const yo = await shur();
     const id = await propuesta(yo, tema(1));
