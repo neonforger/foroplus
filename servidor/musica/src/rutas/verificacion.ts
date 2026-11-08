@@ -9,7 +9,7 @@ import { cocheAleatorio, cochesIguales } from "../coches";
 import { hashToken, nuevoId, nuevoToken, uidHmac } from "../cripto";
 import { leerFicha, type Ficha } from "../ficha";
 import { cuerpoJson, error, json } from "../http";
-import { permitido, PROPUESTAS_POR_SEMANA, VOTOS_POR_SEMANA } from "../limites";
+import { contarUna, permitido, PROPUESTAS_POR_SEMANA, VOTOS_POR_SEMANA } from "../limites";
 import { USER_AGENT } from "../tarjeta";
 import { semanaDe } from "../tiempo";
 
@@ -41,6 +41,7 @@ interface FilaReto {
   intentos: number;
   estado: string;
   ficha: string | null;
+  coche_antes: string | null;
 }
 
 async function baneada(db: D1Database, hmac: string): Promise<boolean> {
@@ -59,24 +60,43 @@ async function reto(c: Contexto): Promise<Response> {
   const hmac = await uidHmac(d.pepper, uid);
   if (!(await permitido(d.db, "reto:uid:" + hmac, HORA_S, RETOS_POR_UID_HORA, ahora))) return error("limite", 429);
   // Después de los límites: preguntar en bucle "¿está baneado este uid?" también cuesta cupo.
+  // Y antes de leer FC: una cuenta baneada no gasta lecturas.
   if (await baneada(d.db, hmac)) return error("baneada", 403);
 
   const t = ahora.getTime();
-  // Nunca el mismo coche que el reto vivo anterior de ese uid: si el perfil aún lo tiene puesto,
-  // el reto nuevo casaría sin que nadie tocara nada.
-  const anterior = await d.db
-    .prepare("SELECT coche FROM retos WHERE uid_hmac = ? AND caduca > ? ORDER BY caduca DESC, rowid DESC LIMIT 1")
-    .bind(hmac, t)
-    .first<string>("coche");
-  const coche = cocheAleatorio(d.aleatorio, anterior);
   const id = nuevoId(ahora);
+  // El coche que NO se puede dar. Resolución 16: si el perfil ya muestra el coche del reto, comprobar
+  // casaría sin que nadie tocara nada (y cualquiera puede pedir retos con el uid de otro).
+  let distintoDe: string | null;
+  let cocheAntes: string | null = null;
+  if (d.lectorEnVps) {
+    // El Worker no puede leer FC en este modo: queda el espacio grande de coches y no repetir el
+    // del reto vivo anterior de ese uid (el que el perfil puede tener aún puesto).
+    distintoDe = await d.db
+      .prepare("SELECT coche FROM retos WHERE uid_hmac = ? AND caduca > ? ORDER BY caduca DESC, rowid DESC LIMIT 1")
+      .bind(hmac, t)
+      .first<string>("coche");
+  } else {
+    // Se lee la ficha ANTES de dar el reto. Los cupos ya se contaron: un 503 o un 404 también los
+    // gastan, y así las lecturas de FC que hace `reto` siguen acotadas aunque FC esté con challenge.
+    const ficha = await leerFichaDe(d, uid);
+    if (ficha.estado === "challenge" || ficha.estado === "error") return error("challenge", 503);
+    if (ficha.estado === "no_existe") return error("no_existe", 404);
+    cocheAntes = ficha.coche;
+    distintoDe = ficha.coche;
+  }
+  const coche = cocheAleatorio(d.aleatorio, distintoDe);
   const caduca = t + RETO_MS;
   await d.db.batch([
     // El uid en claro no sobrevive a su reto aunque el cron de limpieza vaya con retraso.
     d.db.prepare("DELETE FROM retos WHERE caduca <= ?").bind(t),
     d.db
-      .prepare("INSERT INTO retos (id, uid, uid_hmac, coche, caduca, intentos, estado) VALUES (?, ?, ?, ?, ?, 0, 'nuevo')")
-      .bind(id, uid, hmac, coche, caduca),
+      .prepare(
+        "INSERT INTO retos (id, uid, uid_hmac, coche, caduca, intentos, estado, coche_antes) VALUES (?, ?, ?, ?, ?, 0, 'nuevo', ?)",
+      )
+      .bind(id, uid, hmac, coche, caduca, cocheAntes),
+    // La lectura de ahora es la primera de las LECTURAS_POR_RETO de este reto.
+    ...(d.lectorEnVps ? [] : [contarUna(d.db, "lectura:reto:" + id, DIA_S, ahora)]),
   ]);
   return json({ reto: id, coche, caduca }, 200, SIN_CACHE);
 }
@@ -133,7 +153,10 @@ async function evaluar(d: Deps, id: string, r: FilaReto, ficha: Ficha, ahora: Da
     await gastarIntento(d.db, id);
     return error("no_existe", 404);
   }
-  if (ficha.coche === null || !cochesIguales(ficha.coche, r.coche)) {
+  // Defensa en profundidad (Resolución 16): si el coche del reto ya estaba en la ficha al darlo, que
+  // case no prueba que nadie tocara el perfil. `reto` ya no da ese coche; si algún día pasa, no vale.
+  const yaEstaba = r.coche_antes !== null && cochesIguales(r.coche_antes, r.coche);
+  if (ficha.coche === null || !cochesIguales(ficha.coche, r.coche) || yaEstaba) {
     const gastados = await gastarIntento(d.db, id);
     return error("no_coincide", 409, { intentosRestantes: Math.max(0, INTENTOS - gastados) });
   }
@@ -170,7 +193,7 @@ async function comprobar(c: Contexto): Promise<Response> {
   if (typeof id !== "string" || !RE_ULID.test(id)) return error("reto", 400);
   const ahora = d.ahora();
   const r = await d.db
-    .prepare("SELECT uid, uid_hmac, coche, caduca, intentos, estado, ficha FROM retos WHERE id = ?")
+    .prepare("SELECT uid, uid_hmac, coche, caduca, intentos, estado, ficha, coche_antes FROM retos WHERE id = ?")
     .bind(id)
     .first<FilaReto>();
   if (!r) return error("reto", 404);

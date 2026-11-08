@@ -5,7 +5,7 @@ import noExiste from "./fixtures/ficha_no_existe.html?raw";
 import challengeHtml from "./fixtures/ficha_challenge.html?raw";
 import { crearApp, type Deps } from "../src/app";
 import { acceder } from "../src/auth";
-import { COCHES } from "../src/coches";
+import { cocheEn, cochesIguales, totalCoches } from "../src/coches";
 import { uidHmac } from "../src/cripto";
 import { permitido } from "../src/limites";
 import { USER_AGENT } from "../src/tarjeta";
@@ -28,7 +28,11 @@ const TABLAS = [
 
 interface Pagina { status: number; cabeceras: Record<string, string>; html: string }
 
-/** FC falso: una página por uid (o "lanza" para simular un fallo de red). Apunta cada petición. */
+/**
+ * FC falso: una página por uid (o "lanza" para simular un fallo de red). Un uid sin página preparada
+ * sirve la ficha del fixture tal cual (coche COCHE_FIXTURE, que no está en la lista de coches): es lo
+ * que lee `reto` al darlo. Apunta cada petición.
+ */
 let paginas: Map<string, Pagina | "lanza">;
 let vistas: { url: string; ua: string | null; cookie: string | null }[];
 
@@ -36,11 +40,11 @@ async function red(url: string, init?: RequestInit): Promise<Response> {
   const cab = new Headers(init?.headers);
   vistas.push({ url, ua: cab.get("User-Agent"), cookie: cab.get("Cookie") });
   if (!url.startsWith(FICHA)) throw new Error("URL inesperada: " + url);
-  const p = paginas.get(url.slice(FICHA.length));
-  if (!p) throw new Error("ficha no preparada: " + url);
+  const p = paginas.get(url.slice(FICHA.length)) ?? { status: 200, cabeceras: {}, html: conCoche };
   if (p === "lanza") throw new Error("sin red");
   return new Response(p.html, { status: p.status, headers: p.cabeceras });
 }
+const LECTURA = { url: FICHA + UID, ua: USER_AGENT, cookie: null };
 
 /** La ficha del fixture con otro coche, otro nombre en el título u otro registro. */
 function ficha(coche: string, o: { nombre?: string; registro?: string } = {}): Pagina {
@@ -115,12 +119,69 @@ describe("POST /v1/verificacion/reto", () => {
     expect(r.status).toBe(200);
     expect(Object.keys(r.cuerpo).sort()).toEqual(["caduca", "coche", "reto"]);
     expect(r.cuerpo.reto).toMatch(/^[0-9A-HJKMNP-TV-Z]{26}$/);
-    expect(COCHES).toContain(r.cuerpo.coche);
+    expect(r.cuerpo.coche).toBe(cocheEn(Math.floor(0.5 * totalCoches())));
     expect(r.cuerpo.caduca).toBe(T0 + 600_000);
-    // En el reto el uid va en claro (hace falta para leer la ficha) junto a su HMAC.
+    // En el reto el uid va en claro (hace falta para leer la ficha) junto a su HMAC, y el coche
+    // que la ficha tenía al darlo (dato público, muere con el reto).
     const fila = await filaReto(r.cuerpo.reto);
-    expect(fila).toMatchObject({ uid: UID, uid_hmac: await uidHmac(PEPPER, UID), coche: r.cuerpo.coche, intentos: 0 });
-    expect(vistas).toHaveLength(0); // pedir el reto no toca FC
+    expect(fila).toMatchObject({
+      uid: UID, uid_hmac: await uidHmac(PEPPER, UID), coche: r.cuerpo.coche, intentos: 0, coche_antes: COCHE_FIXTURE,
+    });
+    // Darlo lee la ficha una vez: de invitado, con UA de móvil.
+    expect(vistas).toEqual([LECTURA]);
+  });
+
+  it("el reto lee la ficha y nunca da el coche que ya tiene puesto (Resolución 16)", async () => {
+    // El azar cae justo en el índice del coche que muestra el perfil: sin la lectura, lo daría.
+    for (const k of [0, 777, Math.floor(totalCoches() / 3), totalCoches() - 1]) {
+      const puesto = cocheEn(k);
+      const aleatorio = () => (k + 0.5) / totalCoches();
+      expect(cocheEn(Math.floor(aleatorio() * totalCoches()))).toBe(puesto);
+      // Tal cual, y como lo podría dejar FC (otras mayúsculas, espacios de más).
+      for (const visto of [puesto, "  " + puesto.toLowerCase().replace(/ /g, "   ") + " "]) {
+        await env.DB.prepare("DELETE FROM limites").run(); // esta prueba pide más de 5 retos del mismo uid
+        paginas.set(UID, ficha(visto));
+        const r = await pedirReto(app({ aleatorio }));
+        expect(r.status).toBe(200);
+        expect(cochesIguales(r.cuerpo.coche, puesto)).toBe(false);
+        expect((await filaReto(r.cuerpo.reto))!.coche_antes).toBe(visto.trim());
+      }
+    }
+  });
+
+  it("si FC no deja leer la ficha al dar el reto -> 503 challenge y no se crea reto (sí gasta cupo)", async () => {
+    for (const p of [CHALLENGE_403, "lanza" as const, { status: 500, cabeceras: {}, html: "x" }]) {
+      paginas.set(UID, p);
+      const r = await pedirReto();
+      expect(r.status).toBe(503);
+      expect(r.cuerpo).toEqual({ error: "challenge" });
+    }
+    expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM retos").first("n")).toBe(0);
+    // El cupo del uid se cuenta ANTES de leer FC: así las lecturas que hace `reto` siguen acotadas
+    // (5/h por uid, 20/h por IP) aunque FC esté con challenge.
+    paginas.set(UID, CHALLENGE_403);
+    await pedirReto();
+    await pedirReto();
+    paginas.delete(UID);
+    const sexto = await pedirReto();
+    expect(sexto.status).toBe(429);
+    expect(sexto.cuerpo).toEqual({ error: "limite" });
+    expect(vistas).toHaveLength(5);
+  });
+
+  it("reto de un usuario de FC que no existe -> 404 no_existe y no se crea reto", async () => {
+    paginas.set(UID, { status: 200, cabeceras: {}, html: noExiste });
+    const r = await pedirReto();
+    expect(r.status).toBe(404);
+    expect(r.cuerpo).toEqual({ error: "no_existe" });
+    expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM retos").first("n")).toBe(0);
+  });
+
+  it("una ficha sin coche deja coche_antes a null", async () => {
+    paginas.set(UID, ficha(""));
+    const r = await pedirReto();
+    expect(r.status).toBe(200);
+    expect((await filaReto(r.cuerpo.reto))!.coche_antes).toBeNull();
   });
 
   it("retoUidInvalido: lo que no es un número de usuario canónico -> 400 uid", async () => {
@@ -165,17 +226,20 @@ describe("POST /v1/verificacion/reto", () => {
   });
 
   it("las claves de límites llevan HMAC, nunca el uid ni la IP en claro", async () => {
-    await pedirReto();
-    const { results } = await env.DB.prepare("SELECT clave FROM limites").all<{ clave: string }>();
+    const r = await pedirReto();
+    const { results } = await env.DB.prepare("SELECT clave, n FROM limites").all<{ clave: string; n: number }>();
     expect(results.map((f) => f.clave).sort()).toEqual(
-      [`reto:ip:${await uidHmac(PEPPER, IP)}`, `reto:uid:${await uidHmac(PEPPER, UID)}`].sort(),
+      [`reto:ip:${await uidHmac(PEPPER, IP)}`, `reto:uid:${await uidHmac(PEPPER, UID)}`, `lectura:reto:${r.cuerpo.reto}`].sort(),
     );
+    // La lectura de la ficha al dar el reto ya cuenta para el tope de lecturas de ese reto.
+    expect(results.find((f) => f.clave.startsWith("lectura:"))!.n).toBe(1);
   });
 
-  it("dos retos seguidos del mismo uid no repiten coche", async () => {
+  it("si el perfil aún tiene el coche del reto anterior, el nuevo es otro", async () => {
     const a = await pedirReto();
+    paginas.set(UID, ficha(a.cuerpo.coche)); // la app lo puso y no llegó a devolverlo
     const b = await pedirReto();
-    expect(b.cuerpo.coche).not.toBe(a.cuerpo.coche); // aleatorio fijo: sin distintoDe saldría el mismo
+    expect(b.cuerpo.coche).not.toBe(a.cuerpo.coche); // aleatorio fijo: sin la lectura saldría el mismo
   });
 });
 
@@ -187,8 +251,8 @@ describe("POST /v1/verificacion/comprobar", () => {
     expect(r.cuerpo.token).toMatch(/^[A-Za-z0-9_-]{43}$/);
     // 30-may-2026 -> 8-nov-2026 = 162 días, más que los 90 que pide votar.
     expect(r.cuerpo).toMatchObject({ nombre: "YoMismo", diasCuenta: 162, puedeVotar: true });
-    // Una sola lectura de FC, a la ficha de ese uid, con UA de móvil y sin cookies.
-    expect(vistas).toEqual([{ url: FICHA + UID, ua: USER_AGENT, cookie: null }]);
+    // Dos lecturas de FC (al dar el reto y al comprobar), a la ficha de ese uid, con UA de móvil y sin cookies.
+    expect(vistas).toEqual([LECTURA, LECTURA]);
 
     const yo = await llamar(app(), get("/v1/yo", conToken(r.cuerpo.token)));
     expect(yo.status).toBe(200);
@@ -246,7 +310,23 @@ describe("POST /v1/verificacion/comprobar", () => {
     const cuarto = await comprobar(app(), r.cuerpo.reto);
     expect(cuarto.status).toBe(429);
     expect(cuarto.cuerpo).toEqual({ error: "intentos" });
-    expect(vistas).toHaveLength(3); // el 4.º ni pregunta a FC
+    expect(vistas).toHaveLength(1 + 3); // la del reto y las 3 comprobaciones; el 4.º ni pregunta a FC
+  });
+
+  it("comprobar rechaza que case si el coche del reto ya estaba en la ficha al darlo (coche_antes)", async () => {
+    // Defensa en profundidad: `reto` ya nunca da el coche puesto; aquí se fuerza en la base.
+    const r = await pedirReto();
+    await env.DB.prepare("UPDATE retos SET coche_antes = coche WHERE id = ?").bind(r.cuerpo.reto).run();
+    paginas.set(UID, ficha(r.cuerpo.coche));
+    const c = await comprobar(app(), r.cuerpo.reto);
+    expect(c.status).toBe(409);
+    expect(c.cuerpo).toEqual({ error: "no_coincide", intentosRestantes: 2 });
+    expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM cuentas").first("n")).toBe(0);
+    expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM tokens").first("n")).toBe(0);
+    // También con otras mayúsculas/espacios en coche_antes.
+    await env.DB.prepare("UPDATE retos SET coche_antes = ? WHERE id = ?")
+      .bind(" " + r.cuerpo.coche.toUpperCase() + "  ", r.cuerpo.reto).run();
+    expect((await comprobar(app(), r.cuerpo.reto)).status).toBe(409);
   });
 
   it("sin coche en la ficha también es no_coincide", async () => {
@@ -279,9 +359,9 @@ describe("POST /v1/verificacion/comprobar", () => {
   });
 
   it("un reto no puede leer FC sin fin: la 11.ª lectura -> 429 intentos", async () => {
-    const r = await pedirReto();
+    const r = await pedirReto(); // 1.ª lectura: la del reto
     paginas.set(UID, CHALLENGE_403);
-    for (let i = 0; i < 10; i++) expect((await comprobar(app(), r.cuerpo.reto)).status).toBe(503);
+    for (let i = 0; i < 9; i++) expect((await comprobar(app(), r.cuerpo.reto)).status).toBe(503);
     const c = await comprobar(app(), r.cuerpo.reto);
     expect(c.status).toBe(429);
     expect(c.cuerpo).toEqual({ error: "intentos" });
@@ -291,12 +371,17 @@ describe("POST /v1/verificacion/comprobar", () => {
   it("comprobarCaducado: a los 11 minutos -> 410 caducado, sin leer FC", async () => {
     const r = await pedirReto();
     paginas.set(UID, ficha(r.cuerpo.coche));
+    vistas = [];
     const c = await comprobar(en(11 * MIN), r.cuerpo.reto);
     expect(c.status).toBe(410);
     expect(c.cuerpo).toEqual({ error: "caducado" });
     expect(vistas).toHaveLength(0);
     // Y el uid en claro ya no está.
     expect(await filaReto(r.cuerpo.reto)).toBeNull();
+    // Ya borrado, el mismo reto da 404 reto (para la app, 404 reto y 410 caducado son "pide otro").
+    const otra = await comprobar(en(12 * MIN), r.cuerpo.reto);
+    expect(otra.status).toBe(404);
+    expect(otra.cuerpo).toEqual({ error: "reto" });
   });
 
   it("reto desconocido o mal formado -> 404 reto / 400 reto", async () => {
@@ -357,17 +442,17 @@ describe("POST /v1/verificacion/comprobar", () => {
     const ok = await verificar();
     const pendiente = await pedirReto(); // reto pedido antes del baneo
     await env.DB.prepare("UPDATE cuentas SET baneada = 1").run();
+    vistas = [];
 
     const reto = await pedirReto();
     expect(reto.status).toBe(403);
     expect(reto.cuerpo).toEqual({ error: "baneada" });
 
     paginas.set(UID, ficha(pendiente.cuerpo.coche));
-    vistas = [];
     const c = await comprobar(app(), pendiente.cuerpo.reto);
     expect(c.status).toBe(403);
     expect(c.cuerpo).toEqual({ error: "baneada" });
-    expect(vistas).toHaveLength(0);
+    expect(vistas).toHaveLength(0); // ni el reto ni el comprobar de una cuenta baneada leen FC
 
     const yo = await llamar(app(), get("/v1/yo", conToken(ok.cuerpo.token)));
     expect(yo.status).toBe(403);
@@ -421,6 +506,18 @@ describe("token y GET /v1/yo", () => {
 describe("modoVps: el lector de fichas en el VPS", () => {
   const vps = (o: Partial<Deps> = {}) => app({ lectorEnVps: true, ...o });
   const lector = (s = LECTOR) => ({ "X-Lector": s });
+
+  it("el reto no lee la ficha (el Worker no puede): coche_antes null y no repite el coche del reto vivo anterior", async () => {
+    const a = await pedirReto(vps());
+    expect(a.status).toBe(200);
+    expect((await filaReto(a.cuerpo.reto))!.coche_antes).toBeNull();
+    const b = await pedirReto(vps());
+    expect(b.cuerpo.coche).not.toBe(a.cuerpo.coche); // aleatorio fijo: sin distintoDe saldría el mismo
+    expect(vistas).toHaveLength(0);
+    // Ni cuenta lectura al darlo: solo las claves de reto.
+    const { results } = await env.DB.prepare("SELECT clave FROM limites WHERE clave LIKE 'lectura:%'").all();
+    expect(results).toHaveLength(0);
+  });
 
   it("202 pendiente, el VPS lee y devuelve la ficha, y el siguiente comprobar da el token", async () => {
     const r = await pedirReto(vps());
