@@ -728,8 +728,15 @@ describe("modoVps: el lector de fichas en el VPS", () => {
 });
 
 describe("acceso por ruta", () => {
-  it("admin se deniega por defecto mientras no exista su comprobación (B8)", async () => {
-    const r = await acceder("admin", new Request("https://x/v1/admin/algo", { headers: { "X-Admin": "admin" } }), deps());
+  it("admin solo pasa con X-Admin igual al secreto (la comprobación completa está en admin.test.ts)", async () => {
+    const con = (h: Record<string, string>) => acceder("admin", new Request("https://x/v1/admin/algo", { headers: h }), deps());
+    expect(await con({ "X-Admin": "admin" })).toBeNull();
+    const r = await con({ "X-Admin": "otro" });
+    expect(r).toBeInstanceOf(Response);
+    expect((r as Response).status).toBe(401);
+  });
+  it("un acceso que el router no conoce se deniega", async () => {
+    const r = await acceder("inventado" as never, new Request("https://x/"), deps());
     expect(r).toBeInstanceOf(Response);
     expect((r as Response).status).toBe(401);
   });

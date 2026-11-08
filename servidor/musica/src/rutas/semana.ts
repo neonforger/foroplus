@@ -28,7 +28,7 @@ function conReloj(d: Deps): { d: Deps; ahora: Date } {
 const ACTUAL = `SELECT ${COLUMNAS_CANCION},
     EXISTS (SELECT 1 FROM votos v WHERE v.semana = p.semana AND v.cancion = p.cancion AND v.cuenta = ?2) AS votada
   FROM propuestas p JOIN canciones c ON c.id = p.cancion
-  WHERE p.semana = ?1
+  WHERE p.semana = ?1 AND COALESCE(c.oculta, 0) = 0
   ORDER BY (SELECT COUNT(*) FROM votos v WHERE v.semana = p.semana AND v.cancion = p.cancion) DESC,
     p.creada ASC, c.id ASC`;
 
@@ -87,6 +87,9 @@ async function proponer(c: Contexto, tarjetasHora?: number): Promise<Response> {
     puedeMontarTarjeta(d.db, cuenta.id, ahora, tarjetasHora),
   );
   if ("error" in r) return error(r.error, r.error === "limite" ? 429 : 422);
+  // Una canción que el dueño ocultó no se puede volver a proponer (422, como una que no es canción).
+  const oculta = await d.db.prepare("SELECT 1 AS x FROM canciones WHERE id = ? AND oculta = 1").bind(r.cancion.id).first();
+  if (oculta) return error("oculta", 422);
 
   const semana = semanaDe(ahora);
   const id = r.cancion.id;
@@ -129,7 +132,10 @@ async function votar(c: Contexto, poner: boolean): Promise<Response> {
   if (typeof cancion !== "string" || !RE_ULID.test(cancion)) return error("cancion", 400);
 
   const semana = semanaDe(ahora);
-  const propuesta = "EXISTS (SELECT 1 FROM propuestas WHERE semana = ?1 AND cancion = ?2)";
+  // Una canción oculta por el dueño ya no está en la semana: ni se vota ni se quita el voto (409).
+  const propuesta =
+    "EXISTS (SELECT 1 FROM propuestas WHERE semana = ?1 AND cancion = ?2) " +
+    "AND NOT EXISTS (SELECT 1 FROM canciones WHERE id = ?2 AND oculta = 1)";
   // Siempre con la cuenta del token (?3): no hay forma de tocar votos de otro.
   const cambio = poner
     ? d.db
@@ -144,7 +150,7 @@ async function votar(c: Contexto, poner: boolean): Promise<Response> {
         .bind(semana, cancion, cuenta.id);
   const [, esta, mio, mios] = await d.db.batch<{ n?: number }>([
     cambio,
-    d.db.prepare("SELECT 1 FROM propuestas WHERE semana = ? AND cancion = ?").bind(semana, cancion),
+    d.db.prepare(`SELECT 1 AS x WHERE ${propuesta}`).bind(semana, cancion),
     d.db.prepare("SELECT 1 FROM votos WHERE semana = ? AND cancion = ? AND cuenta = ?").bind(semana, cancion, cuenta.id),
     d.db.prepare("SELECT COUNT(*) AS n FROM votos WHERE semana = ? AND cuenta = ?").bind(semana, cuenta.id),
   ]);

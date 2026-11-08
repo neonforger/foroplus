@@ -1,5 +1,7 @@
+import { programado } from "./cron";
 import { acceder, type Cuenta } from "./auth";
 import { error, json } from "./http";
+import { rutasAdmin } from "./rutas/admin";
 import { rutasPlaylists } from "./rutas/playlists";
 import { rutasSemana } from "./rutas/semana";
 import { rutasVerificacion } from "./rutas/verificacion";
@@ -67,7 +69,7 @@ function casar(patron: string, ruta: string): Record<string, string> | null {
 }
 
 function rutas(o: OpcionesApp): Ruta[] {
-  return [["GET", "/v1/salud", () => json({ ok: true }), "publica"], ...rutasVerificacion(o), ...rutasSemana(o), ...rutasPlaylists(o)];
+  return [["GET", "/v1/salud", () => json({ ok: true }), "publica"], ...rutasVerificacion(o), ...rutasSemana(o), ...rutasPlaylists(o), ...rutasAdmin()];
 }
 
 export function crearApp(d: Deps, o: OpcionesApp = {}): App {
@@ -90,8 +92,6 @@ export function crearApp(d: Deps, o: OpcionesApp = {}): App {
       }
       return rutaConOtroMetodo ? error("metodo", 405) : error("no_existe", 404);
     },
-    async programado(_cron) {
-      // Las tareas siguientes (cierre de semana, limpieza) cuelgan de aquí.
-    },
+    programado: (cron) => programado(d, cron),
   };
 }

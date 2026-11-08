@@ -262,7 +262,7 @@ async function detalle(c: Contexto): Promise<Response> {
       .prepare(
         `SELECT ${COLUMNAS_CANCION} FROM playlists_pub p JOIN cuentas u ON u.id = p.cuenta, ` +
           "json_each(p.canciones) j JOIN canciones c ON c.id = j.value " +
-          `WHERE p.id = ? AND ${VISIBLE} ORDER BY j.key`,
+          `WHERE p.id = ? AND ${VISIBLE} AND COALESCE(c.oculta, 0) = 0 ORDER BY j.key`,
       )
       .bind(id),
   ]);

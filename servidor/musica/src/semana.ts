@@ -22,7 +22,7 @@ const TOP = `SELECT ${COLUMNAS_CANCION}, COUNT(*) AS votos, MAX(v.creado) AS lle
   FROM votos v
   JOIN propuestas p ON p.semana = v.semana AND p.cancion = v.cancion
   JOIN canciones c ON c.id = v.cancion
-  WHERE v.semana = ?1
+  WHERE v.semana = ?1 AND COALESCE(c.oculta, 0) = 0
   GROUP BY v.cancion
   ORDER BY votos DESC, llegada ASC, c.id ASC
   LIMIT ${TAMANO_TOP}`;
