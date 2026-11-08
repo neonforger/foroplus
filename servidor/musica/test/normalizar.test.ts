@@ -80,6 +80,14 @@ describe("claveCancion", () => {
     expect(claveCancion("A", "T (Remastered)")).toBe(k);
     expect(claveCancion("A", "T (Remastered 22)")).not.toBe(k);
   });
+  it("quita el sufijo de versión con guion, pero no otros sufijos", () => {
+    const k = claveCancion("A", "T");
+    expect(claveCancion("A", "T - Remastered 2011")).toBe(k);
+    expect(claveCancion("A", "T - 2011 Remaster")).toBe(k);
+    expect(claveCancion("A", "T – Remastered")).toBe(k);
+    expect(claveCancion("A", "T - Live")).not.toBe(k);
+    expect(limpiarTitulo("T - Remastered 2011")).toBe("T - Remastered 2011");
+  });
   it("una versión en directo no es la misma canción", () => {
     expect(claveCancion("A", "T (Directo)")).not.toBe(claveCancion("A", "T"));
   });

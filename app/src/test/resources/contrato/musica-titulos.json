@@ -16,6 +16,8 @@
     {"a": ["Bizarrap, Quevedo", "Quevedo: Bzrp Music Sessions, Vol. 52"], "b": ["Quevedo, Bizarrap", "Quevedo: Bzrp Music Sessions, Vol. 52"], "iguales": true},
     {"a": ["Estopa", "Como Camarón"], "b": ["ESTOPA", "Como Camaron"], "iguales": true},
     {"a": ["Estopa", "Como Camarón"], "b": ["Estopa", "Como Camarón (Directo Acústico)"], "iguales": false},
-    {"a": ["Bad Bunny", "Callaita (feat. Tainy)"], "b": ["Bad Bunny", "Callaita"], "iguales": true}
+    {"a": ["Bad Bunny", "Callaita (feat. Tainy)"], "b": ["Bad Bunny", "Callaita"], "iguales": true},
+    {"a": ["Rick Astley", "Never Gonna Give You Up - Remastered 2011"], "b": ["Rick Astley", "Never Gonna Give You Up"], "iguales": true},
+    {"a": ["Extremoduro", "So Payaso - En Directo"], "b": ["Extremoduro", "So Payaso"], "iguales": false}
   ]
 }

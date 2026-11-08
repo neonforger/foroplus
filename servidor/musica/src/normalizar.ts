@@ -105,12 +105,31 @@ function sinFeat(s: string): string {
 }
 
 /**
+ * Spotify pone la versión como sufijo con guion ("Song - Remastered 2011"). Solo se quita si lo que
+ * hay tras el ÚLTIMO " - " / " – " / " — " es exactamente una etiqueta de versión; "- En Directo" o
+ * "- Live" son otra grabación y se quedan.
+ */
+function sinVersionFinal(t: string): string {
+  let pos = -1;
+  let largo = 0;
+  for (const s of SEPARADORES) {
+    const i = t.lastIndexOf(s);
+    if (i > pos) {
+      pos = i;
+      largo = s.length;
+    }
+  }
+  if (pos > 0 && esEtiquetaVersion(t.slice(pos + largo))) return t.slice(0, pos);
+  return t;
+}
+
+/**
  * La clave con la que votan las canciones: `artistas|título`. Un vídeo de YouTube y una pista de
  * Spotify de la misma canción tienen que dar la misma. No se usa el ISRC: hay uno por edición.
  * Un artista vacío (no se pudo leer) da una clave `|título`, que no casará con la que sí lo tenga.
  */
 export function claveCancion(artista: string, titulo: string): string {
-  const t = sinFeat(quitarGrupos(quitarGrupos(titulo, esEtiquetaVideo), esEtiquetaVersion));
+  const t = sinFeat(sinVersionFinal(quitarGrupos(quitarGrupos(titulo, esEtiquetaVideo), esEtiquetaVersion)));
   const artistas = sinFeat(artista)
     .split(/[,&]/)
     .map((x) => x.trim())

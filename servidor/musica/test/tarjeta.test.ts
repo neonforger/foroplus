@@ -8,7 +8,7 @@ import spOembed from "./fixtures/sp_oembed.json";
 import ytEstopa from "./fixtures/yt_estopa_oembed.json";
 import ytOembed from "./fixtures/yt_oembed.json";
 import { claveCancion, type RefCancion } from "../src/normalizar";
-import { leerMetas, tarjetaDe } from "../src/tarjeta";
+import { leerMetas, tarjetaDe, USER_AGENT } from "../src/tarjeta";
 
 const YT_ESTOPA: RefCancion = { fuente: "youtube", id: "aaaaaaaaaaa" };
 const SP_ESTOPA: RefCancion = { fuente: "spotify", id: "0aaaaaaaaaaaaaaaaaaaaa" };
@@ -134,6 +134,33 @@ describe("tarjetaDe de Spotify", () => {
     const t = await tarjetaDe({ fuente: "spotify", id: "4cOdK2wGLETKBW3PvgPWqT" }, red);
     expect(t).toMatchObject({ artista: "Rick Astley", titulo: "Never Gonna Give You Up" });
     expect(t!.portada).toBe("https://i.scdn.co/image/ab67616d0000b273baf89eb11ec7c657805d2da0");
+  });
+});
+
+describe("cabeceras de salida", () => {
+  it("toda subpetición (oEmbed, página, Deezer) lleva User-Agent móvil y Accept-Language", async () => {
+    const llamadas: Array<[string, RequestInit | undefined]> = [];
+    const respuestas: Record<string, () => Response> = {
+      [SP]: () => json(spEstopaOembed),
+      [SP_PAGINA]: () => html(spEstopaMeta),
+      [DZ]: () => json(deezerEstopa),
+    };
+    const red = async (url: string, init?: RequestInit) => {
+      llamadas.push([url, init]);
+      return respuestas[Object.keys(respuestas).find((p) => url.startsWith(p))!]();
+    };
+    await tarjetaDe(SP_ESTOPA, red);
+    expect(llamadas).toHaveLength(3);
+    for (const [url, init] of llamadas) {
+      const h = init?.headers as Record<string, string>;
+      expect(h?.["User-Agent"], url).toBe(USER_AGENT);
+      expect(h?.["Accept-Language"], url).toBe("en");
+    }
+    llamadas.length = 0;
+    respuestas[YT] = () => json(ytEstopa);
+    await tarjetaDe(YT_ESTOPA, red);
+    expect(llamadas).toHaveLength(2);
+    for (const [url, init] of llamadas) expect((init?.headers as Record<string, string>)?.["User-Agent"], url).toBe(USER_AGENT);
   });
 });
 

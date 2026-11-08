@@ -22,6 +22,12 @@ function portadaPermitida(u: unknown): string | null {
   }
 }
 
+/** El mismo UA móvil que BuscadorMusica.kt: Spotify puede servir una página vacía o un 403 a UAs de bot. */
+export const USER_AGENT =
+  "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36";
+// Accept-Language en inglés fija el orden de los campos de og:description ("Artista · Álbum · Song · Año").
+export const CABECERAS: RequestInit = { headers: { "User-Agent": USER_AGENT, "Accept-Language": "en" } };
+
 export function enlaceDe(ref: RefCancion): string {
   return ref.fuente === "youtube"
     ? `https://www.youtube.com/watch?v=${ref.id}`
@@ -30,7 +36,7 @@ export function enlaceDe(ref: RefCancion): string {
 
 async function jsonDe(red: Deps["red"], url: string): Promise<Record<string, unknown> | null> {
   try {
-    const r = await red(url);
+    const r = await red(url, CABECERAS);
     if (!r.ok) return null;
     const j: unknown = await r.json();
     return j && typeof j === "object" ? (j as Record<string, unknown>) : null;
@@ -79,7 +85,7 @@ export function leerMetas(html: string): Map<string, string> {
 
 async function metasDe(red: Deps["red"], url: string): Promise<Map<string, string> | null> {
   try {
-    const r = await red(url);
+    const r = await red(url, CABECERAS);
     if (!r.ok) return null;
     return leerMetas(await r.text());
   } catch {
