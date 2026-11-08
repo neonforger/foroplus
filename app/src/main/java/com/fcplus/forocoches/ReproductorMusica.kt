@@ -25,8 +25,10 @@ import android.widget.TextView
  *   YouTube solo la saltan esa vez (ver [EstadoYoutube.noSeOyeAqui]).
  *
  * Reglas que manda el spec, y por qué está hecho así:
- * - **YouTube a la vista y de más de 200×200 px mientras suena.** La caja va fuera de la lista
- *   (no se desplaza) y nada la tapa; un WebView tapado además lo frena Chromium (gotcha).
+ * - **YouTube a la vista y de al menos 200×200 px CSS mientras suena** (un px CSS es un dp:
+ *   ver [MINIMO_DP]). La caja va a todo el ancho y nunca baja de 200 dp de alto
+ *   ([altoCaja]), fuera de la lista (no se desplaza) y nada la tapa; un WebView tapado además
+ *   lo frena Chromium (gotcha).
  * - **Nada suena fuera de esta pantalla.** Quien la quita (MusicaController: ocultar, pausar,
  *   atrás) llama a [parar], y es el ÚNICO sitio que lo apaga (gotcha "Cinco sitios bajaban
  *   isThreadVisible y solo uno apagaba el reproductor").
@@ -269,19 +271,34 @@ class ReproductorMusica(
     }
 
     companion object {
+        /** La barra de lo que suena (rep_barra, minHeight). */
+        const val BARRA_DP = 56
+
+        /** Una canción de la lista (item_cancion, minHeight). */
+        const val FILA_DP = 68
+
         /**
-         * Alto de la caja del vídeo: 16:9 del ancho. En horizontal eso no cabe: como mucho el
-         * 55 % del alto de la pantalla y, si el padre dice cuánto hay ([disponible]), lo que
-         * quede tras [reserva] (la barra y una canción de la lista; sin eso la lista se quedaba
-         * en 0 px). YouTube pone bandas a los lados. Pero el vídeo no baja de [minimo] mientras
-         * quepa: antes que un vídeo invisible sonando, una lista corta.
+         * Alto mínimo del vídeo: los 200 px CSS que pide YouTube. La página del embed usa
+         * width=device-width, así que un px CSS es un dp (medido: 480 dpi, 3 px por dp, y un
+         * WebView de 1008 px mide 336 px CSS).
          */
-        fun altoCaja(ancho: Int, altoPantalla: Int, disponible: Int?, reserva: Int, minimo: Int): Int {
+        const val MINIMO_DP = 200
+
+        /**
+         * Alto de la caja del vídeo, en px: 16:9 del ancho. En horizontal eso no cabe: como mucho
+         * el 55 % del alto de la pantalla y, si el padre dice cuánto hay ([disponible]), lo que
+         * quede tras la barra y una canción de la lista (sin eso la lista se quedaba en 0 px).
+         * YouTube pone bandas a los lados. Pero el vídeo NUNCA baja de [MINIMO_DP] mientras
+         * quepa: es requisito de YouTube y manda sobre la lista; en horizontal o en pantalla
+         * partida, la barra y la lista se quedan con lo que sobre.
+         */
+        fun altoCaja(ancho: Int, altoPantalla: Int, disponible: Int?, densidad: Float): Int {
+            val reserva = ((BARRA_DP + FILA_DP) * densidad).toInt()
+            val minimo = (MINIMO_DP * densidad).toInt()
             var alto = minOf(ancho * 9 / 16, (altoPantalla * 0.55f).toInt())
-            if (disponible != null) {
-                alto = minOf(alto, disponible - reserva)
-                alto = maxOf(alto, minOf(minimo, disponible))
-            }
+            if (disponible != null) alto = minOf(alto, disponible - reserva)
+            alto = maxOf(alto, minimo)
+            if (disponible != null) alto = minOf(alto, disponible)
             return alto.coerceAtLeast(0)
         }
     }
@@ -298,22 +315,12 @@ class CajaReproductor @JvmOverloads constructor(
         // Lo que deja el panel (AT_MOST/EXACTLY); sin límite, nada que recortar.
         val disponible = if (MeasureSpec.getMode(altoSpec) == MeasureSpec.UNSPECIFIED) null
             else MeasureSpec.getSize(altoSpec)
-        val dp = resources.displayMetrics.density
         val alto = ReproductorMusica.altoCaja(
-            ancho, resources.displayMetrics.heightPixels, disponible,
-            reserva = ((BARRA_DP + FILA_DP) * dp).toInt(), minimo = (MINIMO_DP * dp).toInt()
+            ancho, resources.displayMetrics.heightPixels, disponible, resources.displayMetrics.density
         )
         super.onMeasure(
             MeasureSpec.makeMeasureSpec(ancho, MeasureSpec.EXACTLY),
             MeasureSpec.makeMeasureSpec(alto, MeasureSpec.EXACTLY)
         )
-    }
-
-    private companion object {
-        /** La barra de lo que suena (rep_barra, minHeight). */
-        const val BARRA_DP = 56
-        /** Una canción de la lista (item_cancion, minHeight). */
-        const val FILA_DP = 68
-        const val MINIMO_DP = 90
     }
 }

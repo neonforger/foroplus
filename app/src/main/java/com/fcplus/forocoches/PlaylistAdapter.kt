@@ -37,14 +37,23 @@ class PlaylistAdapter(
     private var fallidas: Set<String> = emptySet()
 
     /**
-     * ¿Hay una canción agarrada? Se pone en cuanto se coge (onSelectedChanged), no en el
-     * primer movimiento: entre coger y mover también puede llegar un repintado (una canción que
-     * acaba, una portada) y rebindear la fila agarrada la descuadra.
+     * ¿Hay arrastres sin terminar de aplicar? Se pone en cuanto se coge una canción
+     * (onSelectedChanged), no en el primer movimiento: entre coger y mover también puede llegar
+     * un repintado (una canción que acaba, una portada) y rebindear la fila agarrada la
+     * descuadra. Se quita en el frame siguiente al último soltar.
      */
     private var arrastrando = false
 
-    /** Posición (de canción) donde empezó el arrastre en curso; -1 si no se arrastra. */
+    /**
+     * La fila agarrada AHORA y la posición (de canción) de la que salió. El arrastre va atado a
+     * su fila: si se coge otra mientras la anterior aún vuelve a su sitio (la animación de
+     * soltar dura ~200 ms), el clearView que llega después de la anterior no puede guardar con
+     * la posición de salida de la nueva ni dar por terminado el arrastre de la nueva.
+     */
+    private var agarrada: RecyclerView.ViewHolder? = null
     private var desdeArrastre = -1
+
+    private var lista: RecyclerView? = null
 
     /** Lo que llegó durante el arrastre, para aplicarlo al soltar. */
     private var pinturaPendiente: Pair<String, List<Cancion>>? = null
@@ -86,6 +95,14 @@ class PlaylistAdapter(
         clave ?: return null
         val i = canciones.indexOfFirst { it.ref.clave == clave }
         return if (i < 0) null else i + 1
+    }
+
+    override fun onAttachedToRecyclerView(rv: RecyclerView) {
+        lista = rv
+    }
+
+    override fun onDetachedFromRecyclerView(rv: RecyclerView) {
+        if (lista === rv) lista = null
     }
 
     override fun getItemCount() = canciones.size + 1
@@ -216,7 +233,11 @@ class PlaylistAdapter(
         override fun onSelectedChanged(vh: RecyclerView.ViewHolder?, estado: Int) {
             super.onSelectedChanged(vh, estado)
             if (estado != ItemTouchHelper.ACTION_STATE_DRAG || vh !is Fila) return
+            // Otra canción aún sin soltar del todo (volviendo a su sitio): se da por soltada YA,
+            // con SU salida y SU llegada. Su clearView, cuando llegue, ya no es de este arrastre.
+            agarrada?.let { if (it !== vh) soltar(it) }
             arrastrando = true
+            agarrada = vh
             desdeArrastre = posicion(vh) ?: -1
             // En la Compacta la fila es transparente (solo la onda): arrastrada por encima de las
             // otras se leerían los dos textos a la vez. En Tarjetas la tarjeta ya es opaca.
@@ -235,33 +256,43 @@ class PlaylistAdapter(
                 vh.fondoAntes?.let { vh.itemView.background = it }
                 vh.fondoAntes = null
             }
-            if (!arrastrando || desdeArrastre == SOLTANDO) return
-            val desde = desdeArrastre
-            desdeArrastre = SOLTANDO
-            val hasta = posicion(vh)
-            // En el frame siguiente: clearView puede correr dentro de la animación de soltar, y
-            // ahí la lista no admite avisos de cambios. Hasta entonces lo que llegue se sigue
-            // guardando para después.
-            rv.post {
-                arrastrando = false
-                desdeArrastre = -1
-                val pintura = pinturaPendiente
-                val marcas = marcasPendientes
-                val portadas = portadasPendientes
-                pinturaPendiente = null
-                marcasPendientes = null
-                portadasPendientes = false
-                if (desde >= 0 && hasta != null && desde != hasta) {
-                    // Lo que llegó a medias ya es viejo (el orden de antes): quien escucha guarda
-                    // el nuevo y vuelve a pintar con lo guardado.
-                    alMover(desde, hasta)
-                } else if (pintura != null) {
-                    pintar(pintura.first, pintura.second)
-                }
-                marcas?.let { marcar(it.first, it.second) }
-                if (portadas) notifyItemRangeChanged(1, canciones.size)
-            }
+            // Solo la fila agarrada ahora: la de un arrastre anterior ya se soltó al coger esta.
+            if (vh === agarrada) soltar(vh)
         }
+    }
+
+    /**
+     * Termina el arrastre de [vh]: su salida, su llegada, y guardar si se movió. En el frame
+     * siguiente: clearView puede correr dentro de la animación de soltar, y ahí la lista no
+     * admite avisos de cambios. Lo que llegó entretanto (repintados, marcas, portadas) se
+     * aplica cuando ya no queda ninguna canción agarrada.
+     */
+    private fun soltar(vh: RecyclerView.ViewHolder) {
+        val desde = desdeArrastre
+        val hasta = posicion(vh)
+        agarrada = null
+        desdeArrastre = -1
+        val r = Runnable {
+            if (desde >= 0 && hasta != null && desde != hasta) {
+                // Lo pintado que llegó antes es viejo (el orden de antes): quien escucha guarda
+                // el nuevo y vuelve a pintar con lo guardado (eso sí se aplica, aunque llegue
+                // con otra canción agarrada).
+                pinturaPendiente = null
+                alMover(desde, hasta)
+            }
+            if (agarrada != null) return@Runnable
+            arrastrando = false
+            val pintura = pinturaPendiente
+            val marcas = marcasPendientes
+            val portadas = portadasPendientes
+            pinturaPendiente = null
+            marcasPendientes = null
+            portadasPendientes = false
+            pintura?.let { pintar(it.first, it.second) }
+            marcas?.let { marcar(it.first, it.second) }
+            if (portadas) notifyItemRangeChanged(1, canciones.size)
+        }
+        lista?.post(r) ?: r.run()
     }
 
     class Cabecera(v: View) : RecyclerView.ViewHolder(v) {
@@ -294,8 +325,5 @@ class PlaylistAdapter(
     private companion object {
         const val CABECERA = 0
         const val CANCION = 1
-
-        /** desdeArrastre entre soltar y el frame en que se aplica lo pendiente. */
-        const val SOLTANDO = -2
     }
 }
