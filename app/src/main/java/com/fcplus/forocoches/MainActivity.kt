@@ -3519,7 +3519,11 @@ class MainActivity : AppCompatActivity() {
         mas18Estado = findViewById(R.id.mas18_estado)
         mas18Chips = findViewById(R.id.mas18_chips)
         panelMusica = findViewById(R.id.panel_musica)
-        musica = MusicaController(this, panelMusica, AlmacenMusica(java.io.File(filesDir, "musica")), ::openExternal)
+        // Música abre fuera con su propio abridor: openExternal fija el navegador y las canciones
+        // tienen que poder ir a la app de YouTube o de Spotify.
+        musica = MusicaController(this, panelMusica, AlmacenMusica(java.io.File(filesDir, "musica"))) {
+            MusicaController.abrirEnSuApp(this, it)
+        }
         bottomNav = findViewById(R.id.bottom_nav)
         forumTabs = findViewById(R.id.forum_tabs)
         navTop = findViewById(R.id.native_top)
@@ -3882,7 +3886,13 @@ class MainActivity : AppCompatActivity() {
         nativeAvatar = findViewById(R.id.native_avatar)
         nativeAvatarPunto = findViewById(R.id.native_avatar_punto)
         findViewById<View>(R.id.native_cuenta).apply {
-            setOnClickListener { if (isLoggedIn()) cuentaPanel.abrir() else showLogin() }
+            setOnClickListener {
+                if (isLoggedIn()) {
+                    // El cajón tapa el reproductor de Música, y YouTube no puede sonar tapado.
+                    if (::musica.isInitialized) musica.pausar()
+                    cuentaPanel.abrir()
+                } else showLogin()
+            }
             // Atajo de siempre para cambiar de cuenta (antes estaba en el botón de Perfil).
             setOnLongClickListener { mostrarHojaCuentas(); true }
         }

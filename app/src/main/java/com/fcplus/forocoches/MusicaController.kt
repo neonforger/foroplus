@@ -1,7 +1,11 @@
 package com.fcplus.forocoches
 
+import android.app.Activity
+import android.content.ActivityNotFoundException
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.text.InputFilter
 import android.view.View
 import android.view.WindowManager
@@ -38,7 +42,8 @@ import java.util.concurrent.Executors
  *   playlists) y así lo guardado mientras no se veía (una hoja, Compartir) sale al volver. Lo que
  *   se escribe desde aquí va en un hilo aparte, en orden ([disco]).
  * @param abrirFuera abre una URL fuera de la app, nunca en la capa web (regla de oro): "Abrir
- *   en YouTube/Spotify" y "Escuchar entera en Spotify".
+ *   en YouTube/Spotify" y "Escuchar entera en Spotify". MainActivity le pasa [abrirEnSuApp], que
+ *   deja elegir la app de YouTube o de Spotify en vez de fijar el navegador.
  */
 class MusicaController(
     private val act: AppCompatActivity,
@@ -79,6 +84,9 @@ class MusicaController(
 
     /** La que suena (su clave), según el último aviso del reproductor. */
     private var sonando: String? = null
+
+    /** Lo último leído del almacén: lo que hay pintado. */
+    private var estado = EstadoMusica(emptyMap(), emptyList())
 
     init {
         anadir.setOnClickListener { abrirAnadir(null) }
@@ -161,7 +169,7 @@ class MusicaController(
         val copiado = if (texto == null) leerPortapapeles() else null
         HojaAnadirMusica(act, almacen) { mensaje ->
             Toast.makeText(act, mensaje, Toast.LENGTH_LONG).show()
-            if (visible) pintar()
+            if (visible) recargar()
         }.mostrar(texto, copiado)
     }
 
@@ -172,9 +180,25 @@ class MusicaController(
         null
     }
 
-    /** Pinta la pantalla que toca con lo guardado. Si la playlist abierta ya no existe, la portada. */
-    private fun pintar() {
-        val e = almacen.estado()
+    /**
+     * Pinta con lo guardado, leído AQUÍ, en el hilo de la interfaz: solo al enseñar el panel
+     * ([mostrar], como la portada de A9, que es lo que ve quien entra sin esperar). Después de
+     * escribir no se vuelve a leer aquí: lo lee el hilo que escribe ([escribir], [recargar]),
+     * que es el que tiene el cerrojo.
+     */
+    private fun pintar() = pintarCon(almacen.estado())
+
+    /** Vuelve a leer lo guardado fuera del hilo de la interfaz y lo pinta al llegar. */
+    private fun recargar() {
+        disco.execute {
+            val e = try { almacen.estado() } catch (_: Exception) { null } ?: return@execute
+            act.runOnUiThread { if (visible) pintarCon(e) else estado = e }
+        }
+    }
+
+    /** Pinta la pantalla que toca con [e]. Si la playlist abierta ya no existe, la portada. */
+    private fun pintarCon(e: EstadoMusica) {
+        estado = e
         val id = abierta
         val p = id?.let { e.playlists.firstOrNull { it.id == id } }
         if (p == null) {
@@ -209,9 +233,10 @@ class MusicaController(
 
     // ── Una playlist ─────────────────────────────────────────────────────────
 
+    /** Con lo ya pintado ([estado]): la portada que se toca es justo eso. */
     private fun abrirPlaylist(id: String) {
-        val e = almacen.estado()
-        val p = e.playlists.firstOrNull { it.id == id } ?: return pintar()
+        val e = estado
+        val p = e.playlists.firstOrNull { it.id == id } ?: return recargar()
         abierta = id
         reproductor.preparar(p.claves.mapNotNull { e.canciones[it] })
         pintarPlaylist(p, e)
@@ -238,7 +263,7 @@ class MusicaController(
 
     private fun cerrarPlaylist() {
         volverAPortada()
-        pintar()
+        pintarCon(estado)
     }
 
     private fun tocarCancion(i: Int) {
@@ -278,7 +303,7 @@ class MusicaController(
     }
 
     private fun anadirAOtra(c: Cancion) {
-        val otras = almacen.estado().playlists.filter { it.id != abierta }
+        val otras = estado.playlists.filter { it.id != abierta }
         val opciones = otras.map { if (c.ref.clave in it.claves) "${it.nombre} (ya está)" else it.nombre } +
             "Nueva playlist…"
         AlertDialog.Builder(act)
@@ -391,22 +416,22 @@ class MusicaController(
         caja.requestFocus()
     }
 
-    private fun nombreAbierta(): String {
-        val id = abierta ?: return ""
-        return almacen.estado().playlists.firstOrNull { it.id == id }?.nombre.orEmpty()
-    }
+    /** El nombre que ya se está enseñando (sin volver a leer el disco). */
+    private fun nombreAbierta(): String = if (abierta == null) "" else adaptador.nombre()
 
     /**
      * Escribe en el almacén fuera del hilo de la interfaz y en orden (un solo hilo para todos:
-     * dos arrastres seguidos no pueden llegar al disco al revés), y luego repinta con lo
-     * guardado. [trabajo] devuelve null si no se pudo; entonces se enseña [siFalla].
+     * dos arrastres seguidos no pueden llegar al disco al revés), lee ahí mismo cómo ha quedado
+     * y lo pinta en la interfaz: el hilo de la interfaz no espera al cerrojo ni vuelve a
+     * parsear `musica.json`. [trabajo] devuelve null si no se pudo; entonces se enseña [siFalla].
      */
     private fun <T : Any> escribir(trabajo: () -> T?, siFalla: String, siVa: (T) -> Unit = {}) {
         disco.execute {
             val r = try { trabajo() } catch (_: Exception) { null }
+            val e = try { almacen.estado() } catch (_: Exception) { null }
             act.runOnUiThread {
                 if (r != null) siVa(r) else aviso(siFalla)
-                if (visible) pintar()
+                if (e != null) { if (visible) pintarCon(e) else estado = e }
             }
         }
     }
@@ -418,6 +443,24 @@ class MusicaController(
     companion object {
         /** Un solo hilo para escribir en `musica.json`, compartido por todas las instancias. */
         private val disco = Executors.newSingleThreadExecutor()
+
+        /**
+         * Abre una canción FUERA, en la app que reclame el enlace (YouTube, Spotify) o, si no hay,
+         * en el navegador. No pasa por el `openExternal` de MainActivity, que fija el navegador
+         * por defecto (bien para los enlaces de un hilo, mal aquí: "Escuchar entera en Spotify"
+         * acabaría en Chrome aunque la app de Spotify estuviera instalada). Sin bucle posible:
+         * ForoPlus solo reclama enlaces de FC. Y nunca la capa web (regla de oro).
+         */
+        fun abrirEnSuApp(ctx: Context, url: String) {
+            if (!url.startsWith("https://")) return
+            val i = Intent(Intent.ACTION_VIEW, Uri.parse(url)).addCategory(Intent.CATEGORY_BROWSABLE)
+            if (ctx !is Activity) i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            try {
+                ctx.startActivity(i)
+            } catch (_: ActivityNotFoundException) {
+                Toast.makeText(ctx, "No hay ninguna app para abrir este enlace", Toast.LENGTH_SHORT).show()
+            }
+        }
 
         /** "Sin canciones", "1 canción", "N canciones": un "0 canciones" se lee como un fallo. */
         fun cuantas(n: Int): String = when (n) {

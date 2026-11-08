@@ -26,6 +26,15 @@ object EstadoYoutube {
      */
     fun codigoDeError(errorCode: String): Int = if (errorCode == "auth") 150 else 5
 
+    /**
+     * ¿Este fallo dice que la canción NO va a sonar aquí por mucho que se reintente? 100 (borrada
+     * o privada) y 101/150 (no deja incrustarla, también el "auth" de arriba): se marca para la
+     * sesión y su tarjeta ofrece abrirla fuera. Los demás (2, 5, cualquier otro errorCode)
+     * pueden ser de un momento (la red, el reproductor): se salta esa vez y nada más, o una
+     * canción buena se quedaría sin poder oírse hasta reiniciar la app.
+     */
+    fun noSeOyeAqui(codigo: Int): Boolean = codigo == 100 || noIncrustable(codigo)
+
     private val ID_YOUTUBE = Regex("^[A-Za-z0-9_-]{11}$")
     private val ID_SPOTIFY = Regex("^[A-Za-z0-9]{22}$")
 

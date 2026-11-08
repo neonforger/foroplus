@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- El reproductor de una playlist de Música (ReproductorMusica lo mete en su hueco, arriba de la
-     pantalla). Fondo OPACO: con Tarjetas el de la lista es gris y el reproductor no es una tarjeta.
+     pantalla). Cada parte pinta su propio fondo opaco (con Tarjetas el de la lista es gris y el
+     reproductor no es una tarjeta); la raíz no pinta nada para no pintar dos veces bajo la caja.
 
      - rep_caja: 16:9 a todo el ancho (CajaReproductor). En reposo enseña qué hacer; sonando, el
        EmbedView de YouTube va encima. Nada lo tapa mientras suena (YouTube visible y > 200×200).
@@ -11,8 +12,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:background="@color/fc_fondo">
+    android:orientation="vertical">
 
     <com.fcplus.forocoches.CajaReproductor
         android:id="@+id/rep_caja"
@@ -63,6 +63,7 @@
         android:paddingEnd="12dp"
         android:paddingTop="12dp"
         android:paddingBottom="4dp"
+        android:background="@color/fc_fondo"
         android:visibility="gone">
 
         <FrameLayout
@@ -88,6 +89,7 @@
         android:gravity="center_vertical"
         android:paddingStart="4dp"
         android:paddingEnd="4dp"
+        android:background="@color/fc_fondo"
         android:visibility="gone">
 
         <ImageView

@@ -3,6 +3,7 @@
      PlaylistAdapter), para que al bajar deje sitio a las canciones. Con el reproductor fijo arriba
      (16:9) y una cabecera también fija, la lista se quedaba en tres filas y media en el Samsung. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
@@ -18,8 +19,8 @@
         android:layout_marginStart="-8dp"
         android:paddingEnd="12dp"
         android:gravity="center_vertical"
-        android:drawableStart="@drawable/ic_atras"
-        android:drawableTint="@color/fc_texto_2"
+        app:drawableStartCompat="@drawable/ic_atras"
+        app:drawableTint="@color/fc_texto_2"
         android:text="Tus playlists"
         android:textSize="13sp"
         android:textColor="@color/fc_texto_2"
@@ -70,9 +71,9 @@
             style="@style/BotonPrimario"
             android:layout_width="wrap_content"
             android:paddingStart="18dp"
-            android:drawableStart="@drawable/ic_reproducir"
+            app:drawableStartCompat="@drawable/ic_reproducir"
             android:drawablePadding="6dp"
-            android:drawableTint="@color/fc_sobre_rojo"
+            app:drawableTint="@color/fc_sobre_rojo"
             android:text="Reproducir" />
 
         <!-- Compartir la playlist como texto: lo enciende y le da su acción A12. -->

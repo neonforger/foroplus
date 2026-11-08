@@ -115,7 +115,9 @@ class EmbedView(context: Context) : FrameLayout(context) {
      * los usan: ahí el comportamiento es el de siempre.
      */
     var alTerminar: (() -> Unit)? = null
-    var alFallar: ((codigo: Int) -> Unit)? = null
+
+    /** [video] es el id del vídeo al que se refiere el fallo: uno que llega tarde puede ser de otro. */
+    var alFallar: ((codigo: Int, video: String) -> Unit)? = null
 
     /**
      * Es el reproductor de la sección Música ([ReproductorMusica]), no un embed de un mensaje.
@@ -387,9 +389,11 @@ class EmbedView(context: Context) : FrameLayout(context) {
     fun cargarVideo(id: String) {
         if (!EstadoYoutube.idValido(id)) return
         val w = web ?: return
+        // vidActual pasa a ser el nuevo ANTES de pedirlo: un fallo que llegue ya es suyo.
         w.evaluateJavascript(
             """
             (function () {
+              try { vidActual = '$id'; vidFallado = ''; } catch (e) {}
               try {
                 var f = document.querySelector('iframe');
                 if (f && f.contentWindow) {
@@ -427,16 +431,16 @@ class EmbedView(context: Context) : FrameLayout(context) {
             post { alTerminar?.invoke() }
         }
 
-        /** YouTube no ha podido reproducir el vídeo; [codigo] es el de la API IFrame. */
+        /** YouTube no ha podido reproducir [video]; [codigo] es el de la API IFrame. */
         @JavascriptInterface
-        fun onFallo(codigo: Int) {
-            post { alFallar?.invoke(codigo) }
+        fun onFallo(codigo: Int, video: String) {
+            post { alFallar?.invoke(codigo, video) }
         }
 
         /** El fallo que YouTube cuenta por `videoData.errorCode` y no por onError (ver [EstadoYoutube.codigoDeError]). */
         @JavascriptInterface
-        fun onFalloYt(errorCode: String) {
-            post { alFallar?.invoke(EstadoYoutube.codigoDeError(errorCode)) }
+        fun onFalloYt(errorCode: String, video: String) {
+            post { alFallar?.invoke(EstadoYoutube.codigoDeError(errorCode), video) }
         }
 
         @JavascriptInterface
@@ -571,13 +575,15 @@ class EmbedView(context: Context) : FrameLayout(context) {
               // (1 = reproduciendo) por onStateChange y por infoDelivery.
               // Fallos: un vídeo que no se deja ver aquí cargado con loadVideoById NO da onError,
               // solo videoData.errorCode en infoDelivery (medido, ver EstadoYoutube.codigoDeError).
-              // Se avisa UNA vez por vídeo por cualquiera de las dos vías: dos avisos saltarían
-              // dos canciones.
-              var vidActual='', vidFallado='';
+              // Se avisa UNA vez por vídeo por cualquiera de las dos vías (dos avisos saltarían
+              // dos canciones) y con el id del vídeo, para que quien escucha descarte uno que
+              // llegue tarde. vidActual arranca con el vídeo montado (validado) y lo renueva
+              // videoData o cargarVideo.
+              var vidActual='${idYoutubeSeguro(spec)}', vidFallado='';
               function falloYt(aviso){
                 if(vidActual && vidActual === vidFallado) return;
                 vidFallado = vidActual || '?';
-                try{ aviso(); }catch(e){}
+                try{ aviso(vidActual); }catch(e){}
               }
               window.addEventListener('message',function(e){
                 try{
@@ -588,9 +594,9 @@ class EmbedView(context: Context) : FrameLayout(context) {
                   if(d.event === 'onStateChange') estadoYt(d.info);
                   else if(d.event === 'infoDelivery' && d.info &&
                           typeof d.info.playerState === 'number') estadoYt(d.info.playerState);
-                  else if(d.event === 'onError'){ var c=d.info|0; if(c) falloYt(function(){AndroidEmbed.onFallo(c);}); }
+                  else if(d.event === 'onError'){ var c=d.info|0; if(c) falloYt(function(v){AndroidEmbed.onFallo(c, v);}); }
                   if((d.event === 'infoDelivery' || d.event === 'initialDelivery') && vd && vd.errorCode){
-                    var ec=String(vd.errorCode); falloYt(function(){AndroidEmbed.onFalloYt(ec);});
+                    var ec=String(vd.errorCode); falloYt(function(v){AndroidEmbed.onFalloYt(ec, v);});
                   }
                 }catch(err){}
               });
@@ -611,6 +617,10 @@ class EmbedView(context: Context) : FrameLayout(context) {
         setColor(color)
         cornerRadius = dp(10).toFloat()
     }
+
+    /** El id de YouTube para meterlo en el JS, solo si es un id de verdad (nada de texto libre). */
+    private fun idYoutubeSeguro(spec: EmbedSpec) =
+        if (spec.kind == "youtube" && EstadoYoutube.idValido(spec.id)) spec.id else ""
 
     private fun esc(s: String) = s.replace("\\", "\\\\").replace("\"", "&quot;")
         .replace("<", "&lt;").replace(">", "&gt;")

@@ -43,4 +43,52 @@ object ColaMusica {
 
     private fun paso(fuentes: List<FuenteMusica>, i: Int): Paso =
         if (fuentes[i] == FuenteMusica.SPOTIFY) Paso.ParadaSpotify(i) else Paso.Reproducir(i)
+
+    /**
+     * La lista ha cambiado debajo del reproductor (reordenar, quitar). [claveActual] es la
+     * canción cargada (o la del "Seguir con…" si está parado) y [indiceAntes] su posición en la
+     * lista vieja; [claves], [fuentes] y [saltar] son ya de la lista nueva.
+     *
+     * - Si sigue en la lista, se sigue con ella donde haya quedado.
+     * - Si la que se ha quitado es la que SUENA, entra la que ocupa su sitio (lo que se ha
+     *   quitado no tiene por qué seguir oyéndose).
+     * - Parado, el "Seguir con…" apunta a la que ocupe su sitio, sin salirse de la lista.
+     */
+    fun reubicar(
+        claveActual: String?,
+        indiceAntes: Int,
+        claves: List<String>,
+        fuentes: List<FuenteMusica>,
+        saltar: Set<Int>,
+        sonando: Boolean
+    ): Reubicar {
+        val ahora = if (claveActual == null) -1 else claves.indexOf(claveActual)
+        return when {
+            ahora >= 0 -> Reubicar.Sigue(ahora)
+            sonando -> Reubicar.Sustituir(siguiente(fuentes, indiceAntes - 1, saltar))
+            else -> Reubicar.Parado(minOf(indiceAntes, claves.size - 1))
+        }
+    }
+
+    /**
+     * Desde dónde sigue el reproductor en reposo: donde iba, o desde el principio si no iba por
+     * ninguna o ya se acabó la playlist. Null si no hay nada que escuchar.
+     */
+    fun seguirDesde(total: Int, actual: Int, acabada: Boolean): Int? = when {
+        total <= 0 -> null
+        acabada || actual < 0 -> 0
+        else -> minOf(actual, total - 1)
+    }
+}
+
+/** Qué hace el reproductor cuando la lista cambia debajo de él (ver [ColaMusica.reubicar]). */
+sealed class Reubicar {
+    /** La canción cargada sigue en la lista, ahora en [indice]. */
+    data class Sigue(val indice: Int) : Reubicar()
+
+    /** Se ha quitado la que sonaba: toca [paso] (la que ocupa su sitio, o el final). */
+    data class Sustituir(val paso: Paso) : Reubicar()
+
+    /** Parado: el "Seguir con…" apunta a [indice] (-1 si no queda ninguna). */
+    data class Parado(val indice: Int) : Reubicar()
 }

@@ -62,4 +62,51 @@ class ColaMusicaTest {
         assertEquals(Fin, ColaMusica.anterior(lista, -1, NADA))
         assertEquals(Reproducir(1), ColaMusica.anterior(lista, 9, setOf(3, 2)))
     }
+
+    // ── Cuando la lista cambia debajo del reproductor (reordenar, quitar) ──────
+
+    private val claves = listOf("youtube:a", "youtube:b", "spotify:c", "youtube:d")
+
+    @Test
+    fun reubicarConLaCargadaTodaviaEnLaListaLaSigue() {
+        // Sonando "youtube:b" (estaba en 1) y se ha movido al final.
+        val nuevas = listOf("youtube:a", "spotify:c", "youtube:d", "youtube:b")
+        assertEquals(Reubicar.Sigue(3), ColaMusica.reubicar("youtube:b", 1, nuevas, listOf(YT, SP, YT, YT), NADA, sonando = true))
+        assertEquals(Reubicar.Sigue(3), ColaMusica.reubicar("youtube:b", 1, nuevas, listOf(YT, SP, YT, YT), NADA, sonando = false))
+    }
+
+    @Test
+    fun reubicarSiSeQuitaLaQueSuenaEntraLaQueOcupaSuSitio() {
+        // Sonando "youtube:b" en 1; se quita: en 1 queda Spotify, que es una parada.
+        val nuevas = listOf("youtube:a", "spotify:c", "youtube:d")
+        assertEquals(Reubicar.Sustituir(ParadaSpotify(1)),
+            ColaMusica.reubicar("youtube:b", 1, nuevas, listOf(YT, SP, YT), NADA, sonando = true))
+        // La que ocupa su sitio no se puede oír aquí: la siguiente.
+        assertEquals(Reubicar.Sustituir(Reproducir(2)),
+            ColaMusica.reubicar("youtube:b", 1, nuevas, listOf(YT, SP, YT), setOf(1), sonando = true))
+        // Era la última: se acabó.
+        assertEquals(Reubicar.Sustituir(Fin),
+            ColaMusica.reubicar("youtube:d", 3, claves.dropLast(1), listOf(YT, YT, SP), NADA, sonando = true))
+    }
+
+    @Test
+    fun reubicarParadoSeQuedaEnElMismoSitioSinSalirseDeLaLista() {
+        // Parado con "Seguir con youtube:d" (3) y se quita: apunta a la que quede en su sitio o antes.
+        assertEquals(Reubicar.Parado(2), ColaMusica.reubicar("youtube:d", 3, claves.dropLast(1), listOf(YT, YT, SP), NADA, sonando = false))
+        assertEquals(Reubicar.Parado(1), ColaMusica.reubicar("youtube:b", 1, listOf("youtube:a", "spotify:c", "youtube:d"), listOf(YT, SP, YT), NADA, sonando = false))
+        // Sin ninguna cargada, ninguna; y una lista vaciada se queda sin posición.
+        assertEquals(Reubicar.Parado(-1), ColaMusica.reubicar(null, -1, claves, lista, NADA, sonando = false))
+        assertEquals(Reubicar.Parado(-1), ColaMusica.reubicar("youtube:a", 0, emptyList(), emptyList(), NADA, sonando = false))
+    }
+
+    @Test
+    fun seguirDesdeDondeIbaOEmpezarDeNuevo() {
+        assertEquals(2, ColaMusica.seguirDesde(total = 4, actual = 2, acabada = false))
+        assertEquals(0, ColaMusica.seguirDesde(total = 4, actual = -1, acabada = false))
+        // Se acabó la playlist: volver a empezar.
+        assertEquals(0, ColaMusica.seguirDesde(total = 4, actual = 3, acabada = true))
+        // Una posición que ya no existe no se sale de la lista.
+        assertEquals(1, ColaMusica.seguirDesde(total = 2, actual = 5, acabada = false))
+        assertEquals(null, ColaMusica.seguirDesde(total = 0, actual = 0, acabada = false))
+    }
 }

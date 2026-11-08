@@ -36,18 +36,33 @@ class PlaylistAdapter(
     private var sonando: String? = null
     private var fallidas: Set<String> = emptySet()
 
+    /**
+     * ¿Hay una canción agarrada? Se pone en cuanto se coge (onSelectedChanged), no en el
+     * primer movimiento: entre coger y mover también puede llegar un repintado (una canción que
+     * acaba, una portada) y rebindear la fila agarrada la descuadra.
+     */
+    private var arrastrando = false
+
     /** Posición (de canción) donde empezó el arrastre en curso; -1 si no se arrastra. */
     private var desdeArrastre = -1
+
+    /** Lo que llegó durante el arrastre, para aplicarlo al soltar. */
+    private var pinturaPendiente: Pair<String, List<Cancion>>? = null
+    private var marcasPendientes: Pair<String?, Set<String>>? = null
+    private var portadasPendientes = false
 
     lateinit var touchHelper: ItemTouchHelper
 
     /** Lo que se ve ahora mismo (con un arrastre a medias, el orden que lleva el dedo). */
     fun canciones(): List<Cancion> = canciones.toList()
 
+    /** El nombre de la playlist que se está pintando. */
+    fun nombre(): String = pinturaPendiente?.first ?: nombre
+
     @SuppressLint("NotifyDataSetChanged")
     fun pintar(nombre: String, nuevas: List<Cancion>) {
         // A media faena no: el arrastre lleva su propia copia y sustituirla lo descuadraría.
-        if (desdeArrastre >= 0) return
+        if (arrastrando) { pinturaPendiente = nombre to nuevas; return }
         this.nombre = nombre
         canciones.clear()
         canciones.addAll(nuevas)
@@ -56,6 +71,7 @@ class PlaylistAdapter(
 
     /** La que suena (su clave) y las que YouTube no deja oír aquí. */
     fun marcar(sonandoAhora: String?, noSeOyen: Set<String>) {
+        if (arrastrando) { marcasPendientes = sonandoAhora to noSeOyen.toSet(); return }
         if (sonandoAhora == sonando && noSeOyen == fallidas) return
         val antes = sonando
         sonando = sonandoAhora
@@ -164,8 +180,10 @@ class PlaylistAdapter(
         h.portada.setPadding(pad, pad, pad, pad)
         h.portada.imageTintList = ContextCompat.getColorStateList(h.itemView.context, R.color.fc_rojo)
         if (url != null) PostImages.load(url) {
-            // Llega en el hilo de la interfaz. Se repinta la fila de ESA canción, esté donde esté.
-            if (desdeArrastre < 0) posicionDe(c.ref.clave)?.let { notifyItemChanged(it) }
+            // Llega en el hilo de la interfaz. Se repinta la fila de ESA canción, esté donde esté
+            // (con una agarrada, al soltar).
+            if (arrastrando) portadasPendientes = true
+            else posicionDe(c.ref.clave)?.let { notifyItemChanged(it) }
         }
     }
 
@@ -186,7 +204,6 @@ class PlaylistAdapter(
         override fun onMove(rv: RecyclerView, vh: RecyclerView.ViewHolder, destino: RecyclerView.ViewHolder): Boolean {
             val de = posicion(vh) ?: return false
             val a = posicion(destino) ?: return false
-            if (desdeArrastre < 0) desdeArrastre = de
             canciones.add(a, canciones.removeAt(de))
             notifyItemMoved(de + 1, a + 1)
             return true
@@ -199,6 +216,8 @@ class PlaylistAdapter(
         override fun onSelectedChanged(vh: RecyclerView.ViewHolder?, estado: Int) {
             super.onSelectedChanged(vh, estado)
             if (estado != ItemTouchHelper.ACTION_STATE_DRAG || vh !is Fila) return
+            arrastrando = true
+            desdeArrastre = posicion(vh) ?: -1
             // En la Compacta la fila es transparente (solo la onda): arrastrada por encima de las
             // otras se leerían los dos textos a la vez. En Tarjetas la tarjeta ya es opaca.
             val v = vh.itemView
@@ -216,10 +235,32 @@ class PlaylistAdapter(
                 vh.fondoAntes?.let { vh.itemView.background = it }
                 vh.fondoAntes = null
             }
+            if (!arrastrando || desdeArrastre == SOLTANDO) return
             val desde = desdeArrastre
-            desdeArrastre = -1
-            val hasta = posicion(vh) ?: return
-            if (desde >= 0 && desde != hasta) alMover(desde, hasta)
+            desdeArrastre = SOLTANDO
+            val hasta = posicion(vh)
+            // En el frame siguiente: clearView puede correr dentro de la animación de soltar, y
+            // ahí la lista no admite avisos de cambios. Hasta entonces lo que llegue se sigue
+            // guardando para después.
+            rv.post {
+                arrastrando = false
+                desdeArrastre = -1
+                val pintura = pinturaPendiente
+                val marcas = marcasPendientes
+                val portadas = portadasPendientes
+                pinturaPendiente = null
+                marcasPendientes = null
+                portadasPendientes = false
+                if (desde >= 0 && hasta != null && desde != hasta) {
+                    // Lo que llegó a medias ya es viejo (el orden de antes): quien escucha guarda
+                    // el nuevo y vuelve a pintar con lo guardado.
+                    alMover(desde, hasta)
+                } else if (pintura != null) {
+                    pintar(pintura.first, pintura.second)
+                }
+                marcas?.let { marcar(it.first, it.second) }
+                if (portadas) notifyItemRangeChanged(1, canciones.size)
+            }
         }
     }
 
@@ -253,5 +294,8 @@ class PlaylistAdapter(
     private companion object {
         const val CABECERA = 0
         const val CANCION = 1
+
+        /** desdeArrastre entre soltar y el frame en que se aplica lo pendiente. */
+        const val SOLTANDO = -2
     }
 }

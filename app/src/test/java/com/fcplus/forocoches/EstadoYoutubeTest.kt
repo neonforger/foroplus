@@ -48,6 +48,16 @@ class EstadoYoutubeTest {
         assertFalse(EstadoYoutube.noIncrustable(otro))
     }
 
+    @Test fun `solo lo que no se puede oir aqui queda marcado para la sesion`() {
+        // 100 (borrado o privado), 101/150 (no deja incrustarlo) y "auth": por mucho que se
+        // reintente no va a sonar aquí, así que la tarjeta ofrece abrirla fuera.
+        for (c in listOf(100, 101, 150, EstadoYoutube.codigoDeError("auth")))
+            assertTrue("codigo $c", EstadoYoutube.noSeOyeAqui(c))
+        // 2, 5 y cualquier otro errorCode pueden ser de un momento: se salta sin marcarla.
+        for (c in listOf(2, 5, EstadoYoutube.codigoDeError("net.badstatus")))
+            assertFalse("codigo $c", EstadoYoutube.noSeOyeAqui(c))
+    }
+
     @Test fun `ids de Spotify son 22 caracteres base62`() {
         assertTrue(EstadoYoutube.idSpotifyValido("4uLU6hMCjMI75M1A2tKUQC"))
         assertFalse(EstadoYoutube.idSpotifyValido("4uLU6hMCjMI75M1A2tKUQ"))

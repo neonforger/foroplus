@@ -20,8 +20,9 @@ import android.widget.TextView
  *   ([EmbedView.cargarVideo], medido en el spec): sin un WebView por canción.
  * - **Spotify** solo deja 30 s dentro de la app: su reproductor oficial y "Escuchar entera en
  *   Spotify". La cola se para ahí; la siguiente, con el botón de la barra o tocándola.
- * - **No incrustable** (101/150, y los demás errores reales de YouTube): se apunta en
- *   [fallidas], se salta, y la tarjeta ofrece abrirla fuera.
+ * - **No incrustable, borrada o privada** (101/150/100, o el "auth" de `videoData.errorCode`):
+ *   se apunta en [fallidas], se salta, y la tarjeta ofrece abrirla fuera. Los demás errores de
+ *   YouTube solo la saltan esa vez (ver [EstadoYoutube.noSeOyeAqui]).
  *
  * Reglas que manda el spec, y por qué está hecho así:
  * - **YouTube a la vista y de más de 200×200 px mientras suena.** La caja va fuera de la lista
@@ -127,16 +128,15 @@ class ReproductorMusica(
         val clave = cola.getOrNull(actual)?.ref?.clave
         val antes = actual
         cola = canciones
-        val ahora = if (clave == null) -1 else canciones.indexOfFirst { it.ref.clave == clave }
-        when {
-            ahora >= 0 -> {
-                actual = ahora
+        when (val r = ColaMusica.reubicar(clave, antes, cola.map { it.ref.clave }, fuentes(), saltar(), enMarcha)) {
+            is Reubicar.Sigue -> {
+                actual = r.indice
                 pintar()
                 if (enMarcha) alCambiar?.invoke(actual)
             }
-            enMarcha -> irA(ColaMusica.siguiente(fuentes(), antes - 1, saltar()))
-            else -> {
-                actual = minOf(antes, cola.size - 1)
+            is Reubicar.Sustituir -> irA(r.paso)
+            is Reubicar.Parado -> {
+                actual = r.indice
                 pintar()
             }
         }
@@ -177,7 +177,7 @@ class ReproductorMusica(
             val e = yt ?: EmbedView(hueco.context).also { nuevo ->
                 nuevo.deMusica = true
                 nuevo.alTerminar = { if (youtube === nuevo) irA(ColaMusica.siguiente(fuentes(), actual, saltar())) }
-                nuevo.alFallar = { codigo -> if (youtube === nuevo) fallo(codigo) }
+                nuevo.alFallar = { codigo, video -> if (youtube === nuevo) fallo(codigo, video) }
                 caja.addView(nuevo, FrameLayout.LayoutParams(
                     FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT
                 ))
@@ -205,23 +205,22 @@ class ReproductorMusica(
     }
 
     /**
-     * YouTube no puede con el vídeo. `onFallo(0)` y compañía NO son errores (A8): solo los
-     * códigos de la API. 101/150 (no deja incrustarlo) es el caso del spec; 100 (borrado o
-     * privado), 2 y 5 tampoco se pueden oír aquí, así que se tratan igual: se saltan, y fuera
-     * YouTube dirá por qué.
+     * YouTube no puede con el vídeo [video]. `onFallo(0)` y compañía NO son errores (A8): solo
+     * los códigos de la API. Un aviso que llega tarde, de un vídeo que ya no es el cargado, no
+     * toca nada: si no, marcaría y saltaría la canción equivocada. Lo que no va a sonar aquí
+     * nunca ([EstadoYoutube.noSeOyeAqui]) se marca para la sesión; lo demás solo se salta.
      */
-    private fun fallo(codigo: Int) {
+    private fun fallo(codigo: Int, video: String) {
         if (!EstadoYoutube.esError(codigo)) return
         val c = cola.getOrNull(actual) ?: return
-        if (c.ref.fuente != FuenteMusica.YOUTUBE) return
-        noSeOyen.add(c.ref.clave)
+        if (c.ref.fuente != FuenteMusica.YOUTUBE || c.ref.id != video) return
+        if (EstadoYoutube.noSeOyeAqui(codigo)) noSeOyen.add(c.ref.clave)
         irA(ColaMusica.siguiente(fuentes(), actual, saltar()))
     }
 
     /** El reposo: seguir por donde iba, o desde el principio. */
     private fun seguir() {
-        if (cola.isEmpty()) return
-        reproducir(cola, if (acabada || actual < 0) 0 else actual)
+        ColaMusica.seguirDesde(cola.size, actual, acabada)?.let { reproducir(cola, it) }
     }
 
     /**
@@ -271,12 +270,20 @@ class ReproductorMusica(
 
     companion object {
         /**
-         * Alto de la caja del vídeo: 16:9 del ancho. En horizontal eso no cabe (el vídeo se
-         * comería el panel y la lista se quedaría sin sitio): como mucho el 55 % del alto de la
-         * pantalla, y YouTube pone bandas a los lados.
+         * Alto de la caja del vídeo: 16:9 del ancho. En horizontal eso no cabe: como mucho el
+         * 55 % del alto de la pantalla y, si el padre dice cuánto hay ([disponible]), lo que
+         * quede tras [reserva] (la barra y una canción de la lista; sin eso la lista se quedaba
+         * en 0 px). YouTube pone bandas a los lados. Pero el vídeo no baja de [minimo] mientras
+         * quepa: antes que un vídeo invisible sonando, una lista corta.
          */
-        fun altoCaja(ancho: Int, altoPantalla: Int): Int =
-            minOf(ancho * 9 / 16, (altoPantalla * 0.55f).toInt())
+        fun altoCaja(ancho: Int, altoPantalla: Int, disponible: Int?, reserva: Int, minimo: Int): Int {
+            var alto = minOf(ancho * 9 / 16, (altoPantalla * 0.55f).toInt())
+            if (disponible != null) {
+                alto = minOf(alto, disponible - reserva)
+                alto = maxOf(alto, minOf(minimo, disponible))
+            }
+            return alto.coerceAtLeast(0)
+        }
     }
 }
 
@@ -288,10 +295,25 @@ class CajaReproductor @JvmOverloads constructor(
 
     override fun onMeasure(anchoSpec: Int, altoSpec: Int) {
         val ancho = MeasureSpec.getSize(anchoSpec)
-        val alto = ReproductorMusica.altoCaja(ancho, resources.displayMetrics.heightPixels)
+        // Lo que deja el panel (AT_MOST/EXACTLY); sin límite, nada que recortar.
+        val disponible = if (MeasureSpec.getMode(altoSpec) == MeasureSpec.UNSPECIFIED) null
+            else MeasureSpec.getSize(altoSpec)
+        val dp = resources.displayMetrics.density
+        val alto = ReproductorMusica.altoCaja(
+            ancho, resources.displayMetrics.heightPixels, disponible,
+            reserva = ((BARRA_DP + FILA_DP) * dp).toInt(), minimo = (MINIMO_DP * dp).toInt()
+        )
         super.onMeasure(
             MeasureSpec.makeMeasureSpec(ancho, MeasureSpec.EXACTLY),
             MeasureSpec.makeMeasureSpec(alto, MeasureSpec.EXACTLY)
         )
+    }
+
+    private companion object {
+        /** La barra de lo que suena (rep_barra, minHeight). */
+        const val BARRA_DP = 56
+        /** Una canción de la lista (item_cancion, minHeight). */
+        const val FILA_DP = 68
+        const val MINIMO_DP = 90
     }
 }
