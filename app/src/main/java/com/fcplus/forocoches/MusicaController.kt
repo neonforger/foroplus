@@ -70,12 +70,13 @@ class MusicaController(
      */
     fun atras(): Boolean = false
 
-    /**
-     * La hoja "Añadir" (A10), con [texto] ya pegado si llega de Compartir (A12). Hasta A10, el
-     * "+" no hace nada.
-     */
-    @Suppress("UNUSED_PARAMETER") // lo usa A10
-    fun abrirAnadir(texto: String?) {}
+    /** La hoja "Añadir" (A10), con [texto] ya pegado si llega de Compartir (A12). */
+    fun abrirAnadir(texto: String?) {
+        HojaAnadirMusica(act, almacen) { mensaje ->
+            android.widget.Toast.makeText(act, mensaje, android.widget.Toast.LENGTH_LONG).show()
+            if (visible) pintarPortada()
+        }.mostrar(texto)
+    }
 
     private fun pintarPortada() {
         val playlists = almacen.estado().playlists

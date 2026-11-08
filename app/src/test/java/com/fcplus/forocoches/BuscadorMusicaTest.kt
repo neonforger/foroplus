@@ -57,4 +57,12 @@ class BuscadorMusicaTest {
         assertNull(BuscadorMusica.portadaDePagina("""<meta property="og:image" content="https://evil.com/a.jpg">"""))
         assertNull(BuscadorMusica.portadaDePagina("<html></html>"))
     }
+
+    @Test fun redireccionSoloAHostsAceptados() {
+        assertEquals("https://open.spotify.com/intl-es/track/x", BuscadorMusica.redireccion("https://open.spotify.com/track/x", "/intl-es/track/x"))
+        assertEquals("https://open.spotify.com/b", BuscadorMusica.redireccion("https://open.spotify.com/a", "https://open.spotify.com/b"))
+        assertNull(BuscadorMusica.redireccion("https://open.spotify.com/a", "https://evil.example/b"))
+        assertNull(BuscadorMusica.redireccion("https://open.spotify.com/a", "http://open.spotify.com/b"))
+        assertNull(BuscadorMusica.redireccion("https://open.spotify.com/a", null))
+    }
 }

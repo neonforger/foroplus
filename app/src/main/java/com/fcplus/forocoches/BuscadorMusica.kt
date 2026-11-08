@@ -12,7 +12,7 @@ import java.net.URLEncoder
  * Solo habla con los hosts de [HOSTS] por https, **sin cookies ni nada del usuario** (no se toca
  * `CookieHandler` y no se pone cabecera `Cookie`): lección del gotcha 55, la cookie de FC viajaba a
  * cualquier URL que contuviera el dominio. Aquí el host se compara EXACTO, sin sufijos ni
- * userinfo ni puerto raro, y las redirecciones no se siguen salvo en [resolverCorto], que las sigue
+ * userinfo ni puerto raro, y las redirecciones no se siguen salvo en [resolverCorto] y al leer la página ([descargar], hasta 3), que las siguen
  * a mano comprobando cada salto. Las funciones de red bloquean: llamarlas fuera del hilo principal.
  * Lo que decide (hosts, URLs) va puro y con tests; la red no se prueba por diseño.
  */
@@ -103,11 +103,28 @@ object BuscadorMusica {
         null
     }
 
-    /** El cuerpo (máx. 1 MB) de un 200; null en cualquier otro caso. Sin redirecciones. */
-    private fun descargar(url: String): String? {
+    /**
+     * Dónde lleva un `Location` desde [desde]: la URL absoluta si sigue siendo un host aceptado
+     * (https, exacto), null si no. Spotify manda a `open.spotify.com/intl-es/…` cuando la petición
+     * lleva `Accept-Language: es` (medido 2026-11-08): sin seguir ese salto no había artista.
+     */
+    fun redireccion(desde: String, location: String?): String? = try {
+        location?.let { URL(URL(desde), it).toString() }?.takeIf { aceptada(it) }
+    } catch (e: Exception) {
+        null
+    }
+
+    /** El cuerpo (máx. 1 MB) de un 200; null en cualquier otro caso. Sigue hasta [SALTOS] redirecciones a hosts aceptados, sin cookies. */
+    private fun descargar(url: String, saltos: Int = SALTOS): String? {
         val conn = abrir(url, "GET") ?: return null
         return try {
-            if (conn.responseCode != 200) null
+            val codigo = conn.responseCode
+            if (codigo in 301..303 || codigo == 307 || codigo == 308) {
+                val destino = if (saltos > 0) redireccion(url, conn.getHeaderField("Location")) else null
+                conn.disconnect()
+                return destino?.let { descargar(it, saltos - 1) }
+            }
+            if (codigo != 200) null
             else conn.inputStream.use { entrada ->
                 val salida = ByteArrayOutputStream()
                 val buf = ByteArray(8 * 1024)
