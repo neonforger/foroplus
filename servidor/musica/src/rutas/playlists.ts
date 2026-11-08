@@ -5,7 +5,7 @@
 // Las canciones las pone el servidor (`cancionDeEnlace`, la misma identidad que la semana): lo que
 // manda la app son enlaces, nunca títulos. Máximo 10 enlaces por petición: con 3 subpeticiones por
 // canción nueva son 30 de las 50 que da el plan gratuito.
-import type { Contexto, Deps, Ruta } from "../app";
+import type { Contexto, Deps, OpcionesApp, Ruta } from "../app";
 import { yo, type Cuenta } from "../auth";
 import { cancionDeEnlace, cancionPub, COLUMNAS_CANCION, type FilaCancion } from "../canciones";
 import { nuevoId, RE_ULID } from "../cripto";
@@ -57,12 +57,12 @@ function enlacesDe(cuerpo: Record<string, unknown> | null): string[] | Response 
  * que el de proponer; si se agota, 429 y la playlist no se toca.
  */
 async function resolver(
-  d: Deps, cuenta: Cuenta, ahora: Date, enlaces: string[],
+  d: Deps, cuenta: Cuenta, ahora: Date, enlaces: string[], tarjetasHora?: number,
 ): Promise<{ ids: string[]; fallidas: string[] } | Response> {
   const ids: string[] = [];
   const fallidas: string[] = [];
   for (const e of enlaces) {
-    const r = await cancionDeEnlace(d, e, () => puedeMontarTarjeta(d.db, cuenta.id, ahora));
+    const r = await cancionDeEnlace(d, e, () => puedeMontarTarjeta(d.db, cuenta.id, ahora, tarjetasHora));
     if ("error" in r) {
       if (r.error === "limite") return error("limite", 429);
       fallidas.push(e);
@@ -73,7 +73,7 @@ async function resolver(
   return { ids, fallidas };
 }
 
-async function publicar(c: Contexto): Promise<Response> {
+async function publicar(c: Contexto, tarjetasHora?: number): Promise<Response> {
   const cuenta = yo(c);
   const d = c.deps;
   const cuerpo = await cuerpoJson(c.req, MAX_CUERPO);
@@ -89,7 +89,7 @@ async function publicar(c: Contexto): Promise<Response> {
     .first<{ n: number }>();
   if ((n?.n ?? 0) >= MAX_PLAYLISTS) return error("tope", 429);
   const ahora = d.ahora();
-  const r = await resolver(d, cuenta, ahora, enlaces);
+  const r = await resolver(d, cuenta, ahora, enlaces, tarjetasHora);
   if (r instanceof Response) return r;
   const id = nuevoId(ahora);
   // El tope va dentro del INSERT: dos publicaciones a la vez no pasan de 50.
@@ -104,7 +104,7 @@ async function publicar(c: Contexto): Promise<Response> {
   return json({ id, canciones: r.ids.length, fallidas: r.fallidas }, 200, SIN_CACHE);
 }
 
-async function ampliar(c: Contexto): Promise<Response> {
+async function ampliar(c: Contexto, tarjetasHora?: number): Promise<Response> {
   const cuenta = yo(c);
   const d = c.deps;
   const id = c.params.id;
@@ -116,7 +116,7 @@ async function ampliar(c: Contexto): Promise<Response> {
   if (!(await propia())) return error("no_existe", 404);
   const enlaces = enlacesDe(await cuerpoJson(c.req, MAX_CUERPO));
   if (enlaces instanceof Response) return enlaces;
-  const r = await resolver(d, cuenta, d.ahora(), enlaces);
+  const r = await resolver(d, cuenta, d.ahora(), enlaces, tarjetasHora);
   if (r instanceof Response) return r;
   // Leer, mezclar y escribir solo si nadie la tocó entre medias (compara el texto viejo): dos
   // ampliaciones a la vez no se pisan; la que pierde relee y repite.
@@ -373,20 +373,25 @@ async function borrarCuenta(c: Contexto): Promise<Response> {
     db.prepare("DELETE FROM retos WHERE uid_hmac = (SELECT uid_hmac FROM cuentas WHERE id = ?1)").bind(yoId),
     db.prepare("DELETE FROM limites WHERE clave IN ('tarjeta:' || ?1, 'denuncia:' || ?1)").bind(yoId),
     db.prepare("DELETE FROM tokens WHERE cuenta = ?1").bind(yoId),
-    db.prepare("DELETE FROM cuentas WHERE id = ?1").bind(yoId),
+    // Una cuenta baneada NO desaparece del todo: queda una LÁPIDA con solo id, uid_hmac y baneada = 1
+    // (sin nombre, registro ni fechas) para que volver a verificar la misma cuenta de FC siga dando
+    // 403 baneada; si no, borrar la cuenta levantaría el baneo. Se avisa en la política de privacidad
+    // como "un registro mínimo para hacer cumplir los baneos".
+    db.prepare("DELETE FROM cuentas WHERE id = ?1 AND COALESCE(baneada, 0) = 0").bind(yoId),
+    db.prepare("UPDATE cuentas SET nombre = '', registro_fc = NULL, creada = NULL, ultima_verif = NULL WHERE id = ?1").bind(yoId),
   ]);
   return json({ ok: true }, 200, SIN_CACHE);
 }
 
-export function rutasPlaylists(): Ruta[] {
+export function rutasPlaylists(o: OpcionesApp = {}): Ruta[] {
   return [
-    ["POST", "/v1/playlists", publicar, "cuenta"],
+    ["POST", "/v1/playlists", (c) => publicar(c, o.tarjetasHora), "cuenta"],
     ["GET", "/v1/playlists", listar, "publica"],
     ["GET", "/v1/playlists/:id", detalle, "publica"],
     ["DELETE", "/v1/playlists/:id", borrar, "cuenta"],
-    ["POST", "/v1/playlists/:id/canciones", ampliar, "cuenta"],
+    ["POST", "/v1/playlists/:id/canciones", (c) => ampliar(c, o.tarjetasHora), "cuenta"],
     ["POST", "/v1/playlists/:id/guardar", guardar, "cuenta"],
     ["POST", "/v1/denuncias", denunciar, "cuenta"],
-    ["DELETE", "/v1/cuenta", borrarCuenta, "cuenta"],
+    ["DELETE", "/v1/cuenta", borrarCuenta, "cuenta_o_baneada"],
   ];
 }

@@ -315,22 +315,24 @@ describe("POST /v1/semana/proponer", () => {
 
   it("los enlaces nuevos que obligan a pedir fuera tienen un límite por cuenta y hora -> 429 limite", async () => {
     const yo = await shur();
+    // Tope bajado a 5 (el real es de 200 por hora) para no hacer 200 propuestas.
+    const bajo = (ms = 0) => crearApp(deps({ ahora: () => new Date(T0 + ms) }), { tarjetasHora: 5 });
     // Vídeos que no existen: no gastan propuesta, pero cada uno cuesta peticiones fuera.
-    for (let n = 0; n < 20; n++) {
-      const r = await proponer(yo, "https://www.youtube.com/watch?v=noexiste" + String(n).padStart(3, "0"));
+    for (let n = 0; n < 5; n++) {
+      const r = await proponer(yo, "https://www.youtube.com/watch?v=noexiste" + String(n).padStart(3, "0"), bajo());
       expect(r.status).toBe(422);
     }
     const pedidasAntes = pedidas.length;
-    const r = await proponer(yo, tema(1));
+    const r = await proponer(yo, tema(1), bajo());
     expect(r.status).toBe(429);
     expect(r.cuerpo).toEqual({ error: "limite" });
     expect(pedidas).toHaveLength(pedidasAntes);
     // Lo que ya está en la base no pide nada fuera y no lo frena el límite.
     const otro = await shur();
     await propuesta(otro, tema(2));
-    expect((await proponer(yo, tema(2))).cuerpo.yaEstaba).toBe(true);
+    expect((await proponer(yo, tema(2), bajo())).cuerpo.yaEstaba).toBe(true);
     // A la hora siguiente vuelve a poder.
-    expect((await proponer(yo, tema(1), en(60 * MIN))).status).toBe(200);
+    expect((await proponer(yo, tema(1), bajo(60 * MIN))).status).toBe(200);
   });
 });
 

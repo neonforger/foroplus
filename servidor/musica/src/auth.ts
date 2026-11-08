@@ -18,7 +18,7 @@ export interface Cuenta {
 const RE_BEARER = /^Bearer ([A-Za-z0-9_-]{43})$/i;
 
 /** La cuenta del `Authorization: Bearer`, o la respuesta de error: 401 token / 403 baneada. */
-export async function cuentaDe(req: Request, d: Deps): Promise<Cuenta | Response> {
+export async function cuentaDe(req: Request, d: Deps, permitirBaneada = false): Promise<Cuenta | Response> {
   const m = RE_BEARER.exec(req.headers.get("Authorization") ?? "");
   if (!m) return error("token", 401);
   const fila = await d.db
@@ -30,7 +30,7 @@ export async function cuentaDe(req: Request, d: Deps): Promise<Cuenta | Response
     .first<{ id: string; nombre: string; registro_fc: string | null; baneada: number; caduca: number }>();
   if (!fila || !(d.ahora().getTime() < fila.caduca)) return error("token", 401);
   // Banear no borra los tokens: los deja sin valor mientras dure el baneo.
-  if (fila.baneada) return error("baneada", 403);
+  if (fila.baneada && !permitirBaneada) return error("baneada", 403);
   return { id: fila.id, nombre: fila.nombre, registro: fila.registro_fc };
 }
 
@@ -58,6 +58,8 @@ export async function acceder(acceso: Acceso, req: Request, d: Deps): Promise<Cu
       return null;
     case "cuenta":
       return cuentaDe(req, d);
+    case "cuenta_o_baneada":
+      return cuentaDe(req, d, true);
     case "lector":
       return (await secretoValido(req.headers.get("X-Lector"), d.lectorSecreto)) ? null : error("lector", 401);
     default:

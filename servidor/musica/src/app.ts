@@ -20,6 +20,8 @@ export interface Deps {
 export interface OpcionesApp {
   /** Tope global de lecturas de fichas de FC por hora; sin él, `LECTURAS_FC_HORA` (600). */
   lecturasFcHora?: number;
+  /** Tope de enlaces nuevos por cuenta y hora (proponer y playlists); sin él, `TARJETAS_POR_HORA`. */
+  tarjetasHora?: number;
 }
 
 export interface App {
@@ -27,7 +29,8 @@ export interface App {
   programado(cron: string): Promise<void>;
 }
 
-export type Acceso = "publica" | "cuenta" | "admin" | "lector";
+/** "cuenta_o_baneada": como "cuenta" pero deja pasar a una cuenta baneada (solo para borrar la propia). */
+export type Acceso = "publica" | "cuenta" | "cuenta_o_baneada" | "admin" | "lector";
 
 export interface Contexto {
   req: Request;
@@ -64,7 +67,7 @@ function casar(patron: string, ruta: string): Record<string, string> | null {
 }
 
 function rutas(o: OpcionesApp): Ruta[] {
-  return [["GET", "/v1/salud", () => json({ ok: true }), "publica"], ...rutasVerificacion(o), ...rutasSemana(), ...rutasPlaylists()];
+  return [["GET", "/v1/salud", () => json({ ok: true }), "publica"], ...rutasVerificacion(o), ...rutasSemana(o), ...rutasPlaylists(o)];
 }
 
 export function crearApp(d: Deps, o: OpcionesApp = {}): App {

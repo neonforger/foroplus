@@ -4,7 +4,7 @@
 // servidor no pueden discrepar sobre si alguien puede votar.
 // El recuento de la semana en curso no sale nunca (ni a quien vota): solo el orden. Los números se
 // ven al cerrar.
-import type { Contexto, Deps, Ruta } from "../app";
+import type { Contexto, Deps, OpcionesApp, Ruta } from "../app";
 import { cuentaDe, permisoVoto, yo, type Cuenta } from "../auth";
 import { cancionDeEnlace, cancionPub, COLUMNAS_CANCION, type FilaCancion } from "../canciones";
 import { RE_ULID } from "../cripto";
@@ -75,7 +75,7 @@ async function verSemana(c: Contexto): Promise<Response> {
   return json({ actual: { id: semana, cierra: finDeSemana(semana), canciones }, anterior: ant }, 200, cabeceras);
 }
 
-async function proponer(c: Contexto): Promise<Response> {
+async function proponer(c: Contexto, tarjetasHora?: number): Promise<Response> {
   const cuenta = yo(c);
   const { d, ahora } = conReloj(c.deps);
   await asegurarCierres(d);
@@ -84,7 +84,7 @@ async function proponer(c: Contexto): Promise<Response> {
   const enlace = (await cuerpoJson(c.req, MAX_CUERPO))?.enlace;
   if (typeof enlace !== "string") return error("enlace", 400);
   const r = await cancionDeEnlace(d, enlace, () =>
-    puedeMontarTarjeta(d.db, cuenta.id, ahora),
+    puedeMontarTarjeta(d.db, cuenta.id, ahora, tarjetasHora),
   );
   if ("error" in r) return error(r.error, r.error === "limite" ? 429 : 422);
 
@@ -155,10 +155,10 @@ async function votar(c: Contexto, poner: boolean): Promise<Response> {
   return json({ votada, votosRestantes: Math.max(0, VOTOS_POR_SEMANA - (mios.results[0]?.n ?? 0)) }, 200, SIN_CACHE);
 }
 
-export function rutasSemana(): Ruta[] {
+export function rutasSemana(o: OpcionesApp = {}): Ruta[] {
   return [
     ["GET", "/v1/semana", verSemana, "publica"],
-    ["POST", "/v1/semana/proponer", proponer, "cuenta"],
+    ["POST", "/v1/semana/proponer", (c) => proponer(c, o.tarjetasHora), "cuenta"],
     ["POST", "/v1/semana/voto", (c) => votar(c, true), "cuenta"],
     ["DELETE", "/v1/semana/voto", (c) => votar(c, false), "cuenta"],
   ];

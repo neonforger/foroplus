@@ -6,7 +6,7 @@ import spEstopaMeta from "./fixtures/sp_estopa_meta.html?raw";
 import spEstopaOembed from "./fixtures/sp_estopa_oembed.json";
 import ytEstopa from "./fixtures/yt_estopa_oembed.json";
 import { crearApp, type Deps } from "../src/app";
-import { hashToken, nuevoId, nuevoToken } from "../src/cripto";
+import { hashToken, nuevoId, nuevoToken, uidHmac } from "../src/cripto";
 
 // Miércoles de la semana 45 de 2026 (lunes 2 a domingo 8 de noviembre). La 46 empieza el lunes 9 a
 // las 00:00 de Madrid = 2026-11-08T23:00Z (horario de invierno).
@@ -190,8 +190,8 @@ describe("POST /v1/playlists", () => {
     expect(r1.status).toBe(200);
     const id = r1.cuerpo.id;
     expect((await ampliar(a, id, t.slice(10, 20))).cuerpo).toEqual({ canciones: 20, fallidas: [] });
-    // 25 enlaces nuevos en una hora pasan el presupuesto compartido de 20: la última tanda, en la hora siguiente.
-    const r3 = await ampliar(a, id, t.slice(20, 25), en(HORA));
+    // Las tres tandas caben en la misma hora: el presupuesto de enlaces nuevos es de 200/h.
+    const r3 = await ampliar(a, id, t.slice(20, 25));
     expect(r3.cuerpo).toEqual({ canciones: 25, fallidas: [] });
     expect((await detalle(id)).cuerpo.canciones).toHaveLength(25);
     pedidas = [];
@@ -232,23 +232,32 @@ describe("POST /v1/playlists", () => {
     expect((await publicar(await shur(), "Mía", [])).status).toBe(200);
   });
 
-  it("comparte el presupuesto de 20 enlaces nuevos por hora con proponer; lo ya conocido no gasta", async () => {
+  it("comparte el presupuesto de enlaces nuevos por hora con proponer (aquí bajado a 20); lo ya conocido no gasta", async () => {
     const a = await shur();
-    expect((await publicar(a, "A", temas(1, 10))).status).toBe(200);
-    expect((await publicar(a, "B", temas(11, 10))).status).toBe(200);
+    const app = (ms = 0) => crearApp(deps({ ahora: () => new Date(T0 + ms) }), { tarjetasHora: 20 });
+    expect((await publicar(a, "A", temas(1, 10), app())).status).toBe(200);
+    expect((await publicar(a, "B", temas(11, 10), app())).status).toBe(200);
     // Conocidas: sin red y sin gastar presupuesto.
     pedidas = [];
-    expect((await publicar(a, "C", temas(1, 10))).status).toBe(200);
+    expect((await publicar(a, "C", temas(1, 10), app())).status).toBe(200);
     expect(pedidas).toHaveLength(0);
     // Una nueva más: la 21 de la hora.
     pedidas = [];
-    const r = await publicar(a, "D", [tema(99)]);
+    const r = await publicar(a, "D", [tema(99)], app());
     expect(r.status).toBe(429);
     expect(r.cuerpo.error).toBe("limite");
     expect(pedidas).toHaveLength(0);
     // Y proponer tira del mismo saco.
-    const p = await llamar(en(), peticion("POST", "/v1/semana/proponer", { enlace: tema(98) }, conToken(a)));
+    const p = await llamar(app(), peticion("POST", "/v1/semana/proponer", { enlace: tema(98) }, conToken(a)));
     expect(p.status).toBe(429);
+    // A la hora siguiente vuelve el cupo.
+    expect((await publicar(a, "E", [tema(99)], app(HORA))).status).toBe(200);
+  });
+
+  it("el tope por defecto es de 200 enlaces nuevos por hora", async () => {
+    const a = await shur();
+    expect((await import("../src/limites")).TARJETAS_POR_HORA).toBe(200);
+    for (let i = 0; i < 3; i++) expect((await publicar(a, "P" + i, temas(i * 10 + 1, 10))).status).toBe(200);
   });
 
   it("un enlace cuya tarjeta no se puede montar va a fallidas y la petición sigue", async () => {
@@ -498,5 +507,36 @@ describe("DELETE /v1/cuenta", () => {
 
   it("exige token", async () => {
     expect((await llamar(en(), peticion("DELETE", "/v1/cuenta"))).status).toBe(401);
+  });
+
+  it("una cuenta baneada puede borrarse, pero queda una lápida y el baneo sigue", async () => {
+    const a = await shur();
+    const b = await shur();
+    const uid = "123456";
+    await env.DB.prepare("UPDATE cuentas SET uid_hmac = ? WHERE id = ?").bind(await uidHmac("pimienta", uid), a.id).run();
+    const mia = await playlist(a, "Mía", 2);
+    await guardar(b, mia);
+    const cancion = await propuestaDe(a, tema(9));
+    await env.DB.prepare("INSERT INTO votos (semana, cancion, cuenta, creado) VALUES (?, ?, ?, ?)").bind(W45, cancion, a.id, T0).run();
+    await env.DB.prepare("UPDATE cuentas SET baneada = 1 WHERE id = ?").bind(a.id).run();
+    // El resto de rutas de cuenta siguen cerradas a una baneada.
+    expect((await publicar(a, "X", [])).cuerpo).toEqual({ error: "baneada" });
+    const r = await borrarCuenta(a);
+    expect(r.status).toBe(200);
+    // Sin token, sin playlists, sin votos, sin propuestas.
+    expect(await filas("SELECT 1 FROM tokens WHERE cuenta = ?", a.id)).toHaveLength(0);
+    expect(await filas("SELECT 1 FROM playlists_pub WHERE cuenta = ?", a.id)).toHaveLength(0);
+    expect(await filas("SELECT 1 FROM guardados WHERE playlist = ?", mia)).toHaveLength(0);
+    expect(await filas("SELECT 1 FROM votos WHERE cuenta = ?", a.id)).toHaveLength(0);
+    expect(await filas("SELECT 1 FROM propuestas WHERE cuenta = ?", a.id)).toHaveLength(0);
+    expect((await borrarCuenta(a)).status).toBe(401);
+    // Solo queda la lápida.
+    expect(await filas("SELECT * FROM cuentas WHERE id = ?", a.id)).toEqual([
+      { id: a.id, uid_hmac: await uidHmac("pimienta", uid), nombre: "", registro_fc: null, baneada: 1, creada: null, ultima_verif: null },
+    ]);
+    // Y volver a verificar la misma cuenta de FC sigue dando 403 baneada.
+    const reto = await llamar(en(), peticion("POST", "/v1/verificacion/reto", { uid }));
+    expect(reto.status).toBe(403);
+    expect(reto.cuerpo).toEqual({ error: "baneada" });
   });
 });
