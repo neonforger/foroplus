@@ -1,5 +1,6 @@
 import { acceder, type Cuenta } from "./auth";
 import { error, json } from "./http";
+import { rutasSemana } from "./rutas/semana";
 import { rutasVerificacion } from "./rutas/verificacion";
 
 export interface Deps {
@@ -62,7 +63,7 @@ function casar(patron: string, ruta: string): Record<string, string> | null {
 }
 
 function rutas(o: OpcionesApp): Ruta[] {
-  return [["GET", "/v1/salud", () => json({ ok: true }), "publica"], ...rutasVerificacion(o)];
+  return [["GET", "/v1/salud", () => json({ ok: true }), "publica"], ...rutasVerificacion(o), ...rutasSemana()];
 }
 
 export function crearApp(d: Deps, o: OpcionesApp = {}): App {

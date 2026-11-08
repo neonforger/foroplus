@@ -29,6 +29,9 @@ export async function hashToken(token: string): Promise<string> {
 
 const CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 
+/** Un id de `nuevoId` (Crockford base32 en mayúsculas). Lo que no casa ni se busca en la base. */
+export const RE_ULID = /^[0-9A-HJKMNP-TV-Z]{26}$/;
+
 /** ULID estándar: 10 caracteres de tiempo (ms, 48 bits) + 16 aleatorios (80 bits), Crockford base32. */
 export function nuevoId(ahora: Date): string {
   let t = ahora.getTime();

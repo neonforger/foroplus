@@ -6,7 +6,7 @@
 import type { Contexto, Deps, OpcionesApp, Ruta } from "../app";
 import { permisoVoto, yo } from "../auth";
 import { cocheAleatorio, cochesIguales } from "../coches";
-import { hashToken, nuevoId, nuevoToken, uidHmac } from "../cripto";
+import { hashToken, nuevoId, nuevoToken, RE_ULID, uidHmac } from "../cripto";
 import { leerFicha, type Ficha } from "../ficha";
 import { cuerpoJson, error, json } from "../http";
 import { claveIp } from "../ip";
@@ -35,7 +35,6 @@ export const LECTURAS_FC_HORA = 600;
 // Canónico: sin ceros delante. FC lee "0123456" como 123456 (intval), y un HMAC distinto haría una
 // segunda cuenta para el mismo usuario de FC (doble voto).
 const RE_UID = /^[1-9][0-9]{0,9}$/;
-const RE_ULID = /^[0-9A-HJKMNP-TV-Z]{26}$/;
 const MAX_CUERPO = 1024;
 // La ficha pesa ~130 KB (medido 2026-11-07); en JSON, con los escapes, algo más.
 const MAX_LECTURA = 1_000_000;
