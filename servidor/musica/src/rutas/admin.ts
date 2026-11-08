@@ -147,7 +147,7 @@ async function fusionar(c: Contexto): Promise<Response> {
           "WHERE EXISTS (SELECT 1 FROM json_each(playlists_pub.canciones) j WHERE j.value = ?1)",
       )
       .bind(de, dest),
-    db.prepare("UPDATE denuncias SET objetivo = ?2 WHERE tipo = 'cancion' AND objetivo = ?1").bind(de, dest),
+    db.prepare("UPDATE denuncias SET objetivo = ?2 WHERE tipo IN ('cancion', 'sistema') AND objetivo = ?1").bind(de, dest),
     db.prepare("DELETE FROM canciones WHERE id = ?1").bind(de),
   ]);
   return json({ ok: true }, 200, SIN_CACHE);

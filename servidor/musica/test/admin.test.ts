@@ -288,6 +288,20 @@ describe("POST /v1/admin/fusionar", () => {
     expect(await lista(p3)).toEqual([c3]);
   });
 
+  it("las denuncias de canción y de sistema sobre la fusionada pasan a la destino y se ven con su título", async () => {
+    const quien = await shur();
+    const de = await cancion(1);
+    const dest = await cancion(2);
+    await env.DB.batch([
+      env.DB.prepare("INSERT INTO denuncias (id, tipo, objetivo, cuenta, motivo, creada, resuelta) VALUES ('s1', 'sistema', ?, 'sistema', 'subida rara', ?, 0)").bind(de, T0),
+      env.DB.prepare("INSERT INTO denuncias (id, tipo, objetivo, cuenta, motivo, creada, resuelta) VALUES ('c1', 'cancion', ?, ?, 'mala', ?, 0)").bind(de, quien.id, T0 + 1),
+    ]);
+    expect((await admin("POST", "/v1/admin/fusionar", { de, en: dest })).status).toBe(200);
+    expect((await filas("SELECT objetivo FROM denuncias ORDER BY id")).map((f) => f.objetivo)).toEqual([dest, dest]);
+    const lista = (await admin("GET", "/v1/admin/denuncias")).cuerpo.denuncias;
+    expect(lista.map((x: any) => [x.id, x.titulo])).toEqual([["s1", "Tema 2"], ["c1", "Tema 2"]]);
+  });
+
   it("errores: mismas, inexistentes o mal formadas", async () => {
     const c = await cancion(1);
     const ulid = nuevoId(new Date(T0));
