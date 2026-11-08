@@ -33,3 +33,14 @@ export function contarUna(db: D1Database, clave: string, ventanaSeg: number, aho
     )
     .bind(clave, inicio);
 }
+
+/**
+ * Enlaces nuevos (que obligan a montar la tarjeta fuera, ≤ 3 subpeticiones) por cuenta y hora, ya
+ * sea al proponer o al meter canciones en una playlist: UN solo presupuesto para las dos entradas, o
+ * una cuenta tendría el doble de pasarela contra YouTube, Spotify y Deezer. Lo ya conocido no cuenta.
+ */
+export const TARJETAS_POR_HORA = 20;
+
+export function puedeMontarTarjeta(db: D1Database, cuentaId: string, ahora: Date): Promise<boolean> {
+  return permitido(db, "tarjeta:" + cuentaId, 3600, TARJETAS_POR_HORA, ahora);
+}

@@ -9,19 +9,12 @@ import { cuentaDe, permisoVoto, yo, type Cuenta } from "../auth";
 import { cancionDeEnlace, cancionPub, COLUMNAS_CANCION, type FilaCancion } from "../canciones";
 import { RE_ULID } from "../cripto";
 import { cuerpoJson, error, json } from "../http";
-import { permitido, PROPUESTAS_POR_SEMANA, VOTOS_POR_SEMANA } from "../limites";
+import { puedeMontarTarjeta, PROPUESTAS_POR_SEMANA, VOTOS_POR_SEMANA } from "../limites";
 import { asegurarCierres, type CancionTop } from "../semana";
 import { finDeSemana, semanaDe } from "../tiempo";
 
 // Un enlace de Spotify con su "?si=…" no llega a 150 bytes; esto deja margen y corta cuerpos absurdos.
 const MAX_CUERPO = 1024;
-const HORA_S = 3600;
-/**
- * Enlaces nuevos (que obligan a montar la tarjeta fuera, ≤ 3 subpeticiones) por cuenta y hora al
- * proponer. Los que fallan no gastan propuesta, así que sin esto una cuenta podría usar el Worker de
- * pasarela contra YouTube, Spotify y Deezer sin fin. Lo ya conocido no sale a la red y no cuenta.
- */
-const TARJETAS_POR_HORA = 20;
 const SIN_CACHE = { "Cache-Control": "no-store" };
 
 /** Las dependencias con el reloj parado: toda la petición (cierre incluido) ve la misma semana. */
@@ -91,7 +84,7 @@ async function proponer(c: Contexto): Promise<Response> {
   const enlace = (await cuerpoJson(c.req, MAX_CUERPO))?.enlace;
   if (typeof enlace !== "string") return error("enlace", 400);
   const r = await cancionDeEnlace(d, enlace, () =>
-    permitido(d.db, "tarjeta:" + cuenta.id, HORA_S, TARJETAS_POR_HORA, ahora),
+    puedeMontarTarjeta(d.db, cuenta.id, ahora),
   );
   if ("error" in r) return error(r.error, r.error === "limite" ? 429 : 422);
 
