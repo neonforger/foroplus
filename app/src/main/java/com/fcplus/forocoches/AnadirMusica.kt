@@ -36,13 +36,30 @@ object AnadirMusica {
         nombre.trim().replace(Regex("""\s+"""), " ").take(Musica.MAX_NOMBRE).trim().ifEmpty { null }
 
     /**
-     * La canción a guardar de una playlist pegada: lo que trae el texto manda sobre lo leído de
-     * la red, y sin red sirve el texto solo. Null si no hay título de ningún lado.
+     * La canción a guardar de una playlist pegada: lo que trae el texto manda sobre lo leído de la
+     * red, y sin red sirve el texto solo. Si no hay título de ningún lado NO se descarta (un enlace
+     * válido es una canción): entra con un título provisional y sin artista, ver [sinDatos].
      */
-    fun combinar(ref: RefCancion, datos: Cancion?, cancionTexto: String?, artistaTexto: String?, ahora: Long): Cancion? {
-        val titulo = cancionTexto?.trim()?.ifEmpty { null } ?: datos?.titulo ?: return null
+    fun combinar(ref: RefCancion, datos: Cancion?, cancionTexto: String?, artistaTexto: String?, ahora: Long): Cancion {
+        val titulo = cancionTexto?.trim()?.ifEmpty { null } ?: datos?.titulo ?: tituloProvisional(ref)
         val artista = artistaTexto?.trim()?.ifEmpty { null } ?: datos?.artista
         return (datos ?: Cancion(ref, titulo, null, null, null, null, ahora)).copy(ref = ref, titulo = titulo, artista = artista)
+    }
+
+    /** True si [combinar] va a tener que inventar el título: ni la red ni el texto lo dieron. */
+    fun sinDatos(datos: Cancion?, cancionTexto: String?, @Suppress("UNUSED_PARAMETER") artistaTexto: String?): Boolean =
+        datos == null && cancionTexto.isNullOrBlank()
+
+    fun tituloProvisional(ref: RefCancion): String = when (ref.fuente) {
+        FuenteMusica.YOUTUBE -> "Vídeo de YouTube ${ref.id}"
+        FuenteMusica.SPOTIFY -> "Canción de Spotify ${ref.id}"
+    }
+
+    /** Frase (con espacio delante) para añadir al mensaje final; vacía si todas traían datos. */
+    fun avisoSinDatos(n: Int): String = when (n) {
+        0 -> ""
+        1 -> " 1 ha entrado sin título ni artista (no se pudo leer)."
+        else -> " $n han entrado sin título ni artista (no se pudo leer)."
     }
 
     /** La canción tal como la dejó el usuario en los dos campos (un artista vacío es "sin artista"). */

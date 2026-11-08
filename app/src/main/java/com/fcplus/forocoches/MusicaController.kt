@@ -1,5 +1,7 @@
 package com.fcplus.forocoches
 
+import android.content.ClipboardManager
+import android.content.Context
 import android.view.View
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -72,10 +74,22 @@ class MusicaController(
 
     /** La hoja "Añadir" (A10), con [texto] ya pegado si llega de Compartir (A12). */
     fun abrirAnadir(texto: String?) {
+        // El portapapeles se lee AQUÍ, con la actividad en primer plano (en Android 10+ solo se lee
+        // con foco); dentro de la hoja recién mostrada podía salir vacío. Solo si no llega texto de Compartir.
+        val copiado = if (texto == null) leerPortapapeles() else null
         HojaAnadirMusica(act, almacen) { mensaje ->
             android.widget.Toast.makeText(act, mensaje, android.widget.Toast.LENGTH_LONG).show()
             if (visible) pintarPortada()
-        }.mostrar(texto)
+        }.mostrar(texto, copiado)
+    }
+
+    private fun leerPortapapeles(): String? = try {
+        val cb = act.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val t = cb.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(act)?.toString()
+        android.util.Log.d("Musica", "portapapeles leido antes de mostrar la hoja: ${if (t == null) "vacio" else "${t.length} caracteres"}")
+        t
+    } catch (_: Exception) {
+        null
     }
 
     private fun pintarPortada() {

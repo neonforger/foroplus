@@ -70,7 +70,21 @@ class AnadirMusicaTest {
         assertEquals("Solo texto", sinRed.titulo)
         assertEquals("Estopa", sinRed.artista)
         assertEquals(9L, sinRed.anadida)
-        assertNull(AnadirMusica.combinar(yt, null, null, null, 9L))
+        // Sin red y sin nombres la canción NO se pierde: se guarda con un título provisional y sin artista.
+        val vacia = AnadirMusica.combinar(yt, null, null, null, 9L)
+        assertEquals("Vídeo de YouTube abc12345678", vacia.titulo)
+        assertNull(vacia.artista)
+        assertEquals("Canción de Spotify ${sp.id}", AnadirMusica.combinar(sp, null, "  ", null, 9L).titulo)
+        assertTrue(AnadirMusica.sinDatos(null, null, null))
+        assertTrue(AnadirMusica.sinDatos(null, " ", null))
+        assertTrue(!AnadirMusica.sinDatos(null, "Solo texto", null))
+        assertTrue(!AnadirMusica.sinDatos(datos, null, null))
+    }
+
+    @Test fun cuentaLasSinDatos() {
+        assertEquals("", AnadirMusica.avisoSinDatos(0))
+        assertEquals(" 1 ha entrado sin título ni artista (no se pudo leer).", AnadirMusica.avisoSinDatos(1))
+        assertEquals(" 3 han entrado sin título ni artista (no se pudo leer).", AnadirMusica.avisoSinDatos(3))
     }
 
     @Test fun editarUsaLosCamposTalCualAunqueBorresElArtista() {

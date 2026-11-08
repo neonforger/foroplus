@@ -65,4 +65,11 @@ class BuscadorMusicaTest {
         assertNull(BuscadorMusica.redireccion("https://open.spotify.com/a", "http://open.spotify.com/b"))
         assertNull(BuscadorMusica.redireccion("https://open.spotify.com/a", null))
     }
+
+    @Test fun idiomaEnSoloParaLaPaginaDeSpotify() {
+        assertEquals("en", BuscadorMusica.idiomaDe("https://open.spotify.com/track/x"))
+        assertEquals("en", BuscadorMusica.idiomaDe("https://open.spotify.com/intl-es/track/x"))
+        assertEquals("es-ES,es;q=0.9", BuscadorMusica.idiomaDe("https://www.youtube.com/oembed?url=x"))
+        assertEquals("es-ES,es;q=0.9", BuscadorMusica.idiomaDe("https://open.spotify.com/oembed?url=x"))
+    }
 }

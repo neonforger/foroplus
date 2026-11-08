@@ -1,6 +1,5 @@
 package com.fcplus.forocoches
 
-import android.content.ClipboardManager
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
@@ -77,7 +76,12 @@ class HojaAnadirMusica(
     private val destinos = ArrayList<Destino>()
     private var destinosCargados = false
 
-    fun mostrar(inicial: String?) {
+    /**
+     * @param portapapeles lo copiado, leído por quien abre la hoja con la actividad en primer plano
+     *   (en Android 10+ el portapapeles solo se lee con foco: dentro de la hoja recién mostrada
+     *   podía devolver nada). Se ofrece si trae canciones.
+     */
+    fun mostrar(inicial: String?, portapapeles: String? = null) {
         val vista = LayoutInflater.from(act).inflate(R.layout.hoja_anadir_musica, null)
         val sheet = BottomSheetDialog(act)
         sheet.setContentView(vista)
@@ -154,7 +158,7 @@ class HojaAnadirMusica(
             texto.requestFocus()
             // showSoftInput justo tras mostrar no hace nada (gotcha): en el frame siguiente.
             texto.post {
-                ofrecerPortapapeles(vista)
+                ofrecerPortapapeles(vista, portapapeles)
                 teclado(texto)
             }
         }
@@ -166,13 +170,7 @@ class HojaAnadirMusica(
     }
 
     /** Si lo copiado trae una canción (o varias), un toque para pegarlo. */
-    private fun ofrecerPortapapeles(vista: View) {
-        val copiado = try {
-            val cb = act.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-            cb.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(act)?.toString()
-        } catch (_: Exception) {
-            null
-        }
+    private fun ofrecerPortapapeles(vista: View, copiado: String?) {
         if (copiado.isNullOrBlank() || texto.text.isNotEmpty()) return
         val p = AnadirMusica.plan(copiado)
         val n = p.refs.size + p.cortos.size
@@ -337,16 +335,15 @@ class HojaAnadirMusica(
             guardando -> false
             ua -> destinosCargados && pendientes == 0 && cancion.text.isNotBlank() &&
                 (destinos.any { it.casilla.isChecked } || nueva.text.isNotBlank())
-            va -> pendientes == 0 && AnadirMusica.nombreParaGuardar(nombreLista.text.toString()) != null &&
-                refs.any { cancionDe(it) != null }
+            va -> pendientes == 0 && refs.isNotEmpty() && AnadirMusica.nombreParaGuardar(nombreLista.text.toString()) != null
             else -> false
         }
         guardar.isEnabled = listo
         guardar.alpha = if (listo) 1f else 0.45f
     }
 
-    /** La canción lista para guardar de una de la playlist pegada; null si ni red ni texto la nombraron. */
-    private fun cancionDe(ref: RefCancion): Cancion? {
+    /** La canción lista para guardar de una de la playlist pegada; con título provisional si ni la red ni el texto la nombraron (ver [AnadirMusica.combinar]). */
+    private fun cancionDe(ref: RefCancion): Cancion {
         val n = plan?.nombres?.get(ref.clave)
         return AnadirMusica.combinar(ref, datos[ref.clave], n?.first, n?.second, System.currentTimeMillis())
     }
@@ -356,12 +353,11 @@ class HojaAnadirMusica(
         guardando = true
         actualizarGuardar()
         error.visibility = View.GONE
-        val gen = generacion
-        if (una.visibility == View.VISIBLE) guardarUna(gen) else guardarVarias(gen)
+        if (una.visibility == View.VISIBLE) guardarUna() else guardarVarias()
     }
 
-    private fun guardarUna(gen: Int) {
-        val ref = refs.firstOrNull() ?: return
+    private fun guardarUna() {
+        val ref = refs.firstOrNull() ?: run { fallo("No hay canción que guardar."); return }
         val c = AnadirMusica.editar(ref, datos[ref.clave], cancion.text.toString(), artista.text.toString(), System.currentTimeMillis())
         if (c == null) { fallo("Falta el título de la canción."); return }
         val marcadas = destinos.filter { it.casilla.isChecked }
@@ -382,25 +378,24 @@ class HojaAnadirMusica(
                 ok = almacen.guardar(c, emptyList())
             }
             if (ok && ids.isNotEmpty()) ok = almacen.guardar(c, ids)
-            enUi(gen) {
+            alTerminarGuardado {
                 if (ok) terminar("Guardada en ${nombres.joinToString(", ").ifEmpty { Musica.FAVORITAS }}")
                 else fallo(motivo)
             }
         }.start()
     }
 
-    private fun guardarVarias(gen: Int) {
+    private fun guardarVarias() {
         val nombre = AnadirMusica.nombreParaGuardar(nombreLista.text.toString())
         if (nombre == null) { fallo("Ponle nombre a la playlist."); return }
-        val todas = refs.mapNotNull { cancionDe(it) }
-        val sinLeer = refs.size - todas.size
+        val todas = refs.map { cancionDe(it) }
+        val sinLeer = refs.count { AnadirMusica.sinDatos(datos[it.clave], plan?.nombres?.get(it.clave)?.first, null) }
         Thread {
             val p = almacen.importar(nombre, todas)
-            enUi(gen) {
+            alTerminarGuardado {
                 if (p == null) fallo("No se ha podido crear la playlist (el tope es ${Musica.MAX_PLAYLISTS}).")
                 else {
-                    val extra = if (sinLeer > 0) " ($sinLeer sin poder leer)" else ""
-                    terminar("Playlist «${p.nombre}» creada con ${p.claves.size} canciones$extra")
+                    terminar("Playlist «${p.nombre}» creada con ${p.claves.size} canciones.${AnadirMusica.avisoSinDatos(sinLeer)}")
                 }
             }
         }.start()
@@ -416,7 +411,16 @@ class HojaAnadirMusica(
     private fun terminar(msg: String) {
         guardando = false
         dialog?.dismiss()
-        alGuardar(msg)
+        alGuardar(msg) // siempre: es lo que repinta la portada, haya o no hoja
+    }
+
+    /**
+     * El final de un guardado va al hilo de la interfaz SIEMPRE: no depende de que el texto siga
+     * igual (generacion) ni de que la hoja siga abierta, o se perdía el resultado y `guardando` se
+     * quedaba puesto. Con la hoja ya cerrada solo se cuenta lo guardado (toast y portada).
+     */
+    private fun alTerminarGuardado(f: () -> Unit) {
+        act.runOnUiThread(f)
     }
 
     /** Ejecuta [f] en el hilo de la interfaz si la hoja sigue abierta y (con [gen]) el análisis no ha cambiado. */

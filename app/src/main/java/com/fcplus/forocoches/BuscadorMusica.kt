@@ -89,6 +89,19 @@ object BuscadorMusica {
         }
     }
 
+    /**
+     * `Accept-Language` de cada petición. La página de la pista de Spotify va en `en` (como el
+     * servidor, que parsea la misma página): con `es` Spotify redirige a `/intl-es/…`. El resto,
+     * como hasta ahora.
+     */
+    fun idiomaDe(url: String): String = try {
+        val u = URI(url)
+        if (u.host == "open.spotify.com" && Regex("^/(intl-[A-Za-z-]+/)?track/").containsMatchIn(u.rawPath.orEmpty())) "en"
+        else "es-ES,es;q=0.9"
+    } catch (e: Exception) {
+        "es-ES,es;q=0.9"
+    }
+
     private fun abrir(url: String, metodo: String): HttpURLConnection? = try {
         if (!aceptada(url)) null
         else (URL(url).openConnection() as HttpURLConnection).apply {
@@ -97,7 +110,7 @@ object BuscadorMusica {
             connectTimeout = TIMEOUT_MS
             readTimeout = TIMEOUT_MS
             setRequestProperty("User-Agent", UA)
-            setRequestProperty("Accept-Language", "es-ES,es;q=0.9")
+            setRequestProperty("Accept-Language", idiomaDe(url))
         }
     } catch (e: Exception) {
         null
