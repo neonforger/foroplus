@@ -1,4 +1,6 @@
+import { acceder, type Cuenta } from "./auth";
 import { error, json } from "./http";
+import { rutasVerificacion } from "./rutas/verificacion";
 
 export interface Deps {
   db: D1Database;
@@ -24,11 +26,13 @@ export interface Contexto {
   url: URL;
   params: Record<string, string>;
   deps: Deps;
+  /** La cuenta del token en las rutas "cuenta" (el router ya la comprobó); null en las demás. */
+  cuenta: Cuenta | null;
 }
 
 export type Manejador = (c: Contexto) => Promise<Response> | Response;
 
-/** [método, patrón con :param, manejador, acceso]. El acceso lo comprobarán las tareas que lo usen. */
+/** [método, patrón con :param, manejador, acceso]. El router comprueba el acceso antes de llamar. */
 export type Ruta = readonly [string, string, Manejador, Acceso];
 
 function casar(patron: string, ruta: string): Record<string, string> | null {
@@ -52,7 +56,7 @@ function casar(patron: string, ruta: string): Record<string, string> | null {
 }
 
 function rutas(): Ruta[] {
-  return [["GET", "/v1/salud", () => json({ ok: true }), "publica"]];
+  return [["GET", "/v1/salud", () => json({ ok: true }), "publica"], ...rutasVerificacion()];
 }
 
 export function crearApp(d: Deps): App {
@@ -61,14 +65,17 @@ export function crearApp(d: Deps): App {
     async fetch(req) {
       const url = new URL(req.url);
       let rutaConOtroMetodo = false;
-      for (const [metodo, patron, manejador] of tabla) {
+      for (const [metodo, patron, manejador, acceso] of tabla) {
         const params = casar(patron, url.pathname);
         if (!params) continue;
         if (metodo !== req.method) {
           rutaConOtroMetodo = true;
           continue;
         }
-        return manejador({ req, url, params, deps: d });
+        // Denegar por defecto: ningún manejador corre sin que su acceso se haya cumplido.
+        const permiso = await acceder(acceso, req, d);
+        if (permiso instanceof Response) return permiso;
+        return manejador({ req, url, params, deps: d, cuenta: permiso });
       }
       return rutaConOtroMetodo ? error("metodo", 405) : error("no_existe", 404);
     },

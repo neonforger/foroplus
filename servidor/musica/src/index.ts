@@ -14,6 +14,12 @@ function aleatorio(): number {
   return crypto.getRandomValues(new Uint32Array(1))[0] / 4294967296;
 }
 
+/** Días mínimos de cuenta de FC para votar: solo un entero positivo; si no, 90 (el valor del spec). */
+export function diasMinVoto(texto: string | undefined): number {
+  const n = Number(texto);
+  return Number.isInteger(n) && n > 0 ? n : 90; // Number(undefined) es NaN; Number("") es 0
+}
+
 function deps(env: Env): Deps {
   return {
     db: env.DB,
@@ -23,7 +29,7 @@ function deps(env: Env): Deps {
     pepper: env.UID_PEPPER,
     adminSecreto: env.ADMIN_SECRETO,
     lectorSecreto: env.LECTOR_SECRETO,
-    diasMinVoto: Number(env.DIAS_MIN_VOTO) || 90,
+    diasMinVoto: diasMinVoto(env.DIAS_MIN_VOTO),
     lectorEnVps: env.LECTOR_EN_VPS === "true",
   };
 }

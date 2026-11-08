@@ -1,6 +1,7 @@
 import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import { crearApp, type Deps } from "../src/app";
+import { diasMinVoto } from "../src/index";
 
 function deps(): Deps {
   return {
@@ -48,5 +49,17 @@ describe("andamio", () => {
         "playlists_pub", "propuestas", "retos", "semanas", "tokens", "votos",
       ].sort(),
     );
+  });
+});
+
+describe("DIAS_MIN_VOTO", () => {
+  it("solo vale un entero positivo; lo demás cae a 90", () => {
+    expect(diasMinVoto("90")).toBe(90);
+    expect(diasMinVoto("30")).toBe(30);
+    expect(diasMinVoto(" 120 ")).toBe(120);
+    // Antes `Number(x) || 90` dejaba pasar negativos y fracciones (B1).
+    for (const malo of [undefined, "", "0", "-5", "2.5", "abc", "Infinity", "NaN"]) {
+      expect(diasMinVoto(malo), String(malo)).toBe(90);
+    }
   });
 });
