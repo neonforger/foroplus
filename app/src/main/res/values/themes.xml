@@ -279,6 +279,21 @@
         <item name="android:background">@drawable/bg_boton_secundario</item>
     </style>
 
+    <!-- Título de un grupo de la portada de Música (CANCIÓN DE LA SEMANA, TUS PLAYLISTS…). fc_texto_2
+         y no el 3: sobre el gris de Tarjetas el 3 no llega a 4,5:1. -->
+    <style name="TituloGrupoMusica">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:paddingStart">16dp</item>
+        <item name="android:paddingEnd">16dp</item>
+        <item name="android:paddingTop">12dp</item>
+        <item name="android:paddingBottom">6dp</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:letterSpacing">0.06</item>
+        <item name="android:textColor">@color/fc_texto_2</item>
+    </style>
+
     <!-- Campo de texto (fase 3): relleno, redondeado y con borde rojo al tener el foco. -->
     <style name="Campo">
         <item name="android:background">@drawable/bg_campo</item>

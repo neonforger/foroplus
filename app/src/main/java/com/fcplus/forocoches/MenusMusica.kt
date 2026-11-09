@@ -30,6 +30,9 @@ class MenusMusica(
         fun abierta(): String?
         fun canciones(): List<Cancion>
         fun estado(): EstadoMusica
+        /** ¿Se puede proponer una canción para la semana? Con el servidor encendido y la cuenta verificada. */
+        fun puedeProponer(): Boolean
+        fun proponer(c: Cancion)
         fun nombreAbierta(): String
         fun volverAPortada()
         fun aviso(texto: String)
@@ -44,6 +47,7 @@ class MenusMusica(
         menu.menu.add(0, 1, 1, "Quitar de la playlist")
         menu.menu.add(0, 2, 2, "Añadir a otra playlist…")
         menu.menu.add(0, 3, 3, if (c.ref.fuente == FuenteMusica.YOUTUBE) "Abrir en YouTube" else "Abrir en Spotify")
+        if (d.puedeProponer()) menu.menu.add(0, 4, 4, "Proponer para la semana")
         menu.setOnMenuItemClickListener { mi ->
             when (mi.itemId) {
                 1 -> d.escribir({ almacen.quitar(id, c.ref.clave).takeIf { it } }, "No se ha podido quitar.") {
@@ -51,6 +55,7 @@ class MenusMusica(
                 }
                 2 -> anadirAOtra(c)
                 3 -> abrirFuera(c.ref.url())
+                4 -> d.proponer(c)
             }
             true
         }

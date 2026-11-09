@@ -70,12 +70,22 @@ class MusicaController(
         override fun abierta() = abierta
         override fun canciones() = canciones
         override fun estado() = estado
+        override fun puedeProponer() = semana?.verificada == true
+        override fun proponer(c: Cancion) { semana?.proponerCancion(c) }
         override fun nombreAbierta() = this@MusicaController.nombreAbierta()
         override fun volverAPortada() = this@MusicaController.volverAPortada()
         override fun aviso(texto: String) = this@MusicaController.aviso(texto)
         override fun <T : Any> escribir(trabajo: () -> T?, siFalla: String, siVa: (T) -> Unit) =
             this@MusicaController.escribir(trabajo, siFalla, siVa)
     })
+
+    /** La canción de la semana de la portada (C3); null en los tests de la parte local. */
+    private val semana: PanelSemana? = enganches?.let {
+        PanelSemana(
+            act, raiz, it, abrirFuera, { estado.canciones.values },
+            abrirVerificacion = { abrirVerificacion() }, alCargar = { pintarEntradaVerificar() }
+        )
+    }
 
     private val adaptador = PlaylistAdapter(
         alTocar = { i -> tocarCancion(i) },
@@ -129,11 +139,13 @@ class MusicaController(
         visible = false
         raiz.visibility = View.GONE
         reproductor.parar()
+        semana?.parar()
     }
 
     /** `onPause` de la actividad: "La música se para al salir de la app". */
     fun pausar() {
         reproductor.parar()
+        semana?.parar()
     }
 
     /**
@@ -192,7 +204,10 @@ class MusicaController(
     fun abrirVerificacion() {
         val e = enganches ?: return
         if (!e.servidorActivo()) return
-        HojaVerificarMusica(act, e) { if (visible) recargar() }.mostrar()
+        HojaVerificarMusica(act, e) {
+            if (visible) recargar()
+            semana?.refrescar(forzar = true)
+        }.mostrar()
     }
 
     /**
@@ -254,6 +269,7 @@ class MusicaController(
         portada.visibility = View.VISIBLE
         anadir.visibility = View.VISIBLE
         pintarEntradaVerificar()
+        semana?.mostrar()
         filas.removeAllViews()
         for (p in playlists) filas.addView(fila(p))
         val hay = playlists.isNotEmpty()
@@ -278,6 +294,7 @@ class MusicaController(
     private fun abrirPlaylist(id: String) {
         val e = estado
         val p = e.playlists.firstOrNull { it.id == id } ?: return recargar()
+        semana?.parar()
         abierta = id
         reproductor.preparar(p.claves.mapNotNull { e.canciones[it] })
         pintarPlaylist(p, e)
