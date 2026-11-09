@@ -125,7 +125,7 @@ class PlaylistAdapter(
 
     private fun pintarCabecera(h: Cabecera) {
         h.nombre.text = nombre
-        h.resumen.text = MusicaController.resumen(canciones)
+        h.resumen.text = Musica.resumen(canciones)
         val hay = canciones.isNotEmpty()
         h.reproducir.isEnabled = hay
         h.reproducir.alpha = if (hay) 1f else 0.45f
@@ -149,7 +149,7 @@ class PlaylistAdapter(
         h.titulo.setTextColor(ContextCompat.getColor(ctx, if (suena) R.color.fc_rojo else R.color.fc_texto))
         val detalle = listOfNotNull(
             c.artista?.takeIf { it.isNotBlank() },
-            c.duracionSeg?.let { MusicaController.duracion(it) }
+            c.duracionSeg?.let { Musica.duracion(it) }
         ).joinToString(" · ")
         h.detalle.text = detalle
         h.detalle.visibility = if (detalle.isEmpty()) View.GONE else View.VISIBLE

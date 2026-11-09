@@ -205,7 +205,7 @@ class HojaAnadirMusica(
         existentes.sortedBy { if (it === fav) 0 else 1 }.forEach { filas.add(Triple(it.id, it.nombre, it.claves.size)) }
         for ((id, nombre, n) in filas) {
             val c = CheckBox(act)
-            c.text = "$nombre · ${MusicaController.cuantas(n)}"
+            c.text = "$nombre · ${Musica.cuantas(n)}"
             c.textSize = 15f
             c.minHeight = (48 * act.resources.displayMetrics.density).toInt()
             c.setTextColor(act.getColor(R.color.fc_texto))

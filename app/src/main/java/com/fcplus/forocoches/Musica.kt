@@ -49,4 +49,32 @@ object Musica {
             n++
         }
     }
+
+    /** "Sin canciones", "1 canción", "N canciones": un "0 canciones" se lee como un fallo. */
+    fun cuantas(n: Int): String = when (n) {
+        0 -> "Sin canciones"
+        1 -> "1 canción"
+        else -> "$n canciones"
+    }
+
+    /** Duración de una canción: "3:25", y con horas "1:02:03". */
+    fun duracion(seg: Int): String {
+        val s = seg.coerceAtLeast(0)
+        val h = s / 3600
+        val m = (s % 3600) / 60
+        val r = s % 60
+        return if (h > 0) "%d:%02d:%02d".format(h, m, r) else "%d:%02d".format(m, r)
+    }
+
+    /**
+     * La línea de la cabecera: "12 canciones · 48 min". La duración total solo si TODAS la
+     * tienen (spec): con una sin saber, el total sería mentira. Se redondea al minuto.
+     */
+    fun resumen(canciones: List<Cancion>): String {
+        val n = cuantas(canciones.size)
+        if (canciones.isEmpty() || canciones.any { it.duracionSeg == null }) return n
+        val minutos = ((canciones.sumOf { it.duracionSeg ?: 0 } + 30) / 60).coerceAtLeast(1)
+        val total = if (minutos >= 60) "${minutos / 60} h ${"%02d".format(minutos % 60)} min" else "$minutos min"
+        return "$n · $total"
+    }
 }

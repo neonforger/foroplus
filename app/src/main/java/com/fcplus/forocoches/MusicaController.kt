@@ -3,22 +3,15 @@ package com.fcplus.forocoches
 import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.ClipboardManager
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.os.Parcelable
-import android.text.InputFilter
 import android.view.View
-import android.view.WindowManager
-import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.widget.PopupMenu
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -73,14 +66,25 @@ class MusicaController(
     private val huecoReproductor: FrameLayout = raiz.findViewById(R.id.musica_reproductor)
     private val reproductor = ReproductorMusica(huecoReproductor, abrirFuera)
 
+    private val menus = MenusMusica(act, almacen, abrirFuera, object : MenusMusica.Anfitrion {
+        override fun abierta() = abierta
+        override fun canciones() = canciones
+        override fun estado() = estado
+        override fun nombreAbierta() = this@MusicaController.nombreAbierta()
+        override fun volverAPortada() = this@MusicaController.volverAPortada()
+        override fun aviso(texto: String) = this@MusicaController.aviso(texto)
+        override fun <T : Any> escribir(trabajo: () -> T?, siFalla: String, siVa: (T) -> Unit) =
+            this@MusicaController.escribir(trabajo, siFalla, siVa)
+    })
+
     private val adaptador = PlaylistAdapter(
         alTocar = { i -> tocarCancion(i) },
-        alMenu = { i, ancla -> menuCancion(i, ancla) },
+        alMenu = { i, ancla -> menus.menuCancion(i, ancla) },
         alMover = { desde, hasta -> mover(desde, hasta) },
         alVolver = { cerrarPlaylist() },
         alReproducir = { if (canciones.isNotEmpty()) reproductor.reproducir(canciones, 0) },
-        alMenuPlaylist = { ancla -> menuPlaylist(ancla) },
-        alCompartir = { compartir() }
+        alMenuPlaylist = { ancla -> menus.menuPlaylist(ancla) },
+        alCompartir = { menus.compartir() }
     )
 
     /** La playlist abierta (su id); null en la portada. */
@@ -259,7 +263,7 @@ class MusicaController(
 
     private fun fila(p: Playlist): View {
         val v = act.layoutInflater.inflate(R.layout.item_playlist, filas, false)
-        val cuantas = cuantas(p.claves.size)
+        val cuantas = Musica.cuantas(p.claves.size)
         v.findViewById<TextView>(R.id.playlist_nombre).text = p.nombre
         v.findViewById<TextView>(R.id.playlist_cuantas).text = cuantas
         // TalkBack lee la fila de una vez ("Mis favoritas, 3 canciones").
@@ -318,159 +322,6 @@ class MusicaController(
         escribir({ almacen.mover(id, desde, hasta).takeIf { it } }, "No se ha podido guardar el orden.")
     }
 
-    private fun menuCancion(i: Int, ancla: View) {
-        val id = abierta ?: return
-        val c = canciones.getOrNull(i) ?: return
-        val nombre = nombreAbierta()
-        val menu = PopupMenu(act, ancla)
-        menu.menu.add(0, 1, 1, "Quitar de la playlist")
-        menu.menu.add(0, 2, 2, "Añadir a otra playlist…")
-        menu.menu.add(0, 3, 3, if (c.ref.fuente == FuenteMusica.YOUTUBE) "Abrir en YouTube" else "Abrir en Spotify")
-        menu.setOnMenuItemClickListener { mi ->
-            when (mi.itemId) {
-                1 -> escribir({ almacen.quitar(id, c.ref.clave).takeIf { it } }, "No se ha podido quitar.") {
-                    aviso("Quitada de «$nombre»")
-                }
-                2 -> anadirAOtra(c)
-                3 -> abrirFuera(c.ref.url())
-            }
-            true
-        }
-        menu.show()
-    }
-
-    private fun anadirAOtra(c: Cancion) {
-        val otras = estado.playlists.filter { it.id != abierta }
-        val opciones = otras.map { if (c.ref.clave in it.claves) "${it.nombre} (ya está)" else it.nombre } +
-            "Nueva playlist…"
-        AlertDialog.Builder(act)
-            .setTitle("Añadir a otra playlist")
-            .setItems(opciones.toTypedArray()) { _, cual ->
-                val p = otras.getOrNull(cual)
-                when {
-                    p == null -> pedirNombre("Nueva playlist", "", "Crear") { nombre ->
-                        escribir({
-                            almacen.crearPlaylist(nombre)?.takeIf { almacen.guardar(c, listOf(it.id)) }
-                        }, "No se ha podido crear la playlist (el tope es ${Musica.MAX_PLAYLISTS}).") {
-                            aviso("Añadida a «${it.nombre}»")
-                        }
-                    }
-                    c.ref.clave in p.claves -> aviso("Ya está en «${p.nombre}»")
-                    else -> escribir(
-                        { almacen.guardar(c, listOf(p.id)).takeIf { it } },
-                        "«${p.nombre}» está llena (el tope es ${Musica.MAX_CANCIONES} canciones)."
-                    ) { aviso("Añadida a «${p.nombre}»") }
-                }
-            }
-            .setNegativeButton("Cancelar", null)
-            .show()
-    }
-
-    /** Compartir: la playlist abierta como texto ([PlaylistCompartida]) por el menú de Android. */
-    private fun compartir() {
-        if (canciones.isEmpty()) return
-        val envio = Intent(Intent.ACTION_SEND)
-            .setType("text/plain")
-            .putExtra(Intent.EXTRA_TEXT, PlaylistCompartida.texto(nombreAbierta(), canciones))
-        // Sin el "Guardar en Música" de esta misma app: solo la duplicaría.
-        val menu = Intent.createChooser(envio, "Compartir playlist").putExtra(
-            Intent.EXTRA_EXCLUDE_COMPONENTS,
-            arrayOf<Parcelable>(ComponentName(act, GuardarEnMusica::class.java))
-        )
-        try {
-            act.startActivity(menu)
-        } catch (_: ActivityNotFoundException) {
-            aviso("No hay ninguna app con la que compartir")
-        }
-    }
-
-    private fun menuPlaylist(ancla: View) {
-        val id = abierta ?: return
-        val nombre = nombreAbierta()
-        val menu = PopupMenu(act, ancla)
-        menu.menu.add(0, 1, 1, "Renombrar")
-        menu.menu.add(0, 2, 2, "Borrar playlist")
-        menu.setOnMenuItemClickListener { mi ->
-            when (mi.itemId) {
-                1 -> pedirNombre("Renombrar playlist", nombre, "Guardar") { nuevo ->
-                    escribir({ almacen.renombrar(id, nuevo).takeIf { it } }, "Ya tienes otra playlist con ese nombre.")
-                }
-                2 -> confirmarBorrado(id, nombre)
-            }
-            true
-        }
-        menu.show()
-    }
-
-    private fun confirmarBorrado(id: String, nombre: String) {
-        AlertDialog.Builder(act)
-            .setTitle("¿Borrar «$nombre»?")
-            .setMessage(when (val n = canciones.size) {
-                0 -> "Se borra de este móvil."
-                1 -> "Se borra de este móvil con su canción. Si está también en otra playlist, allí se queda."
-                else -> "Se borra de este móvil con sus $n canciones. Las que estén también en otras playlists se quedan allí."
-            })
-            .setPositiveButton("Borrar") { _, _ ->
-                // Se para ya; la portada sale al terminar de escribir, ya sin ella.
-                volverAPortada()
-                escribir({ almacen.borrarPlaylist(id).takeIf { it } }, "No se ha podido borrar la playlist.") {
-                    aviso("Playlist «$nombre» borrada")
-                }
-            }
-            .setNegativeButton("Cancelar", null)
-            .show()
-    }
-
-    /** Pide un nombre de playlist (≤ [Musica.MAX_NOMBRE]); [alAceptar] lo recibe ya limpio. */
-    private fun pedirNombre(titulo: String, inicial: String, boton: String, alAceptar: (String) -> Unit) {
-        val densidad = act.resources.displayMetrics.density
-        // El aspecto de @style/Campo a mano: con `EditText(act, null, 0, R.style.Campo)` se pierde
-        // el editTextStyle de la plataforma y el campo no coge el foco al tocarlo (medido: ni
-        // teclado ni borrar).
-        val caja = EditText(act).apply {
-            setBackgroundResource(R.drawable.bg_campo)
-            val h = (14 * densidad).toInt()
-            val v = (12 * densidad).toInt()
-            setPadding(h, v, h, v)
-            textSize = 15f
-            setTextColor(act.getColor(R.color.fc_texto))
-            setHintTextColor(act.getColor(R.color.fc_texto_3))
-            hint = "Nombre de la playlist"
-            isSingleLine = true
-            filters = arrayOf(InputFilter.LengthFilter(Musica.MAX_NOMBRE))
-            // El texto y el cursor, DESPUÉS de isSingleLine: cambiar a una línea vuelve a poner
-            // el texto y deja el cursor al principio (medido: escribir añadía delante del nombre).
-            setText(inicial)
-            setSelection(text.length)
-        }
-        val marco = FrameLayout(act).apply {
-            val m = (20 * densidad).toInt()
-            setPadding(m, (8 * densidad).toInt(), m, 0)
-            addView(caja)
-        }
-        val dlg = AlertDialog.Builder(act)
-            .setTitle(titulo)
-            .setView(marco)
-            .setPositiveButton(boton, null)
-            .setNegativeButton("Cancelar", null)
-            .create()
-        dlg.setOnShowListener {
-            // El botón se maneja a mano para que un nombre vacío no cierre el diálogo.
-            dlg.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-                val limpio = Musica.nombreLimpio(caja.text.toString())
-                if (limpio == null) {
-                    caja.error = "Escribe un nombre"
-                    return@setOnClickListener
-                }
-                dlg.dismiss()
-                alAceptar(limpio)
-            }
-        }
-        dlg.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE)
-        dlg.show()
-        caja.requestFocus()
-    }
-
     /** El nombre que ya se está enseñando (sin volver a leer el disco). */
     private fun nombreAbierta(): String = if (abierta == null) "" else adaptador.nombre()
 
@@ -515,34 +366,6 @@ class MusicaController(
             } catch (_: ActivityNotFoundException) {
                 Toast.makeText(ctx, "No hay ninguna app para abrir este enlace", Toast.LENGTH_SHORT).show()
             }
-        }
-
-        /** "Sin canciones", "1 canción", "N canciones": un "0 canciones" se lee como un fallo. */
-        fun cuantas(n: Int): String = when (n) {
-            0 -> "Sin canciones"
-            1 -> "1 canción"
-            else -> "$n canciones"
-        }
-
-        /** Duración de una canción: "3:25", y con horas "1:02:03". */
-        fun duracion(seg: Int): String {
-            val s = seg.coerceAtLeast(0)
-            val h = s / 3600
-            val m = (s % 3600) / 60
-            val r = s % 60
-            return if (h > 0) "%d:%02d:%02d".format(h, m, r) else "%d:%02d".format(m, r)
-        }
-
-        /**
-         * La línea de la cabecera: "12 canciones · 48 min". La duración total solo si TODAS la
-         * tienen (spec): con una sin saber, el total sería mentira. Se redondea al minuto.
-         */
-        fun resumen(canciones: List<Cancion>): String {
-            val n = cuantas(canciones.size)
-            if (canciones.isEmpty() || canciones.any { it.duracionSeg == null }) return n
-            val minutos = ((canciones.sumOf { it.duracionSeg ?: 0 } + 30) / 60).coerceAtLeast(1)
-            val total = if (minutos >= 60) "${minutos / 60} h ${"%02d".format(minutos % 60)} min" else "$minutos min"
-            return "$n · $total"
         }
     }
 }

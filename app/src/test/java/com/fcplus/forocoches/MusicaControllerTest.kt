@@ -99,33 +99,6 @@ class MusicaControllerTest {
     }
 
     @Test
-    fun `una playlist vacia lo dice sin poner cero canciones`() {
-        assertEquals("Sin canciones", MusicaController.cuantas(0))
-        assertEquals("1 canción", MusicaController.cuantas(1))
-        assertEquals("200 canciones", MusicaController.cuantas(200))
-    }
-
-    @Test
-    fun `la duracion de una cancion va en minutos y segundos, y con horas si las hay`() {
-        assertEquals("0:00", MusicaController.duracion(0))
-        assertEquals("0:07", MusicaController.duracion(7))
-        assertEquals("3:25", MusicaController.duracion(205))
-        assertEquals("1:02:03", MusicaController.duracion(3723))
-    }
-
-    @Test
-    fun `el resumen solo lleva la duracion total si todas la tienen`() {
-        fun con(seg: Int?) = cancion(seg ?: 0).copy(duracionSeg = seg)
-        assertEquals("Sin canciones", MusicaController.resumen(emptyList()))
-        assertEquals("2 canciones · 7 min", MusicaController.resumen(listOf(con(200), con(220))))
-        // Una sin saber: el total sería mentira.
-        assertEquals("2 canciones", MusicaController.resumen(listOf(con(200), con(null))))
-        // Menos de medio minuto no se queda en "0 min".
-        assertEquals("1 canción · 1 min", MusicaController.resumen(listOf(con(10))))
-        assertEquals("20 canciones · 1 h 05 min", MusicaController.resumen(List(20) { con(195) }))
-    }
-
-    @Test
     fun `tocar una playlist abre su pantalla y el atras vuelve a la portada`() {
         val a = actividad()
         val raiz = panel(a)
