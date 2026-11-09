@@ -88,8 +88,9 @@ class VerificacionMusica(
             Fin.Error(Motivo.RED)
         } finally {
             // Aunque poner() diga que no, el POST pudo llegar a FC: se devuelve igual. Y si se quedó
-            // sin respuesta, pudo llegar DESPUÉS de devolverlo: se espera y se vuelve a mirar.
-            if (!cambiandoDeCuenta()) devolver(motor, original, guardado, if (dudosa) esperar else null)
+            // sin respuesta, pudo llegar DESPUÉS de devolverlo: se espera y se vuelve a mirar. El
+            // guard del cambio de cuenta lo mira devolver() antes de cada escritura.
+            devolver(motor, original, guardado, cambiandoDeCuenta, if (dudosa) esperar else null)
         }
     }
 
@@ -194,33 +195,42 @@ class VerificacionMusica(
                 guardado.borrar()
                 return false
             }
-            return devolver(motor, p.original, guardado)
+            return devolver(motor, p.original, guardado, cambiandoDeCuenta)
         }
 
         /**
          * Pone [original] y, si FC lo confirma al leerlo, borra lo guardado. Nunca lanza. Con
          * [esperarTardia] (la escritura del de prueba se quedó sin respuesta) espera a que lo que
          * quedara en camino haya llegado, vuelve a mirar y, si ahí sale otro, lo devuelve otra vez.
+         *
+         * [cambiandoDeCuenta] se mira justo antes de CADA `poner` (el guard va donde se escribe):
+         * entre la última comprobación y la segunda escritura pueden pasar ~33 s (15 de una lectura
+         * sin respuesta, los 3 de espera, otros 15). Con un cambio en curso el motor puede ser ya de
+         * la otra cuenta: no se escribe y lo guardado se queda para cuando vuelva esta.
          */
         private fun devolver(
-            motor: MotorCoche, original: String, guardado: GuardadoCoche, esperarTardia: ((Long) -> Unit)? = null
-        ): Boolean = try {
-            motor.poner(original)
-            var leido = motor.leer()
-            if (esperarTardia != null) {
-                esperarTardia(ESPERA_TARDIA_MS)
-                leido = motor.leer()
-                if (leido != null && !cochesIguales(leido, original)) {
-                    motor.poner(original)
+            motor: MotorCoche, original: String, guardado: GuardadoCoche,
+            cambiandoDeCuenta: () -> Boolean, esperarTardia: ((Long) -> Unit)? = null
+        ): Boolean {
+            try {
+                if (cambiandoDeCuenta()) return false
+                motor.poner(original)
+                var leido = motor.leer()
+                if (esperarTardia != null) {
+                    esperarTardia(ESPERA_TARDIA_MS)
                     leido = motor.leer()
+                    if (leido != null && !cochesIguales(leido, original)) {
+                        if (cambiandoDeCuenta()) return false
+                        motor.poner(original)
+                        leido = motor.leer()
+                    }
                 }
-            }
-            if (leido != null && cochesIguales(leido, original)) {
+                if (leido == null || !cochesIguales(leido, original)) return false
                 guardado.borrar()
-                true
-            } else false
-        } catch (e: Exception) {
-            false
+                return true
+            } catch (e: Exception) {
+                return false
+            }
         }
     }
 }

@@ -190,6 +190,31 @@ class VerificacionMusicaTest {
         assertEquals(original, motor.coche)
     }
 
+    @Test fun unCambioDeCuentaDuranteLaEsperaTardiaNoVuelveAEscribir() {
+        // Entre la última comprobación y el segundo poner(original) pueden pasar ~33 s: si en la
+        // espera empieza un cambio de cuenta, el motor puede ser ya de la otra. El guard va donde
+        // se escribe: antes de CADA poner.
+        retos += reto(cocheReto)
+        motor.seAgotaElTiempo = cocheReto
+        alEsperar = { motor.aterrizar(); cambiando = true }
+        ejecutar()
+        assertEquals(
+            listOf("poner($cocheReto)", "poner($original)", "leer", "esperar(3000)", "leer"),
+            orden.subList(orden.indexOf("poner($cocheReto)"), orden.size)
+        )
+        assertEquals(Pendiente("123456", original, 1_800_000_000_000L), guardado)
+    }
+
+    @Test fun alArrancarElGuardVaAntesDeCadaPoner() {
+        // restaurar() mira el cambio de cuenta al empezar y otra vez justo antes de escribir.
+        motor.coche = cocheReto
+        almacen.p = Pendiente("123456", original, ahora)
+        var llamadas = 0
+        assertFalse(VerificacionMusica.restaurar(motor, almacen, "123456", ahora) { llamadas++ > 0 })
+        assertEquals(emptyList<String>(), orden)
+        assertEquals(Pendiente("123456", original, ahora), guardado)
+    }
+
     @Test fun ponerSinRespuestaQueLlegaTardeYNoSeArreglaQuedaGuardado() {
         retos += reto(cocheReto)
         motor.seAgotaElTiempo = cocheReto
