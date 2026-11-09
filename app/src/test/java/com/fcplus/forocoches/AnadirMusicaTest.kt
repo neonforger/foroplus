@@ -43,6 +43,40 @@ class AnadirMusicaTest {
         assertEquals(1, p.refs.size)
     }
 
+    // Ruling 32: cualquier app puede mandar 60.000 caracteres (~2.000 enlaces) y la hoja busca los
+    // datos de cada uno en la red. Más de lo que cabe en una playlist no se mira siquiera.
+    private fun ytN(n: Int) = RefCancion(FuenteMusica.YOUTUBE, "v%010d".format(n))
+
+    @Test fun masDeDoscientasSeQuedanLasPrimerasDoscientas() {
+        val texto = (0 until 250).joinToString(" ") { "https://youtu.be/${ytN(it).id}" }
+        val p = AnadirMusica.plan(texto)
+        assertEquals(Musica.MAX_CANCIONES, p.refs.size)
+        assertEquals((0 until Musica.MAX_CANCIONES).map { ytN(it) }, p.refs)
+        assertEquals(50, p.descartadas)
+    }
+
+    @Test fun losCortosCuentanParaElTope() {
+        // Cada spotify.link es una petición a la red: entran solo los que quepan tras los largos.
+        val texto = (0 until 190).joinToString(" ") { "https://youtu.be/${ytN(it).id}" } + " " +
+            (0 until 20).joinToString(" ") { "https://spotify.link/Corto$it" }
+        val p = AnadirMusica.plan(texto)
+        assertEquals(190, p.refs.size)
+        assertEquals((0 until 10).map { "https://spotify.link/Corto$it" }, p.cortos)
+        assertEquals(10, p.descartadas)
+    }
+
+    @Test fun hastaDoscientasNoSeDescartaNada() {
+        val p = AnadirMusica.plan((0 until Musica.MAX_CANCIONES).joinToString("\n") { "https://youtu.be/${ytN(it).id}" })
+        assertEquals(Musica.MAX_CANCIONES, p.refs.size)
+        assertEquals(0, p.descartadas)
+        assertNull(AnadirMusica.avisoDescartadas(0))
+    }
+
+    @Test fun elAvisoDeDescartadasDiceCuantas() {
+        assertEquals("Una playlist admite hasta 200 canciones: se ha dejado fuera la última.", AnadirMusica.avisoDescartadas(1))
+        assertEquals("Una playlist admite hasta 200 canciones: se han dejado fuera las 50 últimas.", AnadirMusica.avisoDescartadas(50))
+    }
+
     // CARRY de A5: PlaylistCompartida no recorta el nombre y AlmacenMusica.importar devuelve null con más de 60.
     @Test fun nombreLargoSeRecortaAlTopeYImportarFunciona() {
         val largo = "N".repeat(Musica.MAX_NOMBRE + 25)

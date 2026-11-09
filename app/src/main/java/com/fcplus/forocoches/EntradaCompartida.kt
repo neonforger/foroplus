@@ -2,6 +2,8 @@ package com.fcplus.forocoches
 
 import android.content.Intent
 
+enum class DestinoCompartido { SOLO_HOJA, MUSICA_EN_SU_SITIO, MUSICA_APILADA }
+
 /**
  * "Guardar en Música": lo que otra app (YouTube, Spotify, WhatsApp…) comparte con ForoPlus por el
  * menú de Android. Lo recibe [GuardarEnMusica], que solo declara `SEND` de `text/plain`, lo acota
@@ -44,11 +46,40 @@ object EntradaCompartida {
     }
 
     /**
-     * Si el corte cae dentro de una palabra se retrocede hasta el espacio anterior: un enlace de
-     * YouTube cortado a medias sigue pareciendo uno ([YoutubeId] acepta ids desde 6 caracteres) y
-     * se guardaría OTRO vídeo. Sin ningún espacio, a pelo, pero sin dejar medio emoji al final.
+     * El [EXTRA] que lleva un intent a MainActivity, solo si viene como lo manda [GuardarEnMusica]:
+     * `ACTION_MAIN` y sin `CATEGORY_BROWSABLE`. MainActivity está exportada, y una página web
+     * puede lanzar un `intent:` que case con el filtro de enlaces de FC (VIEW + BROWSABLE) con el
+     * extra pegado: ese enlace tiene que seguir su camino (IntentRouter), no acabar en Música. Y
+     * pasa por el mismo tope que lo compartido ([recortar]): también puede venir de fuera.
      */
-    private fun recortar(t: String): String {
+    fun extraAceptado(accion: String?, categorias: Set<String>?, extra: String?): String? {
+        if (accion != Intent.ACTION_MAIN || categorias?.contains(Intent.CATEGORY_BROWSABLE) == true) return null
+        val t = extra?.trim().orEmpty()
+        return if (t.isEmpty()) null else recortar(t)
+    }
+
+    /**
+     * A dónde lleva lo recibido (MainActivity solo lo aplica):
+     * - [escribiendo] (el composer o un MP abiertos): solo la hoja, encima. Ir a Música escondería
+     *   el composer sin pasar por hideReply y, como lo que se descarta no está en la pila, el atrás
+     *   ya no volvería al borrador.
+     * - [enRaizConPestanas] (la lista de la raíz, con pestañas): Música ocupa su sitio como
+     *   cualquier pestaña; el atrás desde ahí deja la app y se vuelve a la que compartió.
+     * - Sobre cualquier otra cosa (un hilo, un perfil): Música se apila y el atrás vuelve allí.
+     */
+    fun destino(escribiendo: Boolean, enRaizConPestanas: Boolean): DestinoCompartido = when {
+        escribiendo -> DestinoCompartido.SOLO_HOJA
+        enRaizConPestanas -> DestinoCompartido.MUSICA_EN_SU_SITIO
+        else -> DestinoCompartido.MUSICA_APILADA
+    }
+
+    /**
+     * Como mucho [MAX_CARACTERES]. Si el corte cae dentro de una palabra se retrocede hasta el
+     * espacio anterior: un enlace de YouTube cortado a medias sigue pareciendo uno ([YoutubeId]
+     * acepta ids desde 6 caracteres) y se guardaría OTRO vídeo. Sin ningún espacio, a pelo, pero
+     * sin dejar medio emoji al final.
+     */
+    fun recortar(t: String): String {
         if (t.length <= MAX_CARACTERES) return t
         if (t[MAX_CARACTERES].isWhitespace()) return t.substring(0, MAX_CARACTERES)
         val espacio = (MAX_CARACTERES - 1 downTo 1).firstOrNull { t[it].isWhitespace() }

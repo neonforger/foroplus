@@ -118,4 +118,49 @@ class EntradaCompartidaTest {
         assertFalse(EntradaCompartida.traeCanciones("https://forocoches.com/foro/showthread.php?t=1"))
         assertFalse(EntradaCompartida.traeCanciones("hola"))
     }
+
+    // ── El extra que GuardarEnMusica le pasa a MainActivity (Ruling 32) ──────
+
+    private val launcher = setOf(Intent.CATEGORY_LAUNCHER)
+
+    @Test
+    fun `el extra vale en el intent de launcher que manda GuardarEnMusica`() {
+        assertEquals(enlace, EntradaCompartida.extraAceptado(Intent.ACTION_MAIN, launcher, enlace))
+        assertEquals(enlace, EntradaCompartida.extraAceptado(Intent.ACTION_MAIN, null, "  $enlace \n"))
+    }
+
+    @Test
+    fun `el extra no vale en un enlace de FC ni en nada que venga de una web`() {
+        // MainActivity está exportada: una página puede mandar un intent: con el extra pegado a un
+        // enlace de hilo (VIEW + BROWSABLE). Ese enlace sigue su camino, IntentRouter.
+        val web = setOf(Intent.CATEGORY_BROWSABLE, Intent.CATEGORY_DEFAULT)
+        assertNull(EntradaCompartida.extraAceptado(Intent.ACTION_VIEW, web, enlace))
+        assertNull(EntradaCompartida.extraAceptado(Intent.ACTION_VIEW, null, enlace))
+        assertNull(EntradaCompartida.extraAceptado(Intent.ACTION_MAIN, launcher + Intent.CATEGORY_BROWSABLE, enlace))
+        assertNull(EntradaCompartida.extraAceptado(Intent.ACTION_SEND, null, enlace))
+        assertNull(EntradaCompartida.extraAceptado(null, null, enlace))
+    }
+
+    @Test
+    fun `el extra vacio no cuenta y uno enorme se corta igual que lo compartido`() {
+        assertNull(EntradaCompartida.extraAceptado(Intent.ACTION_MAIN, launcher, null))
+        assertNull(EntradaCompartida.extraAceptado(Intent.ACTION_MAIN, launcher, "  \n"))
+        val relleno = "x".repeat(59_990)
+        assertEquals(relleno, EntradaCompartida.extraAceptado(Intent.ACTION_MAIN, launcher, "$relleno $enlace y más"))
+        assertEquals(60_000, EntradaCompartida.recortar("a".repeat(90_000)).length)
+    }
+
+    // ── A dónde se va al recibirlo (Ruling 32: la decisión, pura) ─────────────
+
+    @Test
+    fun `escribiendo solo sale la hoja, encima del composer`() {
+        assertEquals(DestinoCompartido.SOLO_HOJA, EntradaCompartida.destino(escribiendo = true, enRaizConPestanas = true))
+        assertEquals(DestinoCompartido.SOLO_HOJA, EntradaCompartida.destino(escribiendo = true, enRaizConPestanas = false))
+    }
+
+    @Test
+    fun `en la lista raiz Musica ocupa su sitio y sobre otra cosa se apila`() {
+        assertEquals(DestinoCompartido.MUSICA_EN_SU_SITIO, EntradaCompartida.destino(escribiendo = false, enRaizConPestanas = true))
+        assertEquals(DestinoCompartido.MUSICA_APILADA, EntradaCompartida.destino(escribiendo = false, enRaizConPestanas = false))
+    }
 }

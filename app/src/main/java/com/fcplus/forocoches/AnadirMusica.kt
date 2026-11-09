@@ -2,36 +2,60 @@ package com.fcplus.forocoches
 
 /**
  * Lo que la hoja "Añadir" ha entendido de un texto pegado. [nombres] va por [RefCancion.clave] y
- * trae (canción, artista) solo de las líneas numeradas de una playlist compartida.
+ * trae (canción, artista) solo de las líneas numeradas de una playlist compartida. [descartadas]
+ * son las que no se miran por pasar de [Musica.MAX_CANCIONES] (ver [AnadirMusica.plan]).
  */
 data class PlanAnadir(
     val refs: List<RefCancion>,
     val cortos: List<String>,
     val nombre: String?,
-    val nombres: Map<String, Pair<String?, String?>>
+    val nombres: Map<String, Pair<String?, String?>>,
+    val descartadas: Int = 0
 )
 
 /** Las decisiones de la hoja "Añadir", puras: la hoja ([HojaAnadirMusica]) solo pinta y llama a la red. */
 object AnadirMusica {
 
+    /**
+     * Como mucho [Musica.MAX_CANCIONES] entre enlaces largos y cortos, en ese orden: lo que llega
+     * por "Guardar en Música" puede traer 60.000 caracteres (~2.000 enlaces) de cualquier app, y
+     * la hoja pide a la red los datos de cada canción y resuelve cada `spotify.link`. Más de las
+     * que caben en una playlist no se guardarían igualmente ([AlmacenMusica.importar] se queda con
+     * las primeras), así que ni se piden.
+     */
     fun plan(texto: String): PlanAnadir {
         val leida = PlaylistCompartida.leer(texto)
+        val todas = leida.lineas.map { it.ref }
+        val todosCortos = EnlaceMusica.cortosSpotify(texto)
+        val refs = todas.take(Musica.MAX_CANCIONES)
+        val cortos = todosCortos.take(Musica.MAX_CANCIONES - refs.size)
+        val elegidas = refs.map { it.clave }.toHashSet()
         val nombres = LinkedHashMap<String, Pair<String?, String?>>()
         for (l in leida.lineas) {
+            if (l.ref.clave !in elegidas) continue
             if (l.cancion != null || l.artista != null) nombres[l.ref.clave] = l.cancion to l.artista
         }
         return PlanAnadir(
-            leida.lineas.map { it.ref },
-            EnlaceMusica.cortosSpotify(texto),
+            refs,
+            cortos,
             leida.nombre?.let { nombreParaGuardar(it) },
-            nombres
+            nombres,
+            descartadas = (todas.size - refs.size) + (todosCortos.size - cortos.size)
         )
+    }
+
+    /** La línea de la hoja cuando el texto traía más de las que caben; null si no se dejó nada. */
+    fun avisoDescartadas(n: Int): String? = when {
+        n <= 0 -> null
+        n == 1 -> "Una playlist admite hasta ${Musica.MAX_CANCIONES} canciones: se ha dejado fuera la última."
+        else -> "Una playlist admite hasta ${Musica.MAX_CANCIONES} canciones: se han dejado fuera las $n últimas."
     }
 
     /**
      * PlaylistCompartida no recorta el nombre del texto y [AlmacenMusica.importar] devuelve null
      * si pasa de [Musica.MAX_NOMBRE]: se recorta aquí. Null si queda vacío.
      */
+
     fun nombreParaGuardar(nombre: String): String? =
         nombre.trim().replace(Regex("""\s+"""), " ").take(Musica.MAX_NOMBRE).trim().ifEmpty { null }
 

@@ -247,9 +247,12 @@ class HojaAnadirMusica(
 
     private fun empezar(gen: Int, cortosFallidos: Int) {
         val p = plan ?: return
-        val nota = if (cortosFallidos > 0)
+        val notaCortos = if (cortosFallidos > 0)
             "No he podido abrir ${if (cortosFallidos == 1) "un enlace corto" else "$cortosFallidos enlaces cortos"} de Spotify. Pega el enlace largo (open.spotify.com)."
         else null
+        // Más de las que caben en una playlist: se dice cuántas se han dejado fuera (AnadirMusica.plan).
+        val nota = listOfNotNull(notaCortos, AnadirMusica.avisoDescartadas(p.descartadas))
+            .joinToString("\n").ifEmpty { null }
         when {
             refs.isEmpty() -> {
                 avisar(nota ?: "No he encontrado ninguna canción de YouTube o Spotify en ese texto.")

@@ -1234,13 +1234,17 @@ class MainActivity : AppCompatActivity() {
 
     /**
      * El texto de "Guardar en Música" que trae [i] ([GuardarEnMusica] lo pone en
-     * [EntradaCompartida.EXTRA]), o null. Se quita del intent al leerlo, además de lo que para
+     * [EntradaCompartida.EXTRA]), o null. Solo en el intent de launcher que manda ella y con el
+     * mismo tope ([EntradaCompartida.extraAceptado]): pegado a un enlace de FC no cuenta y el
+     * enlace sigue a IntentRouter. Se quita del intent al leerlo, además de lo que para
      * [EntradaCompartida.esNueva]: nada que vuelva a leer este intent lo encuentra otra vez. En el
      * build depurable deja en logcat (`adb logcat -s Musica`) por dónde ha entrado; lo que mandó
      * la otra app tal cual lo apunta GuardarEnMusica.
      */
     private fun textoCompartido(i: android.content.Intent?, via: String): String? {
-        val texto = i?.getStringExtra(EntradaCompartida.EXTRA) ?: return null
+        i ?: return null
+        val texto = EntradaCompartida.extraAceptado(i.action, i.categories, i.getStringExtra(EntradaCompartida.EXTRA))
+            ?: return null
         i.removeExtra(EntradaCompartida.EXTRA)
         val depurable = (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
         if (depurable) android.util.Log.d("Musica",
@@ -1255,23 +1259,30 @@ class MainActivity : AppCompatActivity() {
      * - Sin canciones: se dice y ya (GuardarEnMusica ni siquiera abre MainActivity; aquí solo se
      *   llega así si otra app manda el extra a mano).
      * - Sin pestaña de Música todavía (arranque en frío: sale con el índice del foro, como el
-     *   Popurrí y +18) se aparta en [compartidoPendiente] y lo entrega [onForumListJson].
-     * - Escribiendo un mensaje o un MP, solo la hoja, encima: ir a Música escondería el composer
-     *   sin pasar por hideReply, y como lo que se descarta no está en la pila, el atrás ya no
-     *   volvería al borrador. Al cerrar la hoja se sigue escribiendo.
-     * - Sobre una lista con pestañas en la raíz, Música ocupa su sitio como cualquier pestaña (el
-     *   atrás desde ahí deja la app y se vuelve a la que compartió); sobre cualquier otra cosa (un
-     *   hilo, un perfil) se apila y el atrás vuelve allí.
+     *   Popurrí y +18) se aparta en [compartidoPendiente], se dice que no se ha perdido, y lo
+     *   entrega [onForumListJson].
+     * - Si no, a donde diga [EntradaCompartida.destino] (escribiendo, solo la hoja; en la lista
+     *   raíz, Música en su sitio; sobre otra cosa, apilada).
      */
     private fun recibirCompartido(texto: String) {
         if (!EntradaCompartida.traeCanciones(texto)) { GuardarEnMusica.avisarSinCanciones(this); return }
-        if (!hayPestanaMusica()) { compartidoPendiente = texto; return }
+        if (!hayPestanaMusica()) {
+            if (compartidoPendiente == null) toast("Abriendo Música en cuanto cargue el foro…")
+            compartidoPendiente = texto
+            return
+        }
         compartidoPendiente = null
-        if (!isReplyVisible && !isPmComposeVisible) {
-            if (!(nav.atRoot && nav.current is Screen.ThreadList && conPestanasDeSubforo())) {
+        val destino = EntradaCompartida.destino(
+            escribiendo = isReplyVisible || isPmComposeVisible,
+            enRaizConPestanas = nav.atRoot && nav.current is Screen.ThreadList && conPestanasDeSubforo()
+        )
+        when (destino) {
+            DestinoCompartido.SOLO_HOJA -> {}
+            DestinoCompartido.MUSICA_EN_SU_SITIO -> showMusica()
+            DestinoCompartido.MUSICA_APILADA -> {
                 nav.push(Screen.ThreadList("musica", currentForumId))
+                showMusica()
             }
-            showMusica()
         }
         musica.abrirAnadir(texto)
     }

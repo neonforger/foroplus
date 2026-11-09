@@ -191,7 +191,8 @@ class MusicaControllerTest {
             PlaylistCompartida.texto("Para el coche", listOf(cancion(1), cancion(2))),
             envio.getStringExtra(Intent.EXTRA_TEXT)
         )
-        // Compartirla con uno mismo solo la duplicaría (y apilaría otra ForoPlus encima).
+        // Compartirla con uno mismo solo la duplicaría: GuardarEnMusica volvería a esta misma
+        // MainActivity (CLEAR_TOP cerraría este menú, que está encima) con la playlist otra vez.
         @Suppress("DEPRECATION")
         val fuera = menu.getParcelableArrayExtra(Intent.EXTRA_EXCLUDE_COMPONENTS)!!.map { it as ComponentName }
         assertEquals(listOf(ComponentName(a.packageName, "com.fcplus.forocoches.GuardarEnMusica")), fuera)
