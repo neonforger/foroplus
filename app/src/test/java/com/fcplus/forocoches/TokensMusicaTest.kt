@@ -67,4 +67,18 @@ class TokensMusicaTest {
         api.yo()
         assertNull(cabeceras[2]["Authorization"])
     }
+
+    @Test fun baneadaSeRecuerdaPorCuentaYSeOlvidaAlVerificarseDeNuevo() {
+        assertEquals(false, tokens.baneada("111"))
+        tokens.marcarBaneada("111")
+        assertEquals(true, tokens.baneada("111"))
+        assertEquals(false, tokens.baneada("222"))
+        tokens.borrar("111")
+        assertEquals(true, tokens.baneada("111"))
+        tokens.guardar("111", "nuevo")
+        assertEquals(false, tokens.baneada("111"))
+        // Sin cuenta no se marca nada.
+        tokens.marcarBaneada("")
+        assertEquals(false, tokens.baneada(""))
+    }
 }

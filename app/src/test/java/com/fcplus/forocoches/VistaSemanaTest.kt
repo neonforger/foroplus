@@ -171,4 +171,57 @@ class VistaSemanaTest {
         val r = CargaSemana.cargar(api, { false }, { })
         assertEquals("red", (r as ApiMusica.R.Error).codigo)
     }
+
+    // ---- qué hacer tras un error de votar/proponer ----
+
+    @Test fun trasFalloBaneadaBorraYRecuerda() {
+        val t = VistaSemana.trasFallo(err("baneada", 403), VistaSemana.Accion.VOTAR)
+        assertTrue(t.borrarToken)
+        assertTrue(t.baneada)
+        assertTrue(t.recargar)
+        assertTrue(t.texto, t.texto.contains("bloqueada"))
+    }
+
+    @Test fun trasFalloTokenBorraSinBanear() {
+        val t = VistaSemana.trasFallo(err("token", 401), VistaSemana.Accion.PROPONER)
+        assertTrue(t.borrarToken)
+        assertFalse(t.baneada)
+        assertTrue(t.recargar)
+        assertTrue(t.texto, t.texto.contains("verificarte"))
+    }
+
+    @Test fun trasFalloNoEstaRecargaSinTocarElToken() {
+        val t = VistaSemana.trasFallo(err("no_esta", 409), VistaSemana.Accion.VOTAR)
+        assertFalse(t.borrarToken)
+        assertFalse(t.baneada)
+        assertTrue(t.recargar)
+        assertTrue(t.texto.contains("semana"))
+    }
+
+    @Test fun trasFalloAntiguedadNoTocaNadaNiRecarga() {
+        val t = VistaSemana.trasFallo(err("antiguedad", 403), VistaSemana.Accion.VOTAR)
+        assertFalse(t.borrarToken)
+        assertFalse(t.baneada)
+        assertFalse(t.recargar)
+    }
+
+    // ---- baneada recordada ----
+
+    @Test fun baneadaGuardadaSigueDiciendoseSinToken() {
+        val red = Red(ArrayDeque(listOf(Respuesta(200, semanaJson))))
+        val d = (CargaSemana.cargar(
+            ApiMusica({ null }, red::fn), { false }, { }, baneadaGuardada = { true }, guardarBaneada = { }
+        ) as ApiMusica.R.Ok).v
+        assertTrue(d.baneada)
+        assertFalse(d.verificada)
+    }
+
+    @Test fun baneadaNuevaSeGuarda() {
+        var guardada = false
+        val red = Red(ArrayDeque(listOf(Respuesta(403, """{"error":"baneada"}"""), Respuesta(200, semanaJson))))
+        CargaSemana.cargar(
+            ApiMusica({ "t" }, red::fn), { true }, { }, baneadaGuardada = { false }, guardarBaneada = { guardada = true }
+        )
+        assertTrue(guardada)
+    }
 }

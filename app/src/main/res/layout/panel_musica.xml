@@ -15,10 +15,25 @@
     android:visibility="gone">
 
     <!-- La portada. fillViewport para que el texto de vacío quede centrado en lo que se ve. -->
+    <!-- El reproductor de la semana va FUERA del scroll, fijo arriba como en la pantalla de una
+         playlist: YouTube tiene que verse (>= 200 dp) mientras suena, y dentro del scroll se podria
+         sacar de la pantalla sonando. Oculto hasta que se toca una cancion de la semana. -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+    <FrameLayout
+        android:id="@+id/musica_semana_reproductor"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:visibility="gone" />
+
     <ScrollView
         android:id="@+id/musica_portada"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
         android:fillViewport="true"
         android:background="?attr/fcFondoLista">
 
@@ -59,12 +74,6 @@
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:visibility="gone">
-
-                <FrameLayout
-                    android:id="@+id/musica_semana_reproductor"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:visibility="gone" />
 
                 <TextView
                     android:id="@+id/semana_titulo_ganadora"
@@ -141,6 +150,21 @@
                     android:textStyle="bold"
                     android:textColor="@color/fc_rojo"
                     android:drawableEnd="@drawable/ic_fila"
+                    android:background="?attr/selectableItemBackground"
+                    android:visibility="gone" />
+
+                <!-- La primera carga fallo: se dice y se puede reintentar (sin esto el bloque no saldria). -->
+                <TextView
+                    android:id="@+id/semana_error"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:minHeight="48dp"
+                    android:gravity="center_vertical"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    android:text="No se ha podido cargar la canción de la semana. Toca para reintentar"
+                    android:textSize="14sp"
+                    android:textColor="@color/fc_texto_2"
                     android:background="?attr/selectableItemBackground"
                     android:visibility="gone" />
 
@@ -223,6 +247,7 @@
             </LinearLayout>
         </LinearLayout>
     </ScrollView>
+    </LinearLayout>
 
     <!-- La pantalla de una playlist (A11): el reproductor arriba, a todo el ancho y 16:9, y la
          lista debajo con la cabecera como primera fila. El reproductor va FUERA de la lista

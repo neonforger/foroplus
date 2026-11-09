@@ -170,6 +170,8 @@ class MusicaController(
      * con el gesto, MainActivity manda un CANCEL a la fila y no se toca nada.
      */
     fun dejaDeslizarDesde(x: Int, y: Int): Boolean {
+        // El reproductor de la semana (fijo arriba de la portada) también se arrastra de lado.
+        if (semana != null && semana.reproduciendo && dentro(semana.huecoReproductor, x, y)) return false
         if (abierta == null) return true
         if (reproductor.enMarcha && dentro(huecoReproductor, x, y)) return false
         for (i in 0 until lista.childCount) {
@@ -223,7 +225,7 @@ class MusicaController(
         }
         val uid = e.uidActivo()
         disco.execute {
-            val ofrecer = uid.isEmpty() || try { e.tokens.de(uid) == null } catch (_: Exception) { true }
+            val ofrecer = uid.isEmpty() || try { e.tokens.de(uid) == null && !e.tokens.baneada(uid) } catch (_: Exception) { true }
             act.runOnUiThread { verificar.visibility = if (ofrecer) View.VISIBLE else View.GONE }
         }
     }

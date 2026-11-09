@@ -58,6 +58,19 @@ object VistaSemana {
             "${plural(yo.propuestasRestantes, "propuesta", "propuestas")} esta semana"
     }
 
+    /** Qué hacer tras un error de votar o proponer: el texto, y si hay que tirar el token, recordar el baneo y volver a cargar. */
+    data class TrasFallo(val texto: String, val borrarToken: Boolean, val baneada: Boolean, val recargar: Boolean)
+
+    fun trasFallo(e: ApiMusica.R.Error, accion: Accion): TrasFallo {
+        val baneada = e.codigo == "baneada"
+        val texto = when {
+            baneada -> "Esta cuenta de ForoCoches está bloqueada en Música."
+            e.tokenInservible -> "Tu verificación ya no vale. Vuelve a verificarte para votar y proponer"
+            else -> textoError(e, accion)
+        }
+        return TrasFallo(texto, e.tokenInservible, baneada, e.tokenInservible || e.codigo == "no_esta")
+    }
+
     private fun plural(n: Int, uno: String, varios: String) = if (n == 1) "1 $uno" else "$n $varios"
 
     const val VOTOS = 10
@@ -74,12 +87,16 @@ object VistaSemana {
  * verificarse (misma regla que la hoja de C2).
  */
 object CargaSemana {
-    fun cargar(api: ApiMusica, tieneToken: () -> Boolean, borrarToken: () -> Unit): ApiMusica.R<DatosSemana> {
+    fun cargar(
+        api: ApiMusica, tieneToken: () -> Boolean, borrarToken: () -> Unit,
+        baneadaGuardada: () -> Boolean = { false }, guardarBaneada: () -> Unit = { }
+    ): ApiMusica.R<DatosSemana> {
         var conToken = tieneToken()
-        var baneada = false
+        var baneada = !conToken && baneadaGuardada()
         var r = api.semana()
         if (r is ApiMusica.R.Error && conToken && r.tokenInservible) {
             baneada = r.codigo == "baneada"
+            if (baneada) guardarBaneada()
             borrarToken()
             conToken = false
             r = api.semana()
@@ -94,6 +111,7 @@ object CargaSemana {
                 is ApiMusica.R.Ok -> yo = y.v
                 is ApiMusica.R.Error -> if (y.tokenInservible) {
                     baneada = y.codigo == "baneada"
+                    if (baneada) guardarBaneada()
                     borrarToken()
                     conToken = false
                 }

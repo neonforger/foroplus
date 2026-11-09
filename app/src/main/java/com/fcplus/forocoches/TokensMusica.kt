@@ -19,13 +19,26 @@ class TokensMusica(private val prefs: SharedPreferences) {
 
     fun guardar(uid: String, token: String) {
         if (uid.isEmpty() || token.isEmpty()) return
-        prefs.edit().putString(clave(uid), token).apply()
+        prefs.edit().putString(clave(uid), token).remove(claveBaneada(uid)).apply()
     }
 
     fun borrar(uid: String) {
         if (uid.isEmpty()) return
         prefs.edit().remove(clave(uid)).apply()
     }
+
+    /**
+     * La cuenta quedó baneada en Música (403 `baneada`): el token se borra, pero la portada tiene que
+     * seguir diciéndolo en vez de ofrecer verificarse otra vez. Se olvida al guardar un token nuevo.
+     */
+    fun marcarBaneada(uid: String) {
+        if (uid.isEmpty()) return
+        prefs.edit().putBoolean(claveBaneada(uid), true).apply()
+    }
+
+    fun baneada(uid: String): Boolean = uid.isNotEmpty() && prefs.getBoolean(claveBaneada(uid), false)
+
+    private fun claveBaneada(uid: String) = ClavesPorCuenta.clave("musica_baneada", uid)
 
     private fun clave(uid: String) = ClavesPorCuenta.clave("musica_token", uid)
 

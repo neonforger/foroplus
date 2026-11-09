@@ -43,7 +43,8 @@ class PanelSemana(
     private val alCargar: () -> Unit
 ) {
     private val contenedor: View = raiz.findViewById(R.id.musica_semana)
-    private val huecoReproductor: FrameLayout = raiz.findViewById(R.id.musica_semana_reproductor)
+    /** El hueco del reproductor de la semana: fijo arriba del panel, fuera del scroll. */
+    val huecoReproductor: FrameLayout = raiz.findViewById(R.id.musica_semana_reproductor)
     private val tituloGanadora: View = raiz.findViewById(R.id.semana_titulo_ganadora)
     private val ganadora: LinearLayout = raiz.findViewById(R.id.semana_ganadora)
     private val tituloTop: View = raiz.findViewById(R.id.semana_titulo_top)
@@ -53,6 +54,7 @@ class PanelSemana(
     private val pie: TextView = raiz.findViewById(R.id.semana_pie)
     private val proponer: View = raiz.findViewById(R.id.semana_proponer)
     private val bloqueada: View = raiz.findViewById(R.id.semana_bloqueada)
+    private val error: View = raiz.findViewById(R.id.semana_error)
 
     private val reproductor = ReproductorMusica(huecoReproductor, abrirFuera)
 
@@ -63,6 +65,7 @@ class PanelSemana(
     private var cargando = false
     private var repetir = false
     private var votando = false
+    private var proponiendo = false
 
     /** La cola del reproductor y si es la del top (entonces sigue el orden en vivo). */
     private var cola: List<Cancion> = emptyList()
@@ -71,11 +74,15 @@ class PanelSemana(
 
     init {
         proponer.setOnClickListener { elegirComoProponer() }
+        error.setOnClickListener { error.visibility = View.GONE; refrescar(forzar = true) }
         reproductor.alCambiar = { i ->
             sonando = i?.let { cola.getOrNull(it)?.ref?.clave }
             marcar()
         }
     }
+
+    /** ¿Suena algo de la semana ahora? (El gesto de cambiar de pestaña no puede empezar sobre el reproductor.) */
+    val reproduciendo: Boolean get() = reproductor.enMarcha
 
     /** ¿La cuenta activa está verificada? Según lo último cargado (leer el token cuesta el keystore). */
     val verificada: Boolean get() = datos?.verificada == true && uidDatos == enganches.uidActivo()
@@ -111,7 +118,9 @@ class PanelSemana(
                 CargaSemana.cargar(
                     enganches.api(),
                     tieneToken = { uid.isNotEmpty() && enganches.tokens.de(uid) != null },
-                    borrarToken = { enganches.tokens.borrar(uid) }
+                    borrarToken = { enganches.tokens.borrar(uid) },
+                    baneadaGuardada = { enganches.tokens.baneada(uid) },
+                    guardarBaneada = { enganches.tokens.marcarBaneada(uid) }
                 )
             } catch (_: Exception) { null }
             act.runOnUiThread { cargado(uid, r) }
@@ -128,7 +137,7 @@ class PanelSemana(
             uidDatos = uid
             ultimaCarga = System.currentTimeMillis()
             pintar()
-        }
+        } else if (datos == null) pintarError()
         alCargar()
         if (repetir) { repetir = false; refrescar(true) }
     }
@@ -138,6 +147,7 @@ class PanelSemana(
     private fun pintar() {
         val d = datos ?: return
         contenedor.visibility = View.VISIBLE
+        error.visibility = View.GONE
         val s = d.semana
 
         ganadora.removeAllViews()
@@ -171,6 +181,15 @@ class PanelSemana(
             cola = tocables.mapNotNull { VistaSemana.cancionDe(it) }
             reproductor.actualizar(cola)
         }
+    }
+
+    /** Sin nada cargado y la carga fallo: solo el aviso, que se toca para reintentar. */
+    private fun pintarError() {
+        contenedor.visibility = View.VISIBLE
+        for (v in listOf(tituloGanadora, tituloTop, nota, vacia, pie, proponer, bloqueada)) v.visibility = View.GONE
+        ganadora.removeAllViews()
+        top.removeAllViews()
+        error.visibility = View.VISIBLE
     }
 
     /** Una fila: la misma tarjeta que las canciones de una playlist, con el corazón en lugar del ⋮. */
@@ -257,7 +276,7 @@ class PanelSemana(
         val uid = enganches.uidActivo()
         hilo.execute {
             val r = enganches.api().votar(f.cancion.id, !f.votada)
-            if (r is ApiMusica.R.Error && r.tokenInservible) enganches.tokens.borrar(uid)
+            if (r is ApiMusica.R.Error) tirarToken(uid, VistaSemana.trasFallo(r, VistaSemana.Accion.VOTAR))
             act.runOnUiThread {
                 votando = false
                 when (r) {
@@ -282,15 +301,17 @@ class PanelSemana(
         refrescar(forzar = true)
     }
 
-    /** Un error de una acción: el texto de [VistaSemana.textoError] y, si toca, volver a cargar. */
+    /** Un error de una acción: el texto y, si toca, volver a cargar (el token ya se tiró en el hilo de fondo). */
     private fun fallo(e: ApiMusica.R.Error, accion: VistaSemana.Accion) {
-        if (e.tokenInservible) {
-            aviso(
-                if (e.codigo == "baneada") "Esta cuenta de ForoCoches está bloqueada en Música."
-                else "Tu verificación ya no vale. Vuelve a verificarte para votar y proponer", largo = true
-            )
-        } else aviso(VistaSemana.textoError(e, accion), largo = true)
-        if (e.tokenInservible || e.codigo == "no_esta") refrescar(forzar = true)
+        val t = VistaSemana.trasFallo(e, accion)
+        aviso(t.texto, largo = true)
+        if (t.recargar) refrescar(forzar = true)
+    }
+
+    /** En el hilo de fondo: un token muerto se borra, y un baneo se recuerda para no ofrecer verificarse. */
+    private fun tirarToken(uid: String, t: VistaSemana.TrasFallo) {
+        if (t.borrarToken) enganches.tokens.borrar(uid)
+        if (t.baneada) enganches.tokens.marcarBaneada(uid)
     }
 
     // ── Proponer ─────────────────────────────────────────────────────────────
@@ -369,12 +390,15 @@ class PanelSemana(
 
     private fun proponerRef(ref: RefCancion) {
         if (!verificada) { abrirVerificacion(); return }
+        if (proponiendo) return
+        proponiendo = true
         val uid = enganches.uidActivo()
         hilo.execute {
             // El enlace canónico, no el texto pegado: es lo único que el servidor tiene que leer.
             val r = enganches.api().proponer(ref.url())
-            if (r is ApiMusica.R.Error && r.tokenInservible) enganches.tokens.borrar(uid)
+            if (r is ApiMusica.R.Error) tirarToken(uid, VistaSemana.trasFallo(r, VistaSemana.Accion.PROPONER))
             act.runOnUiThread {
+                proponiendo = false
                 when (r) {
                     is ApiMusica.R.Ok -> {
                         aviso(
