@@ -121,12 +121,12 @@ class ApiMusica(
     }
 
     fun publicar(nombre: String, enlaces: List<String>): R<Publicada> =
-        llamar("POST", "/v1/playlists", JSONObject().put("nombre", nombre).put("enlaces", JSONArray(enlaces))) {
+        llamar("POST", "/v1/playlists", JSONObject().put("nombre", nombre).put("enlaces", JSONArray(enlaces)), tiempoMs = TIMEOUT_LARGO_MS) {
             Publicada(it.getString("id"), it.getInt("canciones"), it.cadenas("fallidas"))
         }
 
     fun anadirAPublicada(id: String, enlaces: List<String>): R<Publicada> =
-        llamar("POST", "/v1/playlists/${enc(id)}/canciones", JSONObject().put("enlaces", JSONArray(enlaces))) {
+        llamar("POST", "/v1/playlists/${enc(id)}/canciones", JSONObject().put("enlaces", JSONArray(enlaces)), tiempoMs = TIMEOUT_LARGO_MS) {
             Publicada(id, it.getInt("canciones"), it.cadenas("fallidas"))
         }
 
@@ -143,11 +143,12 @@ class ApiMusica(
     // ---- fontanería ----
 
     private fun <T> llamar(
-        metodo: String, ruta: String, cuerpo: JSONObject? = null, conToken: Boolean = true,
+        metodo: String, ruta: String, cuerpo: JSONObject? = null, conToken: Boolean = true, tiempoMs: Int? = null,
         parsear: (JSONObject) -> T
     ): R<T> {
         val cab = linkedMapOf("Accept" to "application/json")
         if (cuerpo != null) cab["Content-Type"] = "application/json"
+        if (tiempoMs != null) cab[CABECERA_TIMEOUT] = tiempoMs.toString()
         if (conToken) token()?.takeIf { it.isNotBlank() }?.let { cab["Authorization"] = "Bearer $it" }
         val r = try {
             red(metodo, ServidorMusica.url(ruta), cuerpo?.toString(), cab)
@@ -175,6 +176,15 @@ class ApiMusica(
         private const val TIMEOUT_MS = 10_000
 
         /**
+         * Publicar y ampliar una playlist leen varias tarjetas fuera en el servidor: pueden tardar
+         * más que el resto. Un tiempo agotado antes de que acabe no dice si se creó (ver [PublicarPlaylist]).
+         */
+        internal const val TIMEOUT_LARGO_MS = 30_000
+
+        /** Cabecera interna (no sale a la red): el tiempo de esta llamada, para [redReal]. */
+        const val CABECERA_TIMEOUT = "X-Foroplus-Timeout-Ms"
+
+        /**
          * La red de verdad. Sin redirecciones (el servidor no redirige; seguir una llevaría el
          * `Authorization` a otro sitio), sin tocar `CookieHandler` y sin cabecera `Cookie`, y con
          * el cuerpo cortado a 2 MB. Solo habla con [ServidorMusica.aceptada].
@@ -191,11 +201,12 @@ class ApiMusica(
             val c = URL(url).openConnection() as HttpURLConnection
             try {
                 c.requestMethod = metodo
-                c.connectTimeout = TIMEOUT_MS
-                c.readTimeout = TIMEOUT_MS
+                val tiempo = cabeceras.entries.firstOrNull { it.key == CABECERA_TIMEOUT }?.value?.toIntOrNull() ?: TIMEOUT_MS
+                c.connectTimeout = minOf(tiempo, TIMEOUT_MS)
+                c.readTimeout = tiempo
                 c.instanceFollowRedirects = false
                 c.useCaches = false
-                for ((k, v) in cabeceras) if (!k.equals("Cookie", true)) c.setRequestProperty(k, v)
+                for ((k, v) in cabeceras) if (!k.equals("Cookie", true) && k != CABECERA_TIMEOUT) c.setRequestProperty(k, v)
                 // Nunca cuerpo en un DELETE: algunas versiones de Android lanzan "DELETE does not
                 // support writing". Quien necesite mandar algo con DELETE lo manda en la URL.
                 if (cuerpo != null && !metodo.equals("DELETE", true)) {

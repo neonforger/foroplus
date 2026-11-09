@@ -56,6 +56,8 @@ class MusicaController(
 
     private val portada: View = raiz.findViewById(R.id.musica_portada)
     private val verificar: View = raiz.findViewById(R.id.musica_verificar)
+    private val shursEntrada: View = raiz.findViewById(R.id.musica_shurs_entrada)
+    private val borrarCuenta: View = raiz.findViewById(R.id.musica_borrar_cuenta)
     private val anadir: View = raiz.findViewById(R.id.musica_anadir)
     private val tuyas: View = raiz.findViewById(R.id.musica_tuyas)
     private val filas: LinearLayout = raiz.findViewById(R.id.musica_playlists)
@@ -72,6 +74,16 @@ class MusicaController(
         override fun estado() = estado
         override fun puedeProponer() = semana?.verificada == true
         override fun proponer(c: Cancion) { semana?.proponerCancion(c) }
+        override fun servidorActivo() = enganches?.servidorActivo?.invoke() == true
+        override fun publicadaId() = estado.playlists.firstOrNull { it.id == abierta }?.publicadaId
+        override fun publicar() {
+            val p = estado.playlists.firstOrNull { it.id == abierta } ?: return
+            flujos?.publicar(p, canciones)
+        }
+        override fun retirar() {
+            val p = estado.playlists.firstOrNull { it.id == abierta } ?: return
+            flujos?.retirar(p)
+        }
         override fun nombreAbierta() = this@MusicaController.nombreAbierta()
         override fun volverAPortada() = this@MusicaController.volverAPortada()
         override fun aviso(texto: String) = this@MusicaController.aviso(texto)
@@ -85,6 +97,19 @@ class MusicaController(
             act, raiz, it, abrirFuera, { estado.canciones.values },
             abrirVerificacion = { abrirVerificacion() }, alCargar = { pintarEntradaVerificar() }
         )
+    }
+
+    /** Playlists de los shurs (C4); null en los tests de la parte local. */
+    private val shurs: PanelShurs? = enganches?.let {
+        PanelShurs(act, raiz, it, almacen, abrirFuera, abrirVerificacion = { abrirVerificacion() }, alGuardar = { recargar() })
+    }
+
+    /** Publicar, retirar y borrar la cuenta (C4). Tras cualquier cambio la portada se repinta y la semana se vuelve a pedir. */
+    private val flujos: FlujosMusica? = enganches?.let {
+        FlujosMusica(act, it, almacen, abrirVerificacion = { abrirVerificacion() }, alCambiar = {
+            recargar()
+            semana?.refrescar(forzar = true)
+        })
     }
 
     private val adaptador = PlaylistAdapter(
@@ -112,6 +137,8 @@ class MusicaController(
     init {
         anadir.setOnClickListener { abrirAnadir(null) }
         verificar.setOnClickListener { abrirVerificacion() }
+        shursEntrada.setOnClickListener { abrirShurs() }
+        borrarCuenta.setOnClickListener { flujos?.borrarCuenta() }
         lista.layoutManager = LinearLayoutManager(act)
         lista.adapter = adaptador
         val helper = ItemTouchHelper(adaptador.callbackDeArrastre())
@@ -140,12 +167,14 @@ class MusicaController(
         raiz.visibility = View.GONE
         reproductor.parar()
         semana?.parar()
+        shurs?.parar()
     }
 
     /** `onPause` de la actividad: "La música se para al salir de la app". */
     fun pausar() {
         reproductor.parar()
         semana?.parar()
+        shurs?.parar()
     }
 
     /**
@@ -154,6 +183,7 @@ class MusicaController(
      * Popurrí.
      */
     fun atras(): Boolean {
+        if (shurs?.atras() == true) return true
         if (abierta == null) return false
         cerrarPlaylist()
         return true
@@ -172,6 +202,7 @@ class MusicaController(
     fun dejaDeslizarDesde(x: Int, y: Int): Boolean {
         // El reproductor de la semana (fijo arriba de la portada) también se arrastra de lado.
         if (semana != null && semana.reproduciendo && dentro(semana.huecoReproductor, x, y)) return false
+        if (shurs != null && shurs.visible && shurs.reproduciendo && dentro(shurs.huecoReproductor, x, y)) return false
         if (abierta == null) return true
         if (reproductor.enMarcha && dentro(huecoReproductor, x, y)) return false
         for (i in 0 until lista.childCount) {
@@ -212,6 +243,14 @@ class MusicaController(
         }.mostrar()
     }
 
+    /** Abre "Playlists de los shurs" encima de la portada: lo que suena en la portada se para. */
+    private fun abrirShurs() {
+        val p = shurs ?: return
+        semana?.parar()
+        reproductor.parar()
+        p.abrir()
+    }
+
     /**
      * La entrada de la portada: servidor encendido y la cuenta activa (o ninguna) sin token. El
      * token se mira fuera del hilo de la interfaz: la primera lectura abre las preferencias
@@ -221,12 +260,19 @@ class MusicaController(
         val e = enganches
         if (e == null || !e.servidorActivo()) {
             verificar.visibility = View.GONE
+            shursEntrada.visibility = View.GONE
+            borrarCuenta.visibility = View.GONE
             return
         }
+        shursEntrada.visibility = View.VISIBLE
         val uid = e.uidActivo()
         disco.execute {
-            val ofrecer = uid.isEmpty() || try { e.tokens.de(uid) == null && !e.tokens.baneada(uid) } catch (_: Exception) { true }
-            act.runOnUiThread { verificar.visibility = if (ofrecer) View.VISIBLE else View.GONE }
+            val tiene = uid.isNotEmpty() && try { e.tokens.de(uid) != null } catch (_: Exception) { false }
+            val ofrecer = uid.isEmpty() || try { !tiene && !e.tokens.baneada(uid) } catch (_: Exception) { true }
+            act.runOnUiThread {
+                verificar.visibility = if (ofrecer) View.VISIBLE else View.GONE
+                borrarCuenta.visibility = if (tiene) View.VISIBLE else View.GONE
+            }
         }
     }
 

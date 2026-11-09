@@ -64,6 +64,23 @@
                 android:background="?attr/selectableItemBackground"
                 android:visibility="gone" />
 
+            <!-- Playlists de los shurs (C4): solo con el servidor encendido en la config. -->
+            <TextView
+                android:id="@+id/musica_shurs_entrada"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp"
+                android:gravity="center_vertical"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:text="Playlists de los shurs"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:textColor="@color/fc_rojo"
+                android:drawableEnd="@drawable/ic_fila"
+                android:background="?attr/selectableItemBackground"
+                android:visibility="gone" />
+
             <!-- La canción de la semana (C3). Solo con el servidor encendido en la config: lo
                  enciende y lo llena PanelSemana. El reproductor de la semana es OTRA instancia de
                  ReproductorMusica, en su propio hueco (oculto hasta que se toca algo): el de las
@@ -245,6 +262,22 @@
                     android:lineSpacingExtra="3dp"
                     android:textColor="@color/fc_texto_2" />
             </LinearLayout>
+
+            <!-- Borrar la cuenta de Música (C4): solo con una cuenta verificada (token en este móvil). -->
+            <TextView
+                android:id="@+id/musica_borrar_cuenta"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp"
+                android:gravity="center_vertical"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:layout_marginTop="12dp"
+                android:text="Borrar mi cuenta de Música"
+                android:textSize="13.5sp"
+                android:textColor="@color/fc_texto_2"
+                android:background="?attr/selectableItemBackground"
+                android:visibility="gone" />
         </LinearLayout>
     </ScrollView>
     </LinearLayout>
@@ -288,4 +321,7 @@
         android:contentDescription="Añadir canciones"
         app:backgroundTint="@color/fc_rojo"
         app:tint="@color/fc_sobre_rojo" />
+
+    <!-- Playlists de los shurs (C4), encima de todo lo demás (también del botón "+"). -->
+    <include layout="@layout/panel_shurs" />
 </FrameLayout>

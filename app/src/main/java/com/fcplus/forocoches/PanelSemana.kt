@@ -207,7 +207,7 @@ class PanelSemana(
         val menu = v.findViewById<ImageView>(R.id.cancion_menu)
         if (corazon == null) menu.visibility = View.GONE else pintarCorazon(menu, c, corazon)
         v.contentDescription = listOfNotNull(c.titulo, txt.ifEmpty { null }).joinToString(", ")
-        pintarPortada(v.findViewById(R.id.cancion_portada), c.portada)
+        PortadasMusica.pintar(act, v.findViewById(R.id.cancion_portada), c.portada)
         v.setOnClickListener { alTocar() }
         marcarFila(v)
         return v
@@ -224,24 +224,6 @@ class PanelSemana(
         }
     }
 
-    private fun pintarPortada(iv: ImageView, url: String?) {
-        val bmp = url?.let { PostImages.get(it) }
-        if (bmp != null) {
-            iv.setImageBitmap(bmp)
-            return
-        }
-        val pad = (12 * act.resources.displayMetrics.density).toInt()
-        iv.setImageResource(R.drawable.ic_musica)
-        iv.setPadding(pad, pad, pad, pad)
-        iv.imageTintList = ContextCompat.getColorStateList(act, R.color.fc_rojo)
-        if (url != null) PostImages.load(url) {
-            PostImages.get(url)?.let { b ->
-                iv.setPadding(0, 0, 0, 0)
-                iv.imageTintList = null
-                iv.setImageBitmap(b)
-            }
-        }
-    }
 
     /** Lo que suena: el título en rojo y la marca sobre la portada, sin repintar nada más. */
     private fun marcar() {
