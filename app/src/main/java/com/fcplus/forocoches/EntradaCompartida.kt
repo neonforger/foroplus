@@ -4,10 +4,10 @@ import android.content.Intent
 
 /**
  * "Guardar en Música": lo que otra app (YouTube, Spotify, WhatsApp…) comparte con ForoPlus por el
- * menú de Android. Entra por el `activity-alias` `GuardarEnMusica` del manifiesto, que solo
- * declara `SEND` de `text/plain`; MainActivity pregunta aquí ANTES que a [IntentRouter], así que
- * un SEND nunca se toma por un enlace de FC ni por una notificación, y lo que no es un SEND de
- * texto (el launcher, un enlace de hilo) sigue su camino de siempre.
+ * menú de Android. Lo recibe [GuardarEnMusica], que solo declara `SEND` de `text/plain`, lo acota
+ * aquí ([texto]) y se lo pasa a MainActivity en [EXTRA]. MainActivity mira ese extra ANTES que a
+ * [IntentRouter]: lo compartido nunca se toma por un enlace de FC, y lo que no lo lleva (el
+ * launcher, un enlace de hilo) sigue su camino de siempre.
  *
  * Es dato de otra app: aquí solo se acota (tipo y tamaño); de lo que llega, la hoja "Añadir" usa
  * únicamente las URLs que reconoce [EnlaceMusica]. Android no deja filtrar el menú por dominio,
@@ -16,15 +16,15 @@ import android.content.Intent
  */
 object EntradaCompartida {
 
-    /** El `activity-alias` del manifiesto (el nombre que sale en el menú de compartir). */
-    const val ALIAS = "com.fcplus.forocoches.GuardarEnMusica"
+    /** El texto, ya acotado, de [GuardarEnMusica] a MainActivity. Nombre propio: no es un extra de Android. */
+    const val EXTRA = "com.fcplus.forocoches.extra.MUSICA_COMPARTIDA"
 
     /**
-     * Tope de lo que se acepta (plan de A12). Una playlist compartida con [PlaylistCompartida]
-     * gasta ~95 caracteres por canción de YouTube y ~105 por una de Spotify: cabe una de 200 (el
-     * tope) salvo con títulos muy largos o casi todo Spotify, y entonces se pierden las últimas.
+     * Tope de lo que se acepta (Ruling 31). Una playlist compartida con [PlaylistCompartida] gasta
+     * ~95 caracteres por canción de YouTube, ~105 por una de Spotify y más con nombres largos: con
+     * 20.000 una de 200 (el tope) perdía las últimas. 60.000 caben de sobra en un Intent.
      */
-    const val MAX_CARACTERES = 20_000
+    const val MAX_CARACTERES = 60_000
 
     /**
      * El texto compartido, o null si el intent no es un `SEND` de texto plano o no trae nada.
@@ -58,10 +58,10 @@ object EntradaCompartida {
     }
 
     /**
-     * ¿Hay que atender el `SEND` con el que se ha CREADO la actividad? Solo si es nueva. Recreada
-     * (el modo oscuro, el estilo de Opciones o el tamaño de letra del sistema la recrean) o
-     * relanzada desde Recientes, `getIntent()` sigue siendo aquel mismo SEND: la hoja volvería a
-     * salir con lo que ya se guardó. [recreada] es "hay `savedInstanceState`".
+     * ¿Hay que atender el [EXTRA] con el que llega MainActivity? No si se está recreando (el modo
+     * oscuro, el estilo de Opciones o el tamaño de letra del sistema la recrean) ni si viene de
+     * Recientes, que relanza el intent de la tarea: el texto sería el de antes y la hoja volvería
+     * a salir con lo que ya se guardó. [recreada] es "hay `savedInstanceState`".
      */
     fun esNueva(recreada: Boolean, flags: Int): Boolean =
         !recreada && (flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY) == 0

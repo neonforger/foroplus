@@ -128,15 +128,6 @@ class MusicaController(
     }
 
     /**
-     * `onResume` de la actividad: con el panel a la vista, vuelve a leer lo guardado. Lo que llega
-     * por "Guardar en Música" lo guarda OTRA MainActivity (Android la abre encima de esta, o en la
-     * tarea de la app que comparte), y al volver aquí la portada seguiría sin ello.
-     */
-    fun refrescar() {
-        if (visible) recargar()
-    }
-
-    /**
      * El atrás, antes de que MainActivity deshaga su pila. `true` si lo gestionó (de una
      * playlist a la portada); en la portada es `false` y el atrás hace lo mismo que desde el
      * Popurrí.
@@ -347,11 +338,10 @@ class MusicaController(
         val envio = Intent(Intent.ACTION_SEND)
             .setType("text/plain")
             .putExtra(Intent.EXTRA_TEXT, PlaylistCompartida.texto(nombreAbierta(), canciones))
-        // Sin el "Guardar en Música" de esta misma app: solo la duplicaría, y apilando otra
-        // MainActivity encima de esta.
+        // Sin el "Guardar en Música" de esta misma app: solo la duplicaría.
         val menu = Intent.createChooser(envio, "Compartir playlist").putExtra(
             Intent.EXTRA_EXCLUDE_COMPONENTS,
-            arrayOf<Parcelable>(ComponentName(act.packageName, EntradaCompartida.ALIAS))
+            arrayOf<Parcelable>(ComponentName(act, GuardarEnMusica::class.java))
         )
         try {
             act.startActivity(menu)

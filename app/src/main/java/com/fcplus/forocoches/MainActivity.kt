@@ -1233,38 +1233,38 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * El texto de "Guardar en Música" si [i] es un SEND de texto (ver [EntradaCompartida]), o
-     * null. En el build depurable deja en logcat (`adb logcat -s Musica`) lo que manda cada app
-     * tal cual, con el camino por el que entró: así se mide qué comparte de verdad YouTube.
+     * El texto de "Guardar en Música" que trae [i] ([GuardarEnMusica] lo pone en
+     * [EntradaCompartida.EXTRA]), o null. Se quita del intent al leerlo, además de lo que para
+     * [EntradaCompartida.esNueva]: nada que vuelva a leer este intent lo encuentra otra vez. En el
+     * build depurable deja en logcat (`adb logcat -s Musica`) por dónde ha entrado; lo que mandó
+     * la otra app tal cual lo apunta GuardarEnMusica.
      */
     private fun textoCompartido(i: android.content.Intent?, via: String): String? {
-        i ?: return null
-        val crudo = i.getCharSequenceExtra(android.content.Intent.EXTRA_TEXT)
-        val asunto = i.getCharSequenceExtra(android.content.Intent.EXTRA_SUBJECT)
-        val texto = EntradaCompartida.texto(i.action, i.type, crudo, asunto) ?: return null
+        val texto = i?.getStringExtra(EntradaCompartida.EXTRA) ?: return null
+        i.removeExtra(EntradaCompartida.EXTRA)
         val depurable = (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
         if (depurable) android.util.Log.d("Musica",
-            "compartido por $via (flags=0x${Integer.toHexString(i.flags)}, raíz=$isTaskRoot) " +
-                "asunto=[$asunto] texto=[$crudo]")
+            "a MainActivity por $via (flags=0x${Integer.toHexString(i.flags)}, raíz=$isTaskRoot) texto=[$texto]")
         return texto
     }
 
     /**
-     * Lo que llega por "Guardar en Música": Música con la hoja "Añadir" rellena.
+     * Lo que llega por "Guardar en Música": Música con la hoja "Añadir" rellena. Siempre a ESTA
+     * MainActivity, la única (Ruling 30): por onNewIntent si ya estaba, por onCreate si no.
      *
-     * - Sin canciones: se dice y ya, sin moverse de donde se esté (en onCreate, ni eso: la
-     *   MainActivity nueva se cierra antes de arrancar nada).
+     * - Sin canciones: se dice y ya (GuardarEnMusica ni siquiera abre MainActivity; aquí solo se
+     *   llega así si otra app manda el extra a mano).
      * - Sin pestaña de Música todavía (arranque en frío: sale con el índice del foro, como el
      *   Popurrí y +18) se aparta en [compartidoPendiente] y lo entrega [onForumListJson].
      * - Escribiendo un mensaje o un MP, solo la hoja, encima: ir a Música escondería el composer
      *   sin pasar por hideReply, y como lo que se descarta no está en la pila, el atrás ya no
      *   volvería al borrador. Al cerrar la hoja se sigue escribiendo.
-     * - Sobre una lista con pestañas en la raíz, Música ocupa su sitio como cualquier pestaña (en
-     *   una MainActivity abierta solo para esto, el atrás vuelve a la app que compartió); sobre
-     *   cualquier otra cosa (un hilo, un perfil) se apila y el atrás vuelve allí.
+     * - Sobre una lista con pestañas en la raíz, Música ocupa su sitio como cualquier pestaña (el
+     *   atrás desde ahí deja la app y se vuelve a la que compartió); sobre cualquier otra cosa (un
+     *   hilo, un perfil) se apila y el atrás vuelve allí.
      */
     private fun recibirCompartido(texto: String) {
-        if (!EntradaCompartida.traeCanciones(texto)) { avisarSinCanciones(); return }
+        if (!EntradaCompartida.traeCanciones(texto)) { GuardarEnMusica.avisarSinCanciones(this); return }
         if (!hayPestanaMusica()) { compartidoPendiente = texto; return }
         compartidoPendiente = null
         if (!isReplyVisible && !isPmComposeVisible) {
@@ -1278,13 +1278,6 @@ class MainActivity : AppCompatActivity() {
 
     private fun hayPestanaMusica(): Boolean =
         (0 until forumTabs.tabCount).any { forumTabs.getTabAt(it)?.tag == TAG_MUSICA }
-
-    /** Con el contexto de la app: en onCreate la actividad se cierra justo después. */
-    private fun avisarSinCanciones() {
-        android.widget.Toast.makeText(applicationContext,
-            "No he encontrado ninguna canción de YouTube o Spotify en lo que has compartido",
-            android.widget.Toast.LENGTH_LONG).show()
-    }
 
     /** El botón TOP encendido (rojo) o apagado. Se pinta SIEMPRE que cambia la fuente. */
     private fun pintarBotonTop() {
@@ -3551,19 +3544,6 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // "Guardar en Música" (EntradaCompartida). Recreada (modo oscuro, estilo) o desde
-        // Recientes, el intent sigue siendo aquel SEND y no se vuelve a atender.
-        val compartido = textoCompartido(intent, "onCreate")
-        val atenderCompartido = compartido != null &&
-            EntradaCompartida.esNueva(savedInstanceState != null, intent.flags)
-        if (atenderCompartido && !EntradaCompartida.traeCanciones(compartido!!)) {
-            // Sin canciones, se dice y ya. Esta MainActivity se ha abierto solo para esto (el
-            // alias abre una nueva, ver el manifiesto): se cierra y se vuelve a donde se estaba,
-            // sin arrancar un motor ni enseñar la portada del foro para nada.
-            avisarSinCanciones()
-            finish()
-            return
-        }
         // Estilo Tarjetas: un overlay de tema que redefine los atributos fc* (ver EstiloApp).
         // Tiene que ir ANTES de inflar nada; cambiarlo luego recrea la actividad.
         EstiloApp.overlay(EstiloApp.guardado(getSharedPreferences(PREFS, MODE_PRIVATE)))
@@ -3661,8 +3641,12 @@ class MainActivity : AppCompatActivity() {
         // Destino centralizado en IntentRouter. En frío el motor aún no está listo, así que
         // hilo/MP se guardan como pendientes y se abren en NATIVO al arrancar; mientras, se
         // muestra la lista nativa. REGLA DE ORO: jamás la capa web.
-        // "Guardar en Música" va ANTES y no pasa por IntentRouter: un SEND no es un enlace de FC
-        // ni una notificación.
+        // "Guardar en Música" (el extra de GuardarEnMusica) va ANTES y no pasa por IntentRouter:
+        // no es un enlace de FC. Recreada (modo oscuro, estilo) o desde Recientes no se vuelve a
+        // atender (EntradaCompartida.esNueva).
+        val compartido = textoCompartido(intent, "onCreate")
+        val atenderCompartido = compartido != null &&
+            EntradaCompartida.esNueva(savedInstanceState != null, intent.flags)
         if (compartido == null) {
             val route = IntentRouter.route(urlDelIntent(intent), engineReady = false)
             when (route.target) {
@@ -8170,8 +8154,6 @@ class MainActivity : AppCompatActivity() {
         // cambiándose el diseño del foro. El acelerador de recheckSkin evita que esto sea una
         // petición cada vez que se cambia de aplicación.
         recheckSkin()
-        // Lo guardado desde "Guardar en Música" lo escribe otra MainActivity (ver el manifiesto).
-        if (::musica.isInitialized) musica.refrescar()
     }
 
     override fun onPause() {
@@ -8192,9 +8174,12 @@ class MainActivity : AppCompatActivity() {
 
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
-        // "Guardar en Música" primero, y sin pasar por IntentRouter (ver onCreate). Solo llega
-        // aquí con FLAG_ACTIVITY_SINGLE_TOP: lo normal es una MainActivity nueva (manifiesto).
-        textoCompartido(intent, "onNewIntent")?.let { recibirCompartido(it); return }
+        // "Guardar en Música" primero, y sin pasar por IntentRouter (ver onCreate). Es el camino
+        // normal con la app abierta: GuardarEnMusica llega aquí con CLEAR_TOP + SINGLE_TOP.
+        textoCompartido(intent, "onNewIntent")?.let {
+            if (EntradaCompartida.esNueva(recreada = false, flags = intent.flags)) recibirCompartido(it)
+            return
+        }
         // App viva: destino centralizado en IntentRouter. REGLA DE ORO: nunca la capa web.
         executeRoute(
             IntentRouter.route(urlDelIntent(intent), engineReady)

@@ -56,26 +56,31 @@
 
         <!--
             "Guardar en Música": lo que se comparte desde otra app (YouTube, Spotify…) abre Música
-            con la hoja "Añadir" rellena (ver EntradaCompartida). Un alias y no un intent-filter
-            más en MainActivity para que en el menú de compartir salga con ESTE nombre y no con el
-            de la app. Android no deja filtrar por dominio: sale para cualquier texto, y lo que no
+            con la hoja "Añadir" rellena. Una actividad propia, con su nombre en el menú de
+            compartir; Android no deja filtrar por dominio: sale para cualquier texto, y lo que no
             trae canciones se dice y ya.
 
-            OJO: un alias hereda el launchMode de MainActivity (standard), así que lo compartido
-            abre una MainActivity NUEVA (onCreate) en vez de llegarle a la que ya hubiera
-            (onNewIntent): la que estaba, con su borrador, no se toca.
+            Es SOLO de paso (GuardarEnMusica.kt): sin pantalla, se cierra en el acto y le pasa el
+            texto a la MainActivity que ya hubiera. Antes era un activity-alias de MainActivity, y
+            un alias hereda su launchMode (standard): cada compartir abría OTRA MainActivity, con
+            su propio motor contra FC (Ruling 30).
+            taskAffinity vacío: lanzada con NEW_TASK (por adb, o desde una app que lo ponga) no se
+            mete en la tarea de ForoPlus encima de MainActivity, que es justo donde estorbaría.
         -->
-        <activity-alias
+        <activity
             android:name=".GuardarEnMusica"
-            android:targetActivity=".MainActivity"
             android:label="Guardar en Música"
-            android:exported="true">
+            android:exported="true"
+            android:theme="@android:style/Theme.NoDisplay"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:taskAffinity="">
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="text/plain" />
             </intent-filter>
-        </activity-alias>
+        </activity>
         <!-- Para pasarle la tarjeta (un PNG de la caché) a WhatsApp, Telegram, etc. Android no
              deja compartir un fichero a pelo: hay que cederlo por un proveedor con permiso
              temporal. exported=false + grantUriPermissions: solo lo ve quien reciba el intent. -->

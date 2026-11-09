@@ -58,17 +58,35 @@ class EntradaCompartidaTest {
     }
 
     @Test
-    fun `un texto enorme se corta a 20000 caracteres`() {
-        val largo = "a".repeat(30_000)
-        assertEquals(20_000, EntradaCompartida.texto(Intent.ACTION_SEND, "text/plain", largo, null)!!.length)
+    fun `un texto enorme se corta a 60000 caracteres`() {
+        val largo = "a".repeat(90_000)
+        assertEquals(60_000, EntradaCompartida.texto(Intent.ACTION_SEND, "text/plain", largo, null)!!.length)
+    }
+
+    @Test
+    fun `una playlist de 200 canciones con nombres largos entra entera`() {
+        // Ruling 31: con 20.000 se perdían las últimas (~105 caracteres por canción de Spotify,
+        // más con nombres largos). Esta ocupa más de 30.000.
+        val canciones = (0 until Musica.MAX_CANCIONES).map { n ->
+            Cancion(
+                RefCancion(FuenteMusica.SPOTIFY, "%022d".format(n)),
+                "Una canción con un título bastante largo, versión extendida $n",
+                "Los Artistas Con Nombre Larguísimo $n", null, null, null, 0L
+            )
+        }
+        val texto = PlaylistCompartida.texto("Para la autovía", canciones)
+        assertTrue(texto.length in 30_001..60_000)
+        val r = EntradaCompartida.texto(Intent.ACTION_SEND, "text/plain", texto, null)!!
+        assertEquals(texto, r)
+        assertEquals(Musica.MAX_CANCIONES, AnadirMusica.plan(r).refs.size)
     }
 
     @Test
     fun `el corte no parte un emoji por la mitad`() {
-        // 19.999 letras y un emoji (dos char): cortar a 20.000 dejaría medio emoji suelto.
-        val largo = "a".repeat(19_999) + "🎵" + "b".repeat(100)
+        // 59.999 letras y un emoji (dos char): cortar a 60.000 dejaría medio emoji suelto.
+        val largo = "a".repeat(59_999) + "🎵" + "b".repeat(100)
         val r = EntradaCompartida.texto(Intent.ACTION_SEND, "text/plain", largo, null)!!
-        assertEquals(19_999, r.length)
+        assertEquals(59_999, r.length)
         assertFalse(Character.isHighSurrogate(r.last()))
     }
 
@@ -76,14 +94,14 @@ class EntradaCompartidaTest {
     fun `el corte no deja un enlace a medias`() {
         // Un enlace de YouTube cortado sigue pareciendo uno (sus ids valen desde 6 caracteres) y
         // se guardaría otro vídeo: se corta en el espacio de antes.
-        val relleno = "x".repeat(19_990)
+        val relleno = "x".repeat(59_990)
         val r = EntradaCompartida.texto(Intent.ACTION_SEND, "text/plain", "$relleno $enlace y más", null)!!
         assertEquals(relleno, r)
         assertFalse(EntradaCompartida.traeCanciones(r))
     }
 
     @Test
-    fun `solo se atiende el SEND de una actividad nueva`() {
+    fun `solo se atiende lo compartido en una actividad nueva`() {
         assertTrue(EntradaCompartida.esNueva(recreada = false, flags = Intent.FLAG_ACTIVITY_NEW_TASK))
         // Recreada (modo oscuro, estilo, tamaño de letra) el intent es el mismo de antes: la hoja
         // volvería a salir con lo que ya se guardó.
