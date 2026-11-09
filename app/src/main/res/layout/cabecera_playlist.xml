@@ -76,14 +76,13 @@
             app:drawableTint="@color/fc_sobre_rojo"
             android:text="Reproducir" />
 
-        <!-- Compartir la playlist como texto: lo enciende y le da su acción A12. -->
+        <!-- Compartir la playlist como texto (PlaylistCompartida) por el menú de Android. -->
         <TextView
             android:id="@+id/pl_compartir"
             style="@style/BotonSecundario"
             android:layout_width="wrap_content"
             android:layout_marginStart="10dp"
-            android:text="Compartir"
-            android:visibility="gone" />
+            android:text="Compartir" />
     </LinearLayout>
 
     <!-- Regla del spec: nada suena con la app en segundo plano, y una línea lo dice. -->

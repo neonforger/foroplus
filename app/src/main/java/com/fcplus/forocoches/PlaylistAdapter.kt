@@ -15,7 +15,7 @@ import androidx.recyclerview.widget.RecyclerView
 
 /**
  * La lista de la pantalla de una playlist de Música: la cabecera en la posición 0 (nombre,
- * resumen, Reproducir, el aviso de que se para al salir) y una tarjeta por canción, la misma
+ * resumen, Reproducir, Compartir, el aviso de que se para al salir) y una tarjeta por canción, la misma
  * para YouTube y Spotify. Los índices que salen por los avisos son de CANCIÓN (sin la cabecera).
  *
  * El arrastre, como en [OrganizarAdapter]: solo desde el asa, durante el gesto se mueve la lista
@@ -28,7 +28,8 @@ class PlaylistAdapter(
     private val alMover: (desde: Int, hasta: Int) -> Unit,
     private val alVolver: () -> Unit,
     private val alReproducir: () -> Unit,
-    private val alMenuPlaylist: (ancla: View) -> Unit
+    private val alMenuPlaylist: (ancla: View) -> Unit,
+    private val alCompartir: () -> Unit
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     private var nombre = ""
@@ -128,10 +129,14 @@ class PlaylistAdapter(
         val hay = canciones.isNotEmpty()
         h.reproducir.isEnabled = hay
         h.reproducir.alpha = if (hay) 1f else 0.45f
+        // Compartir una vacía mandaría solo la cabecera: igual que Reproducir, apagado.
+        h.compartir.isEnabled = hay
+        h.compartir.alpha = if (hay) 1f else 0.45f
         h.vacia.visibility = if (hay) View.GONE else View.VISIBLE
         h.volver.setOnClickListener { alVolver() }
         h.reproducir.setOnClickListener { alReproducir() }
         h.menu.setOnClickListener { alMenuPlaylist(it) }
+        h.compartir.setOnClickListener { alCompartir() }
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -301,6 +306,7 @@ class PlaylistAdapter(
         val menu: View = v.findViewById(R.id.pl_menu)
         val resumen: TextView = v.findViewById(R.id.pl_resumen)
         val reproducir: TextView = v.findViewById(R.id.pl_reproducir)
+        val compartir: TextView = v.findViewById(R.id.pl_compartir)
         val vacia: View = v.findViewById(R.id.pl_vacia)
     }
 

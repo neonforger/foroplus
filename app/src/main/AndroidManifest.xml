@@ -53,6 +53,29 @@
                 <data android:pathPrefix="/foro/private.php" />
             </intent-filter>
         </activity>
+
+        <!--
+            "Guardar en Música": lo que se comparte desde otra app (YouTube, Spotify…) abre Música
+            con la hoja "Añadir" rellena (ver EntradaCompartida). Un alias y no un intent-filter
+            más en MainActivity para que en el menú de compartir salga con ESTE nombre y no con el
+            de la app. Android no deja filtrar por dominio: sale para cualquier texto, y lo que no
+            trae canciones se dice y ya.
+
+            OJO: un alias hereda el launchMode de MainActivity (standard), así que lo compartido
+            abre una MainActivity NUEVA (onCreate) en vez de llegarle a la que ya hubiera
+            (onNewIntent): la que estaba, con su borrador, no se toca.
+        -->
+        <activity-alias
+            android:name=".GuardarEnMusica"
+            android:targetActivity=".MainActivity"
+            android:label="Guardar en Música"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity-alias>
         <!-- Para pasarle la tarjeta (un PNG de la caché) a WhatsApp, Telegram, etc. Android no
              deja compartir un fichero a pelo: hay que cederlo por un proveedor con permiso
              temporal. exported=false + grantUriPermissions: solo lo ve quien reciba el intent. -->

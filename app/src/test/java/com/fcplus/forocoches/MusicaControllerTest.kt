@@ -1,12 +1,16 @@
 package com.fcplus.forocoches
 
+import android.content.ComponentName
+import android.content.Intent
 import android.view.View
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.recyclerview.widget.RecyclerView
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -14,6 +18,7 @@ import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
 
 /**
  * El panel de Música (pestaña tras el Popurrí). Lo que se fija aquí es lo que ve quien entra:
@@ -146,6 +151,66 @@ class MusicaControllerTest {
         assertEquals(View.VISIBLE, raiz.findViewById<View>(R.id.musica_portada).visibility)
         assertEquals(View.GONE, raiz.findViewById<View>(R.id.musica_playlist).visibility)
         assertFalse(musica.atras())
+    }
+
+    /** La cabecera de la playlist abierta: es la fila 0 de la lista, y sin medir no existe. */
+    private fun cabecera(raiz: View): View {
+        val lista = raiz.findViewById<RecyclerView>(R.id.musica_canciones)
+        raiz.measure(
+            View.MeasureSpec.makeMeasureSpec(1080, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(4000, View.MeasureSpec.EXACTLY)
+        )
+        raiz.layout(0, 0, 1080, 4000)
+        return lista.findViewHolderForAdapterPosition(0)!!.itemView
+    }
+
+    @Test
+    fun `compartir una playlist abre el menu de Android con su texto y sin Guardar en Musica`() {
+        val a = actividad()
+        val raiz = panel(a)
+        val almacen = AlmacenMusica(carpeta.root)
+        val coche = almacen.crearPlaylist("Para el coche")!!
+        assertTrue(almacen.guardar(cancion(1), listOf(coche.id)))
+        assertTrue(almacen.guardar(cancion(2), listOf(coche.id)))
+        val musica = MusicaController(a, raiz, almacen) {}
+        musica.mostrar()
+        raiz.findViewById<LinearLayout>(R.id.musica_playlists).getChildAt(0).performClick()
+
+        val boton = cabecera(raiz).findViewById<View>(R.id.pl_compartir)
+        assertEquals(View.VISIBLE, boton.visibility)
+        assertTrue(boton.isEnabled)
+        boton.performClick()
+
+        val menu = shadowOf(a).nextStartedActivity
+        assertEquals(Intent.ACTION_CHOOSER, menu.action)
+        @Suppress("DEPRECATION")
+        val envio = menu.getParcelableExtra<Intent>(Intent.EXTRA_INTENT)!!
+        assertEquals(Intent.ACTION_SEND, envio.action)
+        assertEquals("text/plain", envio.type)
+        assertEquals(
+            PlaylistCompartida.texto("Para el coche", listOf(cancion(1), cancion(2))),
+            envio.getStringExtra(Intent.EXTRA_TEXT)
+        )
+        // Compartirla con uno mismo solo la duplicaría (y apilaría otra ForoPlus encima).
+        @Suppress("DEPRECATION")
+        val fuera = menu.getParcelableArrayExtra(Intent.EXTRA_EXCLUDE_COMPONENTS)!!.map { it as ComponentName }
+        assertEquals(listOf(ComponentName(a.packageName, "com.fcplus.forocoches.GuardarEnMusica")), fuera)
+    }
+
+    @Test
+    fun `una playlist sin canciones no se puede compartir`() {
+        val a = actividad()
+        val raiz = panel(a)
+        val almacen = AlmacenMusica(carpeta.root)
+        almacen.crearPlaylist("Vacía")!!
+        val musica = MusicaController(a, raiz, almacen) {}
+        musica.mostrar()
+        raiz.findViewById<LinearLayout>(R.id.musica_playlists).getChildAt(0).performClick()
+
+        val boton = cabecera(raiz).findViewById<View>(R.id.pl_compartir)
+        assertFalse(boton.isEnabled)
+        boton.performClick()
+        assertNull(shadowOf(a).nextStartedActivity)
     }
 
     @Test

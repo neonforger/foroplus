@@ -35,7 +35,7 @@ class PlaylistAdapterTest {
         val movidas = ArrayList<Pair<Int, Int>>()
         val adaptador = PlaylistAdapter(
             alTocar = {}, alMenu = { _, _ -> }, alMover = { d, h -> movidas.add(d to h) },
-            alVolver = {}, alReproducir = {}, alMenuPlaylist = {}
+            alVolver = {}, alReproducir = {}, alMenuPlaylist = {}, alCompartir = {}
         )
         val rv = RecyclerView(a)
         rv.layoutManager = LinearLayoutManager(a)

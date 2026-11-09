@@ -3,9 +3,11 @@ package com.fcplus.forocoches
 import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.ClipboardManager
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Parcelable
 import android.text.InputFilter
 import android.view.View
 import android.view.WindowManager
@@ -73,7 +75,8 @@ class MusicaController(
         alMover = { desde, hasta -> mover(desde, hasta) },
         alVolver = { cerrarPlaylist() },
         alReproducir = { if (canciones.isNotEmpty()) reproductor.reproducir(canciones, 0) },
-        alMenuPlaylist = { ancla -> menuPlaylist(ancla) }
+        alMenuPlaylist = { ancla -> menuPlaylist(ancla) },
+        alCompartir = { compartir() }
     )
 
     /** La playlist abierta (su id); null en la portada. */
@@ -122,6 +125,15 @@ class MusicaController(
     /** `onPause` de la actividad: "La música se para al salir de la app". */
     fun pausar() {
         reproductor.parar()
+    }
+
+    /**
+     * `onResume` de la actividad: con el panel a la vista, vuelve a leer lo guardado. Lo que llega
+     * por "Guardar en Música" lo guarda OTRA MainActivity (Android la abre encima de esta, o en la
+     * tarea de la app que comparte), y al volver aquí la portada seguiría sin ello.
+     */
+    fun refrescar() {
+        if (visible) recargar()
     }
 
     /**
@@ -327,6 +339,25 @@ class MusicaController(
             }
             .setNegativeButton("Cancelar", null)
             .show()
+    }
+
+    /** Compartir: la playlist abierta como texto ([PlaylistCompartida]) por el menú de Android. */
+    private fun compartir() {
+        if (canciones.isEmpty()) return
+        val envio = Intent(Intent.ACTION_SEND)
+            .setType("text/plain")
+            .putExtra(Intent.EXTRA_TEXT, PlaylistCompartida.texto(nombreAbierta(), canciones))
+        // Sin el "Guardar en Música" de esta misma app: solo la duplicaría, y apilando otra
+        // MainActivity encima de esta.
+        val menu = Intent.createChooser(envio, "Compartir playlist").putExtra(
+            Intent.EXTRA_EXCLUDE_COMPONENTS,
+            arrayOf<Parcelable>(ComponentName(act.packageName, EntradaCompartida.ALIAS))
+        )
+        try {
+            act.startActivity(menu)
+        } catch (_: ActivityNotFoundException) {
+            aviso("No hay ninguna app con la que compartir")
+        }
     }
 
     private fun menuPlaylist(ancla: View) {

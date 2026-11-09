@@ -382,6 +382,8 @@ class MainActivity : AppCompatActivity() {
     /** Música: el panel que sustituye a la lista con la pestaña "Música" (ver [showMusica]). */
     private lateinit var musica: MusicaController
     private lateinit var panelMusica: View
+    /** Lo llegado por "Guardar en Música" antes de que hubiera pestaña de Música (ver [recibirCompartido]). */
+    private var compartidoPendiente: String? = null
     /** Sección +18: lo ya pintado, sin filtrar por chips (para refiltrar sin volver a bajar). */
     private var mas18Hilos: List<HiloMas18> = emptyList()
     private var mas18Total = 1
@@ -1228,6 +1230,60 @@ class MainActivity : AppCompatActivity() {
             encuadrarPestanas()
             return
         }
+    }
+
+    /**
+     * El texto de "Guardar en Música" si [i] es un SEND de texto (ver [EntradaCompartida]), o
+     * null. En el build depurable deja en logcat (`adb logcat -s Musica`) lo que manda cada app
+     * tal cual, con el camino por el que entró: así se mide qué comparte de verdad YouTube.
+     */
+    private fun textoCompartido(i: android.content.Intent?, via: String): String? {
+        i ?: return null
+        val crudo = i.getCharSequenceExtra(android.content.Intent.EXTRA_TEXT)
+        val asunto = i.getCharSequenceExtra(android.content.Intent.EXTRA_SUBJECT)
+        val texto = EntradaCompartida.texto(i.action, i.type, crudo, asunto) ?: return null
+        val depurable = (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        if (depurable) android.util.Log.d("Musica",
+            "compartido por $via (flags=0x${Integer.toHexString(i.flags)}, raíz=$isTaskRoot) " +
+                "asunto=[$asunto] texto=[$crudo]")
+        return texto
+    }
+
+    /**
+     * Lo que llega por "Guardar en Música": Música con la hoja "Añadir" rellena.
+     *
+     * - Sin canciones: se dice y ya, sin moverse de donde se esté (en onCreate, ni eso: la
+     *   MainActivity nueva se cierra antes de arrancar nada).
+     * - Sin pestaña de Música todavía (arranque en frío: sale con el índice del foro, como el
+     *   Popurrí y +18) se aparta en [compartidoPendiente] y lo entrega [onForumListJson].
+     * - Escribiendo un mensaje o un MP, solo la hoja, encima: ir a Música escondería el composer
+     *   sin pasar por hideReply, y como lo que se descarta no está en la pila, el atrás ya no
+     *   volvería al borrador. Al cerrar la hoja se sigue escribiendo.
+     * - Sobre una lista con pestañas en la raíz, Música ocupa su sitio como cualquier pestaña (en
+     *   una MainActivity abierta solo para esto, el atrás vuelve a la app que compartió); sobre
+     *   cualquier otra cosa (un hilo, un perfil) se apila y el atrás vuelve allí.
+     */
+    private fun recibirCompartido(texto: String) {
+        if (!EntradaCompartida.traeCanciones(texto)) { avisarSinCanciones(); return }
+        if (!hayPestanaMusica()) { compartidoPendiente = texto; return }
+        compartidoPendiente = null
+        if (!isReplyVisible && !isPmComposeVisible) {
+            if (!(nav.atRoot && nav.current is Screen.ThreadList && conPestanasDeSubforo())) {
+                nav.push(Screen.ThreadList("musica", currentForumId))
+            }
+            showMusica()
+        }
+        musica.abrirAnadir(texto)
+    }
+
+    private fun hayPestanaMusica(): Boolean =
+        (0 until forumTabs.tabCount).any { forumTabs.getTabAt(it)?.tag == TAG_MUSICA }
+
+    /** Con el contexto de la app: en onCreate la actividad se cierra justo después. */
+    private fun avisarSinCanciones() {
+        android.widget.Toast.makeText(applicationContext,
+            "No he encontrado ninguna canción de YouTube o Spotify en lo que has compartido",
+            android.widget.Toast.LENGTH_LONG).show()
     }
 
     /** El botón TOP encendido (rojo) o apagado. Se pinta SIEMPRE que cambia la fuente. */
@@ -3495,6 +3551,19 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // "Guardar en Música" (EntradaCompartida). Recreada (modo oscuro, estilo) o desde
+        // Recientes, el intent sigue siendo aquel SEND y no se vuelve a atender.
+        val compartido = textoCompartido(intent, "onCreate")
+        val atenderCompartido = compartido != null &&
+            EntradaCompartida.esNueva(savedInstanceState != null, intent.flags)
+        if (atenderCompartido && !EntradaCompartida.traeCanciones(compartido!!)) {
+            // Sin canciones, se dice y ya. Esta MainActivity se ha abierto solo para esto (el
+            // alias abre una nueva, ver el manifiesto): se cierra y se vuelve a donde se estaba,
+            // sin arrancar un motor ni enseñar la portada del foro para nada.
+            avisarSinCanciones()
+            finish()
+            return
+        }
         // Estilo Tarjetas: un overlay de tema que redefine los atributos fc* (ver EstiloApp).
         // Tiene que ir ANTES de inflar nada; cambiarlo luego recrea la actividad.
         EstiloApp.overlay(EstiloApp.guardado(getSharedPreferences(PREFS, MODE_PRIVATE)))
@@ -3592,15 +3661,21 @@ class MainActivity : AppCompatActivity() {
         // Destino centralizado en IntentRouter. En frío el motor aún no está listo, así que
         // hilo/MP se guardan como pendientes y se abren en NATIVO al arrancar; mientras, se
         // muestra la lista nativa. REGLA DE ORO: jamás la capa web.
-        val route = IntentRouter.route(urlDelIntent(intent), engineReady = false)
-        when (route.target) {
-            Target.THREAD, Target.PM_INBOX -> pendingDeepLink = route.url
-            Target.HOME -> {}
+        // "Guardar en Música" va ANTES y no pasa por IntentRouter: un SEND no es un enlace de FC
+        // ni una notificación.
+        if (compartido == null) {
+            val route = IntentRouter.route(urlDelIntent(intent), engineReady = false)
+            when (route.target) {
+                Target.THREAD, Target.PM_INBOX -> pendingDeepLink = route.url
+                Target.HOME -> {}
+            }
         }
         showNative()
         nav.root(Screen.ThreadList("home", currentForumId))
         listLoading.visibility = View.VISIBLE
         webView.loadUrl(TrustedOrigins.DEFAULT_URL)
+        // Aún no hay pestaña de Música (sale con el índice): se aparta hasta entonces.
+        if (atenderCompartido) recibirCompartido(compartido!!)
 
         prepararActualizador()
         maybeShowWelcome()
@@ -4007,6 +4082,8 @@ class MainActivity : AppCompatActivity() {
         val forums = parseForumListPayload(json)
         if (forums.isEmpty()) return
         pintarPestanas(forums)
+        // Lo de "Guardar en Música" que esperaba a la pestaña de Música (arranque en frío).
+        compartidoPendiente?.let { recibirCompartido(it) }
     }
 
     /** Rehace la barra de subforos. Sin argumento, con los que ya conocíamos. */
@@ -8093,6 +8170,8 @@ class MainActivity : AppCompatActivity() {
         // cambiándose el diseño del foro. El acelerador de recheckSkin evita que esto sea una
         // petición cada vez que se cambia de aplicación.
         recheckSkin()
+        // Lo guardado desde "Guardar en Música" lo escribe otra MainActivity (ver el manifiesto).
+        if (::musica.isInitialized) musica.refrescar()
     }
 
     override fun onPause() {
@@ -8113,6 +8192,9 @@ class MainActivity : AppCompatActivity() {
 
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
+        // "Guardar en Música" primero, y sin pasar por IntentRouter (ver onCreate). Solo llega
+        // aquí con FLAG_ACTIVITY_SINGLE_TOP: lo normal es una MainActivity nueva (manifiesto).
+        textoCompartido(intent, "onNewIntent")?.let { recibirCompartido(it); return }
         // App viva: destino centralizado en IntentRouter. REGLA DE ORO: nunca la capa web.
         executeRoute(
             IntentRouter.route(urlDelIntent(intent), engineReady)
