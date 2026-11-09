@@ -2659,6 +2659,22 @@
   // espera promesas) y descarta la de una petición que ya dio por perdida.
   var CAMPO_COCHE = 'input[name="userfield[field5]"]';
 
+  // Plazo de cada cadena (leer, o leer + POST + releer). Kotlin espera 15 s (MotorCocheFC): si
+  // la cadena siguiera viva después, su POST podría poner el coche de prueba DESPUÉS de que Kotlin
+  // la diera por perdida y devolviera el original. Cortada aquí antes, contesta "plazo" y Kotlin
+  // la trata como dudosa (espera y vuelve a mirar). Sin AbortController (WebView muy viejo), sin plazo.
+  var PLAZO_COCHE_MS = 10000;
+  function senalCoche() {
+    if (typeof AbortController === 'undefined') return undefined;
+    var c = new AbortController();
+    setTimeout(function () { c.abort(); }, PLAZO_COCHE_MS);
+    return c.signal;
+  }
+
+  function errorCoche(e) {
+    return { ok: false, error: (e && e.name === 'AbortError') ? 'plazo' : 'fc', detalle: String(e) };
+  }
+
   function uidDelMenu(doc) {
     var as = doc.querySelectorAll('a[href*="member.php?u="]');
     for (var i = 0; i < as.length; i++) {
@@ -2670,9 +2686,9 @@
 
   // → { form, valor } o { error: 'challenge' | 'login' | 'cuenta' | 'fc' }. Con `_fp` (gotcha
   // VARNISH): la segunda lectura, justo después del POST, tiene que ser la de AHORA.
-  function formCoche(uid) {
+  function formCoche(uid, senal) {
     return fetch('https://forocoches.com/foro/profile.php?do=editprofile&_fp=' + Date.now(),
-      { credentials: 'same-origin' })
+      { credentials: 'same-origin', signal: senal })
       .then(function (r) {
         var cf = esChallengeCf(r);
         return r.text().then(function (html) {
@@ -2685,7 +2701,8 @@
             var tok = doc.querySelector('input[name="securitytoken"]');
             return { error: (!tok || tok.value === 'guest') ? 'login' : 'fc' };
           }
-          if (uidDelMenu(doc) !== String(uid || '')) return { error: 'cuenta' };
+          // Sin uid no hay con quién comparar: un "" casaría con un menú ilegible. No se toca nada.
+          if (!uid || uidDelMenu(doc) !== String(uid)) return { error: 'cuenta' };
           return { form: f, valor: f.querySelector(CAMPO_COCHE).value || '' };
         });
       });
@@ -2697,17 +2714,18 @@
   }
 
   window.fcLeerCoche = function (uid, peticion) {
-    formCoche(uid)
+    formCoche(uid, senalCoche())
       .then(function (x) {
         respondeCoche(peticion, x.error ? { ok: false, error: x.error } : { ok: true, valor: x.valor });
       })
-      .catch(function (e) { respondeCoche(peticion, { ok: false, error: 'fc', detalle: String(e) }); });
+      .catch(function (e) { respondeCoche(peticion, errorCoche(e)); });
   };
 
   // `ok` = FC contestó y se pudo volver a leer; si el coche leído es el pedido lo decide Kotlin.
   window.fcPonerCoche = function (valor, uid, peticion) {
     var pedido = String(valor == null ? '' : valor);
-    formCoche(uid)
+    var senal = senalCoche();  // una para toda la cadena: leer, POST y releer
+    formCoche(uid, senal)
       .then(function (x) {
         if (x.error) { respondeCoche(peticion, { ok: false, error: x.error, pedido: pedido }); return; }
         var destino = new URL(x.form.getAttribute('action') || 'profile.php?do=updateprofile',
@@ -2717,7 +2735,7 @@
         }
         var params = copyFormFields(x.form, { 'userfield[field5]': pedido }, []);
         return fetch(destino.href, {
-          method: 'POST', credentials: 'same-origin',
+          method: 'POST', credentials: 'same-origin', signal: senal,
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
           body: params.toString()
         })
@@ -2726,14 +2744,14 @@
           })
           // Lo que vale es lo que FC tiene DESPUÉS, no lo que contesta al POST.
           .then(function (post) {
-            return formCoche(uid).then(function (y) {
+            return formCoche(uid, senal).then(function (y) {
               respondeCoche(peticion, y.error
                 ? { ok: false, error: y.error, pedido: pedido, post: post.status, detalle: post.err }
                 : { ok: true, valor: y.valor, pedido: pedido, post: post.status, detalle: post.err });
             });
           });
       })
-      .catch(function (e) { respondeCoche(peticion, { ok: false, error: 'fc', pedido: pedido, detalle: String(e) }); });
+      .catch(function (e) { var o = errorCoche(e); o.pedido = pedido; respondeCoche(peticion, o); });
   };
 
   // ── Perfil + logout (Bloque B) ──────────────────────────────────────────────

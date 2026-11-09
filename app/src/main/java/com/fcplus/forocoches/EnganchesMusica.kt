@@ -34,12 +34,19 @@ class EnganchesMusica(
      */
     fun restaurarCoche(uid: String) {
         if (uid.isEmpty() || pendientes.de(uid) == null) return
+        // Se llama al arrancar, al acabar un cambio de cuenta y en cada onResume: con uno ya en
+        // cola no se encola otro (con FC en challenge serían cuatro peticiones por cada vuelta a la app).
+        if (!enCola.add(uid)) return
         MotorCocheFC.hilo.execute {
+            enCola.remove(uid)
+            if (pendientes.de(uid) == null) return@execute
             val hecho = VerificacionMusica.restaurar(
-                motorCoche.para(uid), pendientes.de(uid), uid, System.currentTimeMillis(),
-                { cambiandoDeCuenta() || uidActivo() != uid }, pendientes.para(uid)
-            )
+                motorCoche.para(uid), pendientes.para(uid), uid, System.currentTimeMillis()
+            ) { cambiandoDeCuenta() || uidActivo() != uid }
             android.util.Log.i("Musica", "coche de una verificación a medias devuelto: $hecho")
         }
     }
+
+    /** Cuentas con una restauración ya en la cola del hilo del coche. */
+    private val enCola: MutableSet<String> = java.util.concurrent.ConcurrentHashMap.newKeySet()
 }

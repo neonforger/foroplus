@@ -44,6 +44,20 @@ object CochePendiente {
         p != null && !uidActivo.isNullOrEmpty() && p.uid == uidActivo && ahora - p.desde < CADUCA_MS
 }
 
+/** Lo guardado para UNA cuenta (la de quien verifica o restaura). Ver [PendientesCoche.para]. */
+interface GuardadoCoche {
+    fun leer(): Pendiente?
+
+    /**
+     * False si no ha quedado en disco o si YA había uno: el original guardado es lo único que queda
+     * del coche de verdad mientras el de prueba siga puesto, así que no se pisa nunca (quien quiera
+     * guardar otro tiene que devolver antes ese y [borrar]).
+     */
+    fun guardar(p: Pendiente): Boolean
+
+    fun borrar()
+}
+
 /**
  * Dónde se guardan los [Pendiente]: un fichero de preferencias propio (`musica_coche`), una clave
  * por cuenta. Por cuenta y no una sola: si una verificación de la cuenta A se queda a medias y
@@ -53,19 +67,23 @@ class PendientesCoche(private val prefs: SharedPreferences) {
     fun de(uid: String): Pendiente? =
         if (uid.isEmpty()) null else CochePendiente.deJson(prefs.getString(clave(uid), null))
 
-    /** Con commit() y no apply(): tiene que estar en disco ANTES de que el motor toque el perfil. */
-    fun guardar(p: Pendiente) {
-        if (p.uid.isEmpty()) return
-        prefs.edit().putString(clave(p.uid), CochePendiente.aJson(p)).commit()
-    }
+    /** Lo guardado de [uid], para [VerificacionMusica] y [VerificacionMusica.restaurar]. */
+    fun para(uid: String): GuardadoCoche = object : GuardadoCoche {
+        override fun leer() = de(uid)
 
-    fun borrar(uid: String) {
-        if (uid.isEmpty()) return
-        prefs.edit().remove(clave(uid)).commit()
-    }
+        // Con commit() y no apply(): tiene que estar en disco ANTES de que el motor toque el
+        // perfil, y si no se pudo escribir no se toca. Synchronized: leer-y-escribir de una vez.
+        override fun guardar(p: Pendiente): Boolean = synchronized(prefs) {
+            // Uno ilegible no cuenta: no guarda ningún original y bloquearía la cuenta para siempre.
+            if (uid.isEmpty() || p.uid != uid || de(uid) != null) return false
+            prefs.edit().putString(clave(uid), CochePendiente.aJson(p)).commit()
+        }
 
-    /** El callback que piden [VerificacionMusica] y [VerificacionMusica.restaurar] para [uid]. */
-    fun para(uid: String): (Pendiente?) -> Unit = { p -> if (p == null) borrar(uid) else guardar(p) }
+        override fun borrar() {
+            if (uid.isEmpty()) return
+            synchronized(prefs) { prefs.edit().remove(clave(uid)).commit() }
+        }
+    }
 
     private fun clave(uid: String) = "pendiente_$uid"
 

@@ -19,6 +19,9 @@ import java.util.concurrent.atomic.AtomicInteger
  *
  * @param evaluar lanza un trozo de JS en el motor (MainActivity: `webView.evaluateJavascript` en el
  *   hilo de la interfaz).
+ * @param esperaMs tiene que ser MAYOR que el plazo con el que el JS corta su cadena
+ *   (`PLAZO_COCHE_MS`, 10 s): así, cuando aquí se da una petición por perdida, allí ya no queda
+ *   ningún fetch en marcha que pueda escribir el coche después.
  */
 class MotorCocheFC(
     private val evaluar: (String) -> Unit,
@@ -47,8 +50,9 @@ class MotorCocheFC(
 
     inner class DeCuenta(private val uid: String) : MotorCoche {
         /**
-         * Por qué falló lo último: "login", "challenge", "cuenta", "fc" o "tiempo"; null si fue
-         * bien. La hoja lo usa para decir algo más útil que "sin sesión".
+         * Por qué falló lo último: "login", "challenge", "cuenta", "fc", "plazo" (el JS cortó su
+         * cadena) o "tiempo" (sin respuesta); null si fue bien. La hoja lo usa para decir algo más
+         * útil que "sin sesión".
          */
         @Volatile var ultimoError: String? = null
             private set
@@ -63,14 +67,20 @@ class MotorCocheFC(
             return o.optString("valor")
         }
 
+        @Volatile override var escrituraDudosa = false
+            private set
+
         override fun poner(valor: String): Boolean {
             val o = pedir { id ->
                 "window.fcPonerCoche&&fcPonerCoche(${JSONObject.quote(valor)},${JSONObject.quote(uid)},$id)"
             }
             if (o == null || !o.optBoolean("ok")) {
                 ultimoError = o?.optString("error")?.takeIf { it.isNotEmpty() } ?: "tiempo"
+                // Sin respuesta, o cortada por el plazo del JS: el POST pudo salir y llegar después.
+                escrituraDudosa = ultimoError == "tiempo" || ultimoError == "plazo"
                 return false
             }
+            escrituraDudosa = false
             val puesto = VerificacionMusica.cochesIguales(o.optString("valor"), valor)
             ultimoError = if (puesto) null else "fc"
             if (!puesto) android.util.Log.w("Musica", "coche no puesto: post=${o.optInt("post")} ${o.optString("detalle")}")

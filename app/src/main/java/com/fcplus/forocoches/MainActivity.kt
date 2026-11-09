@@ -3147,6 +3147,8 @@ class MainActivity : AppCompatActivity() {
                     resuelto = true
                     uidEsperado = ""
                     cambiandoDeCuenta = false
+                    // El de onQuienSoy llegó con el cambio aún en curso y no hizo nada.
+                    enganchesMusica.restaurarCoche(uid)
                     replySend.isEnabled = true
                     toast("Cuenta cambiada")
                     listLoaded = false
@@ -3179,6 +3181,7 @@ class MainActivity : AppCompatActivity() {
                         shellPrefs.edit().putString(PREF_UID_ACTIVO, anterior).apply()
                         uidEsperado = ""
                         cambiandoDeCuenta = false
+                        enganchesMusica.restaurarCoche(anterior)
                         replySend.isEnabled = true
                         pedirLoginDe(uid)
                     }
@@ -8186,6 +8189,9 @@ class MainActivity : AppCompatActivity() {
         // cambiándose el diseño del foro. El acelerador de recheckSkin evita que esto sea una
         // petición cada vez que se cambia de aplicación.
         recheckSkin()
+        // Música: un coche de prueba que no se pudo devolver antes (challenge, sin red). Barato:
+        // sin nada guardado para la cuenta activa es una lectura de preferencias y ya.
+        enganchesMusica.restaurarCoche(uidActivo)
     }
 
     override fun onPause() {

@@ -191,12 +191,22 @@ class MusicaController(
         HojaVerificarMusica(act, e) { if (visible) recargar() }.mostrar()
     }
 
-    /** La entrada de la portada: servidor encendido y la cuenta activa (o ninguna) sin token. */
-    private fun ofrecerVerificacion(): Boolean {
-        val e = enganches ?: return false
-        if (!e.servidorActivo()) return false
+    /**
+     * La entrada de la portada: servidor encendido y la cuenta activa (o ninguna) sin token. El
+     * token se mira fuera del hilo de la interfaz: la primera lectura abre las preferencias
+     * cifradas, y eso es el keystore. Mientras tanto la entrada se queda como estaba (sin parpadeo).
+     */
+    private fun pintarEntradaVerificar() {
+        val e = enganches
+        if (e == null || !e.servidorActivo()) {
+            verificar.visibility = View.GONE
+            return
+        }
         val uid = e.uidActivo()
-        return uid.isEmpty() || e.tokens.de(uid) == null
+        disco.execute {
+            val ofrecer = uid.isEmpty() || try { e.tokens.de(uid) == null } catch (_: Exception) { true }
+            act.runOnUiThread { verificar.visibility = if (ofrecer) View.VISIBLE else View.GONE }
+        }
     }
 
     private fun leerPortapapeles(): String? = try {
@@ -239,7 +249,7 @@ class MusicaController(
         pantallaPlaylist.visibility = View.GONE
         portada.visibility = View.VISIBLE
         anadir.visibility = View.VISIBLE
-        verificar.visibility = if (ofrecerVerificacion()) View.VISIBLE else View.GONE
+        pintarEntradaVerificar()
         filas.removeAllViews()
         for (p in playlists) filas.addView(fila(p))
         val hay = playlists.isNotEmpty()

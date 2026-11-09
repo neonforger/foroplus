@@ -65,6 +65,37 @@ class MotorCocheFCTest {
         assertEquals("tiempo", m.ultimoError)
     }
 
+    @Test fun ponerSinRespuestaQuedaDudosa() {
+        // Sin respuesta en el plazo, el POST pudo llegar a FC más tarde: quien devuelve el
+        // original tiene que saberlo para esperar y volver a mirar.
+        nuevo()
+        contesta = { null }
+        val m = motor.para("123456")
+        assertFalse(fuera { m.poner("Audi A3 1.6 TDI Sport 2015") })
+        assertTrue(m.escrituraDudosa)
+        assertEquals("tiempo", m.ultimoError)
+        contesta = { id -> """{"ok":true,"valor":"Seat Ibiza 1.9 TDI 2004","peticion":$id}""" }
+        assertTrue(fuera { m.poner("Seat Ibiza 1.9 TDI 2004") })
+        assertFalse(m.escrituraDudosa)
+    }
+
+    @Test fun laCadenaCortadaPorPlazoTambienEsDudosa() {
+        // El JS corta su cadena a los 10 s: si el POST ya había salido, pudo llegar igual.
+        nuevo()
+        contesta = { id -> """{"ok":false,"error":"plazo","peticion":$id}""" }
+        val m = motor.para("123456")
+        assertFalse(fuera { m.poner("Audi A3 1.6 TDI Sport 2015") })
+        assertTrue(m.escrituraDudosa)
+    }
+
+    @Test fun unaRespuestaDeFCNoEsDudosa() {
+        nuevo()
+        contesta = { id -> """{"ok":false,"error":"challenge","peticion":$id}""" }
+        val m = motor.para("123456")
+        assertFalse(fuera { m.poner("Audi A3 1.6 TDI Sport 2015") })
+        assertFalse(m.escrituraDudosa)
+    }
+
     @Test fun elErrorDelMotorSeGuarda() {
         nuevo()
         contesta = { id -> """{"ok":false,"error":"challenge","peticion":$id}""" }

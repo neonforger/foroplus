@@ -87,6 +87,8 @@ class HojaVerificarMusica(
         val motor = enganches.motorCoche.para(uid)
         val api = enganches.api()
         MotorCocheFC.hilo.execute {
+            // Si había uno, VerificacionMusica lo devuelve antes de nada (y si no puede, no verifica).
+            val habia = enganches.pendientes.de(uid) != null
             val fin = try {
                 VerificacionMusica(api, motor, enganches.pendientes.para(uid), System::currentTimeMillis) { Thread.sleep(it) }
                     // Si la cuenta activa deja de ser la del principio, también es "cambiando".
@@ -103,7 +105,8 @@ class HojaVerificarMusica(
             val quedaPuesto = enganches.pendientes.de(uid) != null
             // Nunca `$fin` a secas: el toString de Ok lleva el token.
             val resumen = if (fin is Fin.Ok) "Ok(puedeVotar=${fin.puedeVotar})" else fin.toString()
-            android.util.Log.i("Musica", "verificación: $resumen, error del motor ${motor.ultimoError}, coche de prueba aún puesto: $quedaPuesto")
+            android.util.Log.i("Musica", "verificación: $resumen, había un original guardado de antes: $habia, " +
+                "error del motor ${motor.ultimoError}, coche de prueba aún puesto: $quedaPuesto")
             // Un segundo intento de devolverlo, por si fue un tropiezo (va detrás, en el mismo hilo).
             if (quedaPuesto) enganches.restaurarCoche(uid)
             act.runOnUiThread { terminar(fin, motor.ultimoError, quedaPuesto) }

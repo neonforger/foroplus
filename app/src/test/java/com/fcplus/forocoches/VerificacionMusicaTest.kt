@@ -41,32 +41,64 @@ class VerificacionMusicaTest {
         var coche = original
         var leerDevuelveNull = false
         var fallaAlPoner: (String) -> Boolean = { false }
+        /** Escritura que se quedó sin respuesta (15 s) y llega a FC más tarde, en [aterrizar]. */
+        var seAgotaElTiempo: String? = null
+        private var enCamino: String? = null
+        override var escrituraDudosa = false
         override fun leer(): String? {
             orden += "leer"
             return if (leerDevuelveNull) null else coche
         }
         override fun poner(valor: String): Boolean {
             orden += "poner($valor)"
+            if (valor == seAgotaElTiempo) {
+                escrituraDudosa = true
+                enCamino = valor
+                return false
+            }
+            escrituraDudosa = false
             if (fallaAlPoner(valor)) return false
             coche = valor
             return true
         }
+        fun aterrizar() {
+            enCamino?.let { coche = it }
+            enCamino = null
+        }
     }
     private val motor = MotorFalso()
 
-    // ---- lo guardado en el móvil, el reloj y la espera ----
-    private var guardado: Pendiente? = null
+    // ---- lo guardado en el móvil ----
+    private inner class GuardadoFalso : GuardadoCoche {
+        var p: Pendiente? = null
+        var primero: Pendiente? = null
+        var fallaAlGuardar = false
+        override fun leer(): Pendiente? = p
+        override fun guardar(p: Pendiente): Boolean {
+            orden += "pendiente(${p.original})"
+            if (fallaAlGuardar || this.p != null) return false
+            this.p = p
+            if (primero == null) primero = p
+            return true
+        }
+        override fun borrar() {
+            orden += "pendiente(null)"
+            p = null
+        }
+    }
+    private val almacen = GuardadoFalso()
+    private val guardado: Pendiente? get() = almacen.p
+
+    // ---- el reloj y la espera ----
     private var ahora = 1_800_000_000_000L
     private var cambiando = false
+    /** Lo que pasa "mientras" se espera: aquí aterriza una escritura que se quedó sin respuesta. */
+    private var alEsperar: () -> Unit = { }
 
     private val verif = VerificacionMusica(
-        api, motor,
-        pendiente = { p ->
-            orden += if (p == null) "pendiente(null)" else "pendiente(${p.original})"
-            guardado = p
-        },
+        api, motor, almacen,
         reloj = { ahora },
-        esperar = { ms -> orden += "esperar($ms)"; ahora += ms }
+        esperar = { ms -> orden += "esperar($ms)"; ahora += ms; alEsperar() }
     )
 
     private fun ejecutar(): Fin = verif.ejecutar("123456") { cambiando }
@@ -88,9 +120,91 @@ class VerificacionMusicaTest {
     @Test fun elPendienteLlevaLaCuentaYLaHora() {
         retos += reto(cocheReto)
         comprobaciones += verificada
-        var visto: Pendiente? = null
-        VerificacionMusica(api, motor, { p -> if (p != null) visto = p }, { ahora }, { }).ejecutar("123456") { false }
-        assertEquals(Pendiente("123456", original, ahora), visto)
+        ejecutar()
+        assertEquals(Pendiente("123456", original, ahora), almacen.primero)
+    }
+
+    // ---- un coche de prueba de una verificación anterior (fix 1, crítico) ----
+
+    @Test fun unPendienteAnteriorSeDevuelveAntesDeVerificar() {
+        // El perfil aún tiene el coche de prueba de la vez anterior y el móvil guarda el original.
+        // Sin esto, leer() daba el de prueba, se guardaba COMO original pisando el bueno, y al
+        // final se "devolvía" el de prueba: el coche de verdad se perdía para siempre.
+        motor.coche = otroReto
+        almacen.p = Pendiente("123456", original, ahora - 60_000)
+        retos += reto(cocheReto)
+        comprobaciones += verificada
+        assertEquals(Fin.Ok("YoMismo", "tok", true), ejecutar())
+        assertEquals(
+            listOf("poner($original)", "leer", "pendiente(null)",
+                "leer", "reto", "pendiente($original)", "poner($cocheReto)", "comprobar",
+                "poner($original)", "leer", "pendiente(null)"),
+            orden
+        )
+        assertFalse("pendiente($otroReto)" in orden)
+        assertEquals(original, motor.coche)
+    }
+
+    @Test fun unPendienteAnteriorQueNoSeDevuelveImpideVerificar() {
+        motor.coche = otroReto
+        motor.fallaAlPoner = { it == original }
+        val antes = Pendiente("123456", original, ahora - 60_000)
+        almacen.p = antes
+        assertEquals(Fin.Error(Motivo.COCHE_ANTERIOR), ejecutar())
+        // Ni reto ni coche nuevo, y el original sigue guardado tal cual.
+        assertEquals(listOf("poner($original)", "leer"), orden)
+        assertEquals(antes, guardado)
+    }
+
+    @Test fun unPendienteViejoSeOlvidaYSeVerificaConLoQueHay() {
+        // Más de 30 días: el usuario ya habrá puesto otro coche, y ese es el "original" de ahora.
+        almacen.p = Pendiente("123456", "Opel Corsa 1.2 Joy 2001", ahora - 31L * 24 * 3600 * 1000)
+        retos += reto(cocheReto)
+        comprobaciones += verificada
+        assertTrue(ejecutar() is Fin.Ok)
+        assertEquals(listOf("pendiente(null)", "leer", "reto", "pendiente($original)"), orden.take(4))
+        assertEquals(original, motor.coche)
+    }
+
+    @Test fun siNoSePuedeGuardarElOriginalNoSeTocaElPerfil() {
+        retos += reto(cocheReto)
+        almacen.fallaAlGuardar = true
+        assertEquals(Fin.Error(Motivo.SIN_GUARDAR), ejecutar())
+        assertFalse(orden.any { it.startsWith("poner") })
+    }
+
+    // ---- una escritura que se queda sin respuesta (fix 1.1) ----
+
+    @Test fun ponerSinRespuestaQueLlegaTardeSeVuelveADevolver() {
+        retos += reto(cocheReto)
+        motor.seAgotaElTiempo = cocheReto
+        alEsperar = { motor.aterrizar() }
+        assertEquals(Fin.Error(Motivo.FC), ejecutar())
+        // Se devuelve el original, se espera a que lo que quedó en camino haya llegado y se vuelve
+        // a leer: ahí sale el de prueba, así que se devuelve otra vez antes de borrar lo guardado.
+        assertEquals(
+            listOf("poner($cocheReto)", "poner($original)", "leer", "esperar(3000)", "leer",
+                "poner($original)", "leer", "pendiente(null)"),
+            orden.subList(orden.indexOf("poner($cocheReto)"), orden.size)
+        )
+        assertEquals(original, motor.coche)
+    }
+
+    @Test fun ponerSinRespuestaQueLlegaTardeYNoSeArreglaQuedaGuardado() {
+        retos += reto(cocheReto)
+        motor.seAgotaElTiempo = cocheReto
+        alEsperar = { motor.aterrizar(); motor.fallaAlPoner = { it == original } }
+        assertEquals(Fin.Error(Motivo.FC), ejecutar())
+        assertFalse("pendiente(null)" in orden)
+        assertEquals(Pendiente("123456", original, 1_800_000_000_000L), guardado)
+    }
+
+    @Test fun ponerSinRespuestaQueNoLlegaSeDaPorDevuelto() {
+        retos += reto(cocheReto)
+        motor.seAgotaElTiempo = cocheReto
+        assertEquals(Fin.Error(Motivo.FC), ejecutar())
+        assertEquals(listOf("poner($original)", "leer", "esperar(3000)", "leer", "pendiente(null)"), orden.takeLast(5))
+        assertEquals(original, motor.coche)
     }
 
     @Test fun restauraAunqueFalleComprobar() {
@@ -242,7 +356,7 @@ class VerificacionMusicaTest {
     @Test fun unCambioDeCuentaAMitadNoEscribe() {
         // El cambio empieza mientras se pide el reto: el guard va DONDE SE ESCRIBE.
         retos += reto(cocheReto)
-        val v = VerificacionMusica(api, motor, { p -> orden += "pendiente(${p?.original})" }, { ahora }, { })
+        val v = VerificacionMusica(api, motor, almacen, { ahora }, { })
         var llamadas = 0
         assertEquals(Fin.Error(Motivo.CAMBIANDO_DE_CUENTA), v.ejecutar("123456") { llamadas++ > 0 })
         assertEquals(listOf("leer", "reto"), orden)
@@ -264,39 +378,44 @@ class VerificacionMusicaTest {
 
     @Test fun restaurarAlArrancar() {
         motor.coche = cocheReto
-        val p = Pendiente("123456", original, ahora - 60_000)
-        val hecho = VerificacionMusica.restaurar(motor, p, "123456", ahora, { false }) { q -> orden += "pendiente($q)" }
-        assertTrue(hecho)
+        almacen.p = Pendiente("123456", original, ahora - 60_000)
+        assertTrue(VerificacionMusica.restaurar(motor, almacen, "123456", ahora) { false })
         assertEquals(listOf("poner($original)", "leer", "pendiente(null)"), orden)
         assertEquals(original, motor.coche)
     }
 
+    @Test fun alArrancarSinNadaGuardadoNoSeToca() {
+        assertFalse(VerificacionMusica.restaurar(motor, almacen, "123456", ahora) { false })
+        assertEquals(emptyList<String>(), orden)
+    }
+
     @Test fun alArrancarConOtraCuentaNoSeToca() {
         motor.coche = cocheReto
-        val p = Pendiente("123456", original, ahora)
-        assertFalse(VerificacionMusica.restaurar(motor, p, "654321", ahora, { false }) { orden += "pendiente" })
+        almacen.p = Pendiente("123456", original, ahora)
+        assertFalse(VerificacionMusica.restaurar(motor, almacen, "654321", ahora) { false })
         assertEquals(emptyList<String>(), orden)
     }
 
     @Test fun alArrancarCambiandoDeCuentaNoSeToca() {
-        val p = Pendiente("123456", original, ahora)
-        assertFalse(VerificacionMusica.restaurar(motor, p, "123456", ahora, { true }) { orden += "pendiente" })
+        almacen.p = Pendiente("123456", original, ahora)
+        assertFalse(VerificacionMusica.restaurar(motor, almacen, "123456", ahora) { true })
         assertEquals(emptyList<String>(), orden)
     }
 
     @Test fun alArrancarUnoViejoSeOlvidaSinTocarElPerfil() {
         // Más de 30 días: el usuario ya habrá puesto lo que quiera; devolver el viejo lo pisaría.
-        val p = Pendiente("123456", original, ahora - 31L * 24 * 3600 * 1000)
-        assertFalse(VerificacionMusica.restaurar(motor, p, "123456", ahora, { false }) { q -> orden += "pendiente($q)" })
+        almacen.p = Pendiente("123456", original, ahora - 31L * 24 * 3600 * 1000)
+        assertFalse(VerificacionMusica.restaurar(motor, almacen, "123456", ahora) { false })
         assertEquals(listOf("pendiente(null)"), orden)
     }
 
     @Test fun alArrancarSiNoQuedaPuestoSeGuardaParaLaProxima() {
         motor.coche = cocheReto
         motor.fallaAlPoner = { true }
-        val p = Pendiente("123456", original, ahora)
-        assertFalse(VerificacionMusica.restaurar(motor, p, "123456", ahora, { false }) { q -> orden += "pendiente($q)" })
+        almacen.p = Pendiente("123456", original, ahora)
+        assertFalse(VerificacionMusica.restaurar(motor, almacen, "123456", ahora) { false })
         assertFalse(orden.any { it.startsWith("pendiente") })
+        assertEquals(Pendiente("123456", original, ahora), guardado)
     }
 
     // ---- qué se le dice al usuario ----
@@ -320,6 +439,8 @@ class VerificacionMusicaTest {
         assertTrue(textos.all { it.isNotBlank() })
         assertTrue(VerificacionMusica.aviso(Motivo.BANEADA, null).texto.contains("bloqueada"))
         assertEquals("Espera a que termine el cambio de cuenta", VerificacionMusica.aviso(Motivo.CAMBIANDO_DE_CUENTA, null).texto)
+        assertEquals("No hemos podido devolver tu coche anterior; prueba en un rato.",
+            VerificacionMusica.aviso(Motivo.COCHE_ANTERIOR, null).texto)
     }
 
     @Test fun cochesIgualesSinMirarMayusculasNiEspacios() {
