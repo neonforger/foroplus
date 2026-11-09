@@ -14,7 +14,12 @@ import { permitido, puedeMontarTarjeta } from "../limites";
 import { nombreAceptable } from "../palabras";
 
 const MAX_CUERPO = 4096;
-const MAX_ENLACES = 10;
+/**
+ * Enlaces por petición al publicar una playlist. Cada canción nueva de Spotify gasta CPU (la tarjeta:
+ * 2 oEmbed/página + Deezer) y el plan gratuito de Workers corta a 10 ms (error 1102, sin tolerancia);
+ * una sola ya llegó a 9 ms. El coordinador lo ajustará midiendo en producción y la app (tandas) lo usa.
+ */
+export const MAX_ENLACES = 10;
 const MAX_NOMBRE = 60;
 const MAX_CANCIONES = 200;
 const MAX_PLAYLISTS = 50;

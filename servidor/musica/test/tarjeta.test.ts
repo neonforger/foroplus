@@ -8,7 +8,7 @@ import spOembed from "./fixtures/sp_oembed.json";
 import ytEstopa from "./fixtures/yt_estopa_oembed.json";
 import ytOembed from "./fixtures/yt_oembed.json";
 import { claveCancion, type RefCancion } from "../src/normalizar";
-import { leerMetas, tarjetaDe, USER_AGENT } from "../src/tarjeta";
+import { leerMetas, metasDe, tarjetaDe, USER_AGENT } from "../src/tarjeta";
 
 const YT_ESTOPA: RefCancion = { fuente: "youtube", id: "aaaaaaaaaaa" };
 const SP_ESTOPA: RefCancion = { fuente: "spotify", id: "0aaaaaaaaaaaaaaaaaaaaa" };
@@ -178,5 +178,83 @@ describe("leerMetas", () => {
     const t0 = performance.now();
     expect(leerMetas(grande).get("z")).toBe("ok");
     expect(performance.now() - t0).toBeLessThan(50);
+  });
+});
+
+/** Respuesta con cuerpo en trozos; `pulls` cuenta cuántos trozos pidió el lector y `cancelado` si se cortó. */
+function respuestaEnTrozos(trozos: Uint8Array[]) {
+  const estado = { pulls: 0, cancelado: false };
+  let i = 0;
+  const cuerpo = new ReadableStream<Uint8Array>(
+    {
+      pull(c) {
+        estado.pulls++;
+        if (i < trozos.length) c.enqueue(trozos[i++]);
+        else c.close();
+      },
+      cancel() {
+        estado.cancelado = true;
+      },
+    },
+    { highWaterMark: 0 },
+  );
+  return { r: new Response(cuerpo, { headers: { "content-type": "text/html" } }), estado };
+}
+const bytes = (s: string) => new TextEncoder().encode(s);
+const redCon = (r: Response) => async () => r;
+
+describe("metasDe (lectura en streaming)", () => {
+  it("parte </head> entre dos trozos y no lee los de después", async () => {
+    const { r, estado } = respuestaEnTrozos([
+      bytes('<html><head><meta property="og:title" content="Hola"/></he'),
+      bytes("ad><body>" + "x".repeat(100)),
+      bytes("y".repeat(100)),
+      bytes("z".repeat(100)),
+    ]);
+    const m = await metasDe(redCon(r), "https://x/");
+    expect(m?.get("og:title")).toBe("Hola");
+    expect(estado.cancelado).toBe(true);
+    expect(estado.pulls).toBeLessThanOrEqual(2);
+  });
+
+  it("un carácter de 3 bytes partido entre trozos no se corrompe", async () => {
+    const todo = bytes('<head><meta name="a" content="€ñ"/></head>');
+    const corte = todo.indexOf(0xe2) + 1; // en medio del €
+    const { r } = respuestaEnTrozos([todo.slice(0, corte), todo.slice(corte)]);
+    expect((await metasDe(redCon(r), "https://x/"))?.get("a")).toBe("€ñ");
+  });
+
+  it("sin </head> en el tope, parsea lo leído y corta", async () => {
+    const t = 8 * 1024;
+    const primero = bytes('<meta name="q" content="v"/>' + "a".repeat(t));
+    const trozos = Array.from({ length: 40 }, (_, i) => (i === 0 ? primero : bytes("a".repeat(t))));
+    const { r, estado } = respuestaEnTrozos(trozos);
+    const m = await metasDe(redCon(r), "https://x/");
+    expect(m?.get("q")).toBe("v");
+    expect(estado.cancelado).toBe(true);
+    expect(estado.pulls).toBeLessThan(40);
+    expect(estado.pulls * t).toBeLessThanOrEqual(64 * 1024 + 2 * t);
+  });
+
+  it("sin cuerpo o con error de lectura devuelve null", async () => {
+    expect(await metasDe(redCon(new Response(null)), "https://x/")).toBeNull();
+    const roto = new Response(
+      new ReadableStream({
+        pull() {
+          throw new Error("corte");
+        },
+      }),
+    );
+    expect(await metasDe(redCon(roto), "https://x/")).toBeNull();
+  });
+
+  it("el fixture real de Spotify da lo mismo leído en streaming", async () => {
+    const todo = bytes(spMeta);
+    const trozos: Uint8Array[] = [];
+    for (let i = 0; i < todo.length; i += 1000) trozos.push(todo.slice(i, i + 1000));
+    const { r } = respuestaEnTrozos(trozos);
+    const m = await metasDe(redCon(r), "https://x/");
+    const ref = leerMetas(spMeta);
+    for (const k of ["og:description", "og:image", "music:musician_description"]) expect(m?.get(k)).toBe(ref.get(k));
   });
 });

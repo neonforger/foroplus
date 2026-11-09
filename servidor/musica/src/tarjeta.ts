@@ -83,11 +83,43 @@ export function leerMetas(html: string): Map<string, string> {
   return metas;
 }
 
-async function metasDe(red: Deps["red"], url: string): Promise<Map<string, string> | null> {
+/** Tope de lo que se lee de la página de una pista: `</head>` está hacia el byte 27.400 de ~310 KB. */
+const TOPE_CABECERA = 64 * 1024;
+
+/**
+ * Lee el cuerpo en streaming hasta `</head>` o TOPE_CABECERA bytes y cancela el resto. Medido el
+ * 2026-11-09 en producción: proponer un enlace nuevo de Spotify gastaba 9 ms de CPU de los 10 del
+ * plan gratuito, sobre todo por decodificar los ~310 KB de la página con `r.text()` cuando solo
+ * hacen falta los primeros ~27 KB. `stream: true` evita partir un carácter UTF-8 entre trozos, y
+ * `</head>` se busca en el texto acumulado (no por trozo) por si llega partido.
+ */
+export async function metasDe(red: Deps["red"], url: string): Promise<Map<string, string> | null> {
   try {
     const r = await red(url, CABECERAS);
-    if (!r.ok) return null;
-    return leerMetas(await r.text());
+    if (!r.ok || !r.body) return null;
+    const lector = r.body.getReader();
+    const decodificador = new TextDecoder();
+    let html = "";
+    let bytes = 0;
+    let buscadoDesde = 0;
+    try {
+      for (;;) {
+        const { done, value } = await lector.read();
+        if (done) {
+          html += decodificador.decode();
+          break;
+        }
+        bytes += value.byteLength;
+        html += decodificador.decode(value, { stream: true });
+        // Se retrocede 6 caracteres: la marca (7) podría haber quedado partida entre dos trozos.
+        const i = html.indexOf("</head>", buscadoDesde);
+        if (i >= 0 || bytes >= TOPE_CABECERA) break;
+        buscadoDesde = Math.max(0, html.length - 6);
+      }
+    } finally {
+      await lector.cancel().catch(() => {});
+    }
+    return leerMetas(html);
   } catch {
     return null;
   }
