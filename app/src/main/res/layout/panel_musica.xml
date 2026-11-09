@@ -31,6 +31,24 @@
             android:paddingTop="?attr/fcListaPaddingV"
             android:paddingBottom="88dp">
 
+            <!-- Verificarse con la cuenta de FC (C2): solo con el servidor encendido en la config y
+                 la cuenta activa aún sin verificar. Lo enciende MusicaController. -->
+            <TextView
+                android:id="@+id/musica_verificar"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp"
+                android:gravity="center_vertical"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:text="Verifícate con tu cuenta de ForoCoches"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:textColor="@color/fc_rojo"
+                android:drawableEnd="@drawable/ic_fila"
+                android:background="?attr/selectableItemBackground"
+                android:visibility="gone" />
+
             <!-- Título del grupo, con el mismo aire que las etiquetas del panel del avatar.
                  fc_texto_2 y no fc_texto_3: sobre el gris de Tarjetas el 3 no llega a 4,5:1. -->
             <TextView

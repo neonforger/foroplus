@@ -2641,6 +2641,101 @@
       });
   };
 
+  // ── El coche del perfil (verificación de Música) ───────────────────────────
+  // La verificación de Música (VerificacionMusica.kt) pone en el perfil el coche que da el
+  // servidor, el servidor lo lee en la ficha pública y la app devuelve el original. Es la DÉCIMA
+  // vía que escribe en FC: el guard del cambio de cuenta está en Kotlin, y aquí va otro: si la
+  // sesión del motor no es la de `uid`, no se lee ni se escribe nada ('cuenta'). Así nunca acaba
+  // el coche de una cuenta en el perfil de otra.
+  //
+  // Medido el 2026-11-09 en el formulario real (`profile.php?do=editprofile`): `#profileform`,
+  // action "profile.php?do=updateprofile", campo `userfield[field5]` con maxlength 50 (el servidor
+  // da coches de 46 como mucho). El form lleva el resto del perfil (título, web, otros campos): se
+  // copia ENTERO con copyFormFields y solo cambia el coche, como haría el navegador (el submit
+  // "gotopassword" no va: copyFormFields salta los submits). FC es UTF-8: URLSearchParams vale
+  // también para devolver un original con tildes.
+  //
+  // `peticion` vuelve tal cual: Kotlin espera cada respuesta con un cerrojo (evaluateJavascript no
+  // espera promesas) y descarta la de una petición que ya dio por perdida.
+  var CAMPO_COCHE = 'input[name="userfield[field5]"]';
+
+  function uidDelMenu(doc) {
+    var as = doc.querySelectorAll('a[href*="member.php?u="]');
+    for (var i = 0; i < as.length; i++) {
+      var m = (as[i].getAttribute('href') || '').match(/[?&]u=(\d+)/);
+      if (m && m[1] !== '0') return m[1];
+    }
+    return '';
+  }
+
+  // → { form, valor } o { error: 'challenge' | 'login' | 'cuenta' | 'fc' }. Con `_fp` (gotcha
+  // VARNISH): la segunda lectura, justo después del POST, tiene que ser la de AHORA.
+  function formCoche(uid) {
+    return fetch('https://forocoches.com/foro/profile.php?do=editprofile&_fp=' + Date.now(),
+      { credentials: 'same-origin' })
+      .then(function (r) {
+        var cf = esChallengeCf(r);
+        return r.text().then(function (html) {
+          var doc = new DOMParser().parseFromString(html, 'text/html');
+          if (cf || /just a moment|attention required|un momento/i.test(doc.title || '')) {
+            return { error: 'challenge' };
+          }
+          var f = formWith(doc, CAMPO_COCHE);
+          if (!f) {
+            var tok = doc.querySelector('input[name="securitytoken"]');
+            return { error: (!tok || tok.value === 'guest') ? 'login' : 'fc' };
+          }
+          if (uidDelMenu(doc) !== String(uid || '')) return { error: 'cuenta' };
+          return { form: f, valor: f.querySelector(CAMPO_COCHE).value || '' };
+        });
+      });
+  }
+
+  function respondeCoche(peticion, o) {
+    o.peticion = peticion;
+    AndroidShell.onCoche(JSON.stringify(o));
+  }
+
+  window.fcLeerCoche = function (uid, peticion) {
+    formCoche(uid)
+      .then(function (x) {
+        respondeCoche(peticion, x.error ? { ok: false, error: x.error } : { ok: true, valor: x.valor });
+      })
+      .catch(function (e) { respondeCoche(peticion, { ok: false, error: 'fc', detalle: String(e) }); });
+  };
+
+  // `ok` = FC contestó y se pudo volver a leer; si el coche leído es el pedido lo decide Kotlin.
+  window.fcPonerCoche = function (valor, uid, peticion) {
+    var pedido = String(valor == null ? '' : valor);
+    formCoche(uid)
+      .then(function (x) {
+        if (x.error) { respondeCoche(peticion, { ok: false, error: x.error, pedido: pedido }); return; }
+        var destino = new URL(x.form.getAttribute('action') || 'profile.php?do=updateprofile',
+          'https://forocoches.com/foro/');
+        if (destino.origin !== 'https://forocoches.com') {
+          respondeCoche(peticion, { ok: false, error: 'fc', pedido: pedido }); return;
+        }
+        var params = copyFormFields(x.form, { 'userfield[field5]': pedido }, []);
+        return fetch(destino.href, {
+          method: 'POST', credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: params.toString()
+        })
+          .then(function (r) {
+            return r.text().then(function (h) { return { status: r.status, err: extractErr(h) }; });
+          })
+          // Lo que vale es lo que FC tiene DESPUÉS, no lo que contesta al POST.
+          .then(function (post) {
+            return formCoche(uid).then(function (y) {
+              respondeCoche(peticion, y.error
+                ? { ok: false, error: y.error, pedido: pedido, post: post.status, detalle: post.err }
+                : { ok: true, valor: y.valor, pedido: pedido, post: post.status, detalle: post.err });
+            });
+          });
+      })
+      .catch(function (e) { respondeCoche(peticion, { ok: false, error: 'fc', pedido: pedido, detalle: String(e) }); });
+  };
+
   // ── Perfil + logout (Bloque B) ──────────────────────────────────────────────
   window.fcLoadProfile = function (url) {
     fetch(url, { credentials: 'same-origin' })

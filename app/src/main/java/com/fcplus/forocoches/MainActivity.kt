@@ -116,6 +116,20 @@ class MainActivity : AppCompatActivity() {
     /** Preferencias de la app. Antes se pedían con getSharedPreferences en cada uso. */
     private val shellPrefs by lazy { getSharedPreferences(PREFS, MODE_PRIVATE) }
 
+    /** Música (C2): el coche del perfil por el motor, y lo que el servidor de Música necesita de aquí. */
+    private val motorCoche by lazy { MotorCocheFC({ js -> runOnUiThread { webView.evaluateJavascript(js, null) } }) }
+    private val enganchesMusica by lazy {
+        EnganchesMusica(
+            servidorActivo = { ConfigMusica.servidorActivo(RemoteConfig.cached(this)) },
+            uidActivo = { uidActivo },
+            cambiandoDeCuenta = { cambiandoDeCuenta },
+            motorCoche = motorCoche,
+            tokens = lazy { TokensMusica(TokensMusica.cifradas(this)) },
+            pendientes = PendientesCoche(getSharedPreferences(PendientesCoche.FICHERO, MODE_PRIVATE)),
+            entrar = { showLogin() }
+        )
+    }
+
     private lateinit var forumTabs: TabLayout
     private lateinit var navTop: TextView
     /** Subforos reales del índice (fid → nombre), para la elección del Popurrí en Opciones. */
@@ -247,9 +261,12 @@ class MainActivity : AppCompatActivity() {
     private var isProfileVisible = false
     private var profileLogoutUrl = ""
     /** Uid de la cuenta activa, o "" sin sesión. Es la identidad para separar preferencias. */
-    private var uidActivo = ""
-    /** Cambio de cuenta en curso: mientras dure, no se puede publicar. */
-    private var cambiandoDeCuenta = false
+    @Volatile private var uidActivo = ""
+    /**
+     * Cambio de cuenta en curso: mientras dure, no se puede publicar. Volatile: la verificación de
+     * Música lo consulta desde su hilo justo antes de escribir en el perfil.
+     */
+    @Volatile private var cambiandoDeCuenta = false
     /**
      * Generación del cambio de cuenta en curso: el puente JS→Kotlin NO correlaciona peticiones
      * (`onQuienSoy` es un callback global, no una respuesta atada a QUIÉN preguntó), así que la
@@ -2857,6 +2874,8 @@ class MainActivity : AppCompatActivity() {
         guardarCookiesDe(uidActivo)
         pintarAvatarCuenta()
         pintarAvatarComposer()
+        // Una verificación de Música que se quedó a medias con esta cuenta: devolver su coche.
+        enganchesMusica.restaurarCoche(uid)
     }
 
     /** Cuentas guardadas ahora mismo. */
@@ -3581,7 +3600,7 @@ class MainActivity : AppCompatActivity() {
         panelMusica = findViewById(R.id.panel_musica)
         // Música abre fuera con su propio abridor: openExternal fija el navegador y las canciones
         // tienen que poder ir a la app de YouTube o de Spotify.
-        musica = MusicaController(this, panelMusica, AlmacenMusica(java.io.File(filesDir, "musica"))) {
+        musica = MusicaController(this, panelMusica, AlmacenMusica(java.io.File(filesDir, "musica")), enganchesMusica) {
             MusicaController.abrirEnSuApp(this, it)
         }
         bottomNav = findViewById(R.id.bottom_nav)
@@ -3785,7 +3804,9 @@ class MainActivity : AppCompatActivity() {
                 onThreadDescargaData = { json -> runOnUiThread { onPaginaDescargada(json) } },
                 onThreadDescargaErrorData = { r -> runOnUiThread { cancelarDescarga(motivoDescarga(r)) } },
                 onLastPosterResult = { json -> runOnUiThread { onLastPosterJson(json) } },
-                onUserSuggestionsResult = { json -> runOnUiThread { alLlegarSugerencias?.invoke(json) } }
+                onUserSuggestionsResult = { json -> runOnUiThread { alLlegarSugerencias?.invoke(json) } },
+                // Sin saltar a la interfaz: lo espera un hilo de fondo con un cerrojo (MotorCocheFC).
+                onCocheResult = { json -> motorCoche.alLlegar(json) }
             ),
             "AndroidShell"
         )

@@ -46,11 +46,14 @@ import java.util.concurrent.Executors
  * @param abrirFuera abre una URL fuera de la app, nunca en la capa web (regla de oro): "Abrir
  *   en YouTube/Spotify" y "Escuchar entera en Spotify". MainActivity le pasa [abrirEnSuApp], que
  *   deja elegir la app de YouTube o de Spotify en vez de fijar el navegador.
+ * @param enganches lo del servidor de Música (cuenta, config, verificación). Null en los tests
+ *   de la parte local: entonces no hay nada del servidor.
  */
 class MusicaController(
     private val act: AppCompatActivity,
     private val raiz: View,
     private val almacen: AlmacenMusica,
+    private val enganches: EnganchesMusica? = null,
     private val abrirFuera: (String) -> Unit
 ) {
 
@@ -59,6 +62,7 @@ class MusicaController(
         private set
 
     private val portada: View = raiz.findViewById(R.id.musica_portada)
+    private val verificar: View = raiz.findViewById(R.id.musica_verificar)
     private val anadir: View = raiz.findViewById(R.id.musica_anadir)
     private val tuyas: View = raiz.findViewById(R.id.musica_tuyas)
     private val filas: LinearLayout = raiz.findViewById(R.id.musica_playlists)
@@ -93,6 +97,7 @@ class MusicaController(
 
     init {
         anadir.setOnClickListener { abrirAnadir(null) }
+        verificar.setOnClickListener { abrirVerificacion() }
         lista.layoutManager = LinearLayoutManager(act)
         lista.adapter = adaptador
         val helper = ItemTouchHelper(adaptador.callbackDeArrastre())
@@ -176,6 +181,24 @@ class MusicaController(
         }.mostrar(texto, copiado)
     }
 
+    /**
+     * La hoja de verificación (C2). Solo con el servidor encendido en la config; al verificarse,
+     * la portada se repinta (la entrada desaparece).
+     */
+    fun abrirVerificacion() {
+        val e = enganches ?: return
+        if (!e.servidorActivo()) return
+        HojaVerificarMusica(act, e) { if (visible) recargar() }.mostrar()
+    }
+
+    /** La entrada de la portada: servidor encendido y la cuenta activa (o ninguna) sin token. */
+    private fun ofrecerVerificacion(): Boolean {
+        val e = enganches ?: return false
+        if (!e.servidorActivo()) return false
+        val uid = e.uidActivo()
+        return uid.isEmpty() || e.tokens.de(uid) == null
+    }
+
     private fun leerPortapapeles(): String? = try {
         val cb = act.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         cb.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(act)?.toString()
@@ -216,6 +239,7 @@ class MusicaController(
         pantallaPlaylist.visibility = View.GONE
         portada.visibility = View.VISIBLE
         anadir.visibility = View.VISIBLE
+        verificar.visibility = if (ofrecerVerificacion()) View.VISIBLE else View.GONE
         filas.removeAllViews()
         for (p in playlists) filas.addView(fila(p))
         val hay = playlists.isNotEmpty()
