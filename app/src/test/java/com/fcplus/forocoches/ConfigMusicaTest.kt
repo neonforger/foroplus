@@ -23,8 +23,15 @@ class ConfigMusicaTest {
     }
 
     @Test fun conLaDireccionProvisionalNuncaEstaActivo() {
-        // Mientras BASE lleve PENDIENTE (hasta la tarea D1) ninguna config puede encenderlo.
-        assertTrue(ServidorMusica.BASE.contains("PENDIENTE"))
-        assertFalse(ConfigMusica.servidorActivo(JSONObject("""{"musica":{"servidor":true}}""")))
+        // Una compilación con la dirección provisional no puede llamar a un host que no existe.
+        val provisional = "https://foroplus-api.PENDIENTE.workers.dev"
+        assertFalse(ConfigMusica.servidorActivo(JSONObject("""{"musica":{"servidor":true}}"""), provisional))
+    }
+
+    @Test fun conLaDireccionDesplegadaMandaLaConfig() {
+        // Desde la tarea D1 la BASE es la real: decide el interruptor de fc_config.json.
+        assertFalse(ServidorMusica.BASE.contains("PENDIENTE"))
+        assertTrue(ConfigMusica.servidorActivo(JSONObject("""{"musica":{"servidor":true}}""")))
+        assertFalse(ConfigMusica.servidorActivo(JSONObject("{}")))
     }
 }

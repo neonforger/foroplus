@@ -6,8 +6,8 @@ package com.fcplus.forocoches
  * controlara la config (o un MITM del raw de GitHub) podría mandar los tokens a donde quisiera.
  */
 object ServidorMusica {
-    /** Provisional hasta la tarea D1, que pone el subdominio real al desplegar. */
-    const val BASE = "https://foroplus-api.PENDIENTE.workers.dev"
+    /** El Worker desplegado en la cuenta de Cloudflare de ForoPlus (tarea D1, 2026-11-09). */
+    const val BASE = "https://foroplus-api.foroplus-musica.workers.dev"
 
     fun url(ruta: String): String = BASE + (if (ruta.startsWith("/")) ruta else "/$ruta")
 

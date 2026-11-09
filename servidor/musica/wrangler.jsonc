@@ -2,13 +2,13 @@
   "name": "foroplus-api",
   "main": "src/index.ts",
   "compatibility_date": "2026-11-04",
-  // Falla a propósito hasta que exista la cuenta nueva de ForoPlus (nunca la personal del dueño).
-  "account_id": "PENDIENTE-CUENTA-FOROPLUS",
+  // Cuenta de Cloudflare de ForoPlus (neonforger), nunca la personal del dueño: con otra sesión, wrangler falla.
+  "account_id": "158ff03db77dee52de5ea55adb816e27",
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "foroplus-musica",
-      "database_id": "PENDIENTE",
+      "database_id": "c8a329d6-76cf-4a35-a28f-d2b0741c2c2c",
       "migrations_dir": "migrations"
     }
   ],
