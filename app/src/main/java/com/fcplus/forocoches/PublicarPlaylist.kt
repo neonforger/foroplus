@@ -45,23 +45,27 @@ object PublicarPlaylist {
      * Bloqueante (hilo de fondo). [alCrear] recibe el id en cuanto el servidor crea la playlist,
      * ANTES de las demás tandas: si el móvil se cae a medias, la marca local ya existe y se puede
      * retirar. [alTanda] recibe (hechas, total) antes de cada petición y al acabar.
+     * [cancelado] se mira entre tandas, nunca a mitad de una petición: si sale true termina como
+     * [Resultado.Parcial] con lo ya enviado (la marca de publicada ya está puesta).
      */
     fun publicar(
         api: ApiMusica, nombre: String, enlaces: List<String>, tam: Int = TANDA,
         alCrear: (String) -> Unit, pausa: (Long) -> Unit = { Thread.sleep(it) },
-        alTanda: (hechas: Int, total: Int) -> Unit = { _, _ -> }
+        alTanda: (hechas: Int, total: Int) -> Unit = { _, _ -> },
+        cancelado: () -> Boolean = { false }
     ): Resultado {
         val tandas = tandas(enlaces, tam)
         require(tandas.isNotEmpty()) { "sin enlaces" }
         alTanda(0, tandas.size)
         val primera = when (val r = api.publicar(nombre, tandas[0])) {
             is ApiMusica.R.Ok -> r.v
-            is ApiMusica.R.Error -> return Resultado.Fallo(r, dudosa = r.codigo == "red")
+            is ApiMusica.R.Error -> return Resultado.Fallo(r, dudosa = esDudosa(r))
         }
         alCrear(primera.id)
         var canciones = primera.canciones
         val fallidas = primera.fallidas.toMutableList()
         for ((i, t) in tandas.drop(1).withIndex()) {
+            if (cancelado()) return Resultado.Parcial(primera.id, canciones, fallidas, ApiMusica.R.Error("cancelado", 0, null))
             alTanda(i + 1, tandas.size)
             when (val r = ampliar(api, primera.id, t, pausa)) {
                 is ApiMusica.R.Ok -> { canciones = r.v.canciones; fallidas += r.v.fallidas }
@@ -71,6 +75,12 @@ object PublicarPlaylist {
         alTanda(tandas.size, tandas.size)
         return Resultado.Hecho(primera.id, canciones, fallidas)
     }
+
+    /**
+     * Sin respuesta que valga (sin red, un 5xx de Workers/Cloudflare o un 2xx que no se entiende): el
+     * servidor pudo crearla ya, y republicar la duplicaría. Un 4xx es un no claro.
+     */
+    private fun esDudosa(e: ApiMusica.R.Error) = e.codigo == "red" || e.codigo == "respuesta" || e.status >= 500
 
     /** Sin red y 409 `ocupada` (otro escrito a la vez) se repiten; lo demás es definitivo. */
     private fun ampliar(api: ApiMusica, id: String, enlaces: List<String>, pausa: (Long) -> Unit): ApiMusica.R<Publicada> {
@@ -117,6 +127,7 @@ object TextosShurs {
             "limite" -> "Has hecho muchas cosas seguidas. Prueba dentro de un rato"
             "llena" -> "La playlist pública ya tiene el máximo de ${Musica.MAX_CANCIONES} canciones"
             "no_existe", "http_404" -> "Esa playlist ya no existe"
+            "cancelado" -> "Lo has cancelado"
             "motivo" -> "Cuéntanos el motivo (hasta 300 caracteres)"
             else -> "No se ha podido hacer ahora mismo. Prueba en un rato"
         }

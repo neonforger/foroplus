@@ -49,7 +49,8 @@ class FlujosMusica(
             .setTitle("¿Publicar «${p.nombre}»?")
             .setMessage(
                 "Cualquiera que use ForoPlus podrá verla en «Playlists de los shurs», con tu nombre de ForoCoches, " +
-                    "oírla y guardarla. Se publican sus ${Musica.cuantas(enlaces.size)}. Puedes retirarla cuando quieras."
+                    "oírla y guardarla. Se publican sus ${Musica.cuantas(enlaces.size)}, una a una, así que si es larga tarda un rato. " +
+                    "Puedes retirarla cuando quieras."
             )
             .setPositiveButton("Publicar") { _, _ -> publicando(p, enlaces, uid) }
             .setNegativeButton("Cancelar", null)
@@ -62,7 +63,15 @@ class FlujosMusica(
             .setTitle("Publicando «${p.nombre}»")
             .setMessage("Preparando…")
             .setCancelable(false)
+            .setNegativeButton("Cancelar", null)
             .show()
+        // Sin cerrar el diálogo al pulsar: se para entre tandas y el resultado lo cuenta después.
+        val cancelar = java.util.concurrent.atomic.AtomicBoolean(false)
+        dlg.getButton(AlertDialog.BUTTON_NEGATIVE).setOnClickListener {
+            cancelar.set(true)
+            it.isEnabled = false
+            dlg.setMessage("Cancelando al acabar la canción en curso…")
+        }
         hilo.execute {
             val r = try {
                 PublicarPlaylist.publicar(
@@ -70,7 +79,8 @@ class FlujosMusica(
                     alCrear = { id -> almacen.marcarPublicada(p.id, id) },
                     alTanda = { hechas, total ->
                         act.runOnUiThread { dlg.setMessage("Enviando canciones: tanda ${minOf(hechas + 1, total)} de $total") }
-                    }
+                    },
+                    cancelado = { cancelar.get() }
                 )
             } catch (_: Exception) {
                 PublicarPlaylist.Resultado.Fallo(ApiMusica.R.Error("red", 0, null), dudosa = true)

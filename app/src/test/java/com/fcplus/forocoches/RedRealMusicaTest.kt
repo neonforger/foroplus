@@ -81,6 +81,15 @@ class RedRealMusicaTest {
 
     @After fun parar() = srv.close()
 
+    @Test fun laCabeceraInternaDeTiempoNoSaleALaRedYNoHayCookie() {
+        val r = ApiMusica.redConGuarda("POST", "$base/eco", "{}",
+            mapOf(ApiMusica.CABECERA_TIMEOUT to "30000", "Cookie" to "bbuserid=1", "Authorization" to "Bearer t"), todo)
+        assertEquals(200, r.status)
+        assertFalse(visto[0].containsKey(ApiMusica.CABECERA_TIMEOUT.lowercase()))
+        assertFalse(visto[0].containsKey("cookie"))
+        assertEquals("Bearer t", visto[0]["authorization"])
+    }
+
     @Test fun nuncaLlegaUnaCabeceraCookie() {
         val r = ApiMusica.redConGuarda("GET", "$base/eco", null, mapOf("Cookie" to "bbuserid=1", "cookie" to "x", "Accept" to "application/json"), todo)
         assertEquals(200, r.status)

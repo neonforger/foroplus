@@ -96,6 +96,40 @@ class PublicarPlaylistTest {
         assertEquals("nombre", r.error.codigo)
     }
 
+    @Test fun unCincoXXAlCrearEsDudosoYNoSeReintenta() {
+        // Workers 1102 / Cloudflare 5xx: el servidor pudo crearla antes de morir.
+        guion.add(Respuesta(503, "<html>error</html>"))
+        val r = publicar(5, 3) as PublicarPlaylist.Resultado.Fallo
+        assertEquals(1, llamadas.size)
+        assertTrue(r.dudosa)
+    }
+
+    @Test fun unaRespuestaQueNoSeEntiendeAlCrearEsDudosa() {
+        guion.add(Respuesta(200, "no es json"))
+        val r = publicar(5, 3) as PublicarPlaylist.Resultado.Fallo
+        assertEquals("respuesta", r.error.codigo)
+        assertTrue(r.dudosa)
+    }
+
+    @Test fun unLimiteAlCrearNoEsDudoso() {
+        guion.add(fallo(429, "limite"))
+        val r = publicar(5, 3) as PublicarPlaylist.Resultado.Fallo
+        assertFalse(r.dudosa)
+    }
+
+    @Test fun cancelarParaEntreTandasYDejaLaMarca() {
+        guion.add(ok(3)); guion.add(ok(6)); guion.add(ok(7))
+        val creada = mutableListOf<String>()
+        var tandasVistas = 0
+        val r = PublicarPlaylist.publicar(api, "P", enlaces(7), 3, { creada.add(it) }, { },
+            alTanda = { _, _ -> tandasVistas++ }, cancelado = { llamadas.size >= 2 })
+        assertEquals(2, llamadas.size) // nunca a mitad de una petición, ni una tercera
+        assertEquals(listOf("PUB1"), creada)
+        r as PublicarPlaylist.Resultado.Parcial
+        assertEquals(6, r.canciones)
+        assertEquals("cancelado", r.error.codigo)
+    }
+
     @Test fun ampliarSiSePuedeReintentarPorqueNoDuplica() {
         guion.add(ok(3)); guion.add(SIN_RED); guion.add(ok(6))
         val r = publicar(6, 3)
