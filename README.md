@@ -34,8 +34,10 @@ Cliente **no oficial** de ForoCoches para Android. Gratis, sin anuncios y con in
 
 ## Privacidad
 
-- **La app no se conecta a ningún servidor nuestro.** Habla directamente con forocoches.com desde
-  tu móvil, con tu cuenta de siempre. Nadie más ve lo que lees ni lo que escribes.
+- **Por defecto la app no se conecta a ningún servidor nuestro**: solo si activas los votos y las
+  playlists públicas de Música, y solo con nuestro servidor de Música (ver más abajo). Para todo lo
+  demás habla directamente con forocoches.com desde tu móvil, con tu cuenta de siempre. Nadie más ve
+  lo que lees ni lo que escribes.
 - La sesión se guarda **solo en tu móvil**.
 - Lo único que la app consulta fuera del foro: las imágenes y los contenidos incrustados de los
   mensajes (en sus propias webs) y un fichero público de configuración en GitHub
@@ -47,7 +49,23 @@ Cliente **no oficial** de ForoCoches para Android. Gratis, sin anuncios y con in
   manda nada, y solo acepta descargar la lista de esa dirección
   ([`FuentesPermitidas.kt`](app/src/main/java/com/fcplus/forocoches/FuentesPermitidas.kt)). Lo que
   hace el servidor no se puede comprobar desde fuera, y no hace falta: no recibe nada de nadie.
+- **Música** (votos de la canción de la semana y playlists públicas), solo si verificas tu cuenta de
+  ForoCoches en ese apartado: la app habla con el servidor de Música, que guarda tu cuenta de Música
+  (el uid de FC solo como huella irreversible), tus votos y tus playlists publicadas hasta que
+  pulses "Borrar mi cuenta de Música" (borrado inmediato). Nunca recibe tus cookies, tu contraseña
+  ni tus mensajes de FC, y no guarda registros de peticiones. La dirección del servidor está fija en
+  el código ([`ServidorMusica.kt`](app/src/main/java/com/fcplus/forocoches/ServidorMusica.kt)) y
+  el fichero de configuración solo puede encenderlo o apagarlo. Las playlists privadas y los
+  favoritos no salen del móvil.
 - [Política de privacidad](docs/privacy-policy.html).
+
+## Servidor de Música
+
+Es un Cloudflare Worker con base de datos D1, y su código está en
+[`servidor/musica/`](servidor/musica/): se puede leer qué se guarda y qué se borra. Lleva las cuentas
+de Música, los votos semanales y las playlists públicas. Los secretos (como la clave de las huellas
+del uid) no están en el repositorio. Cómo probarlo y desplegarlo, en su
+[README](servidor/musica/README.md).
 
 ## Descargar y verificar
 

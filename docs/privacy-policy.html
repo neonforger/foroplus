@@ -14,7 +14,7 @@
 <body>
 <h1>Política de privacidad</h1>
 <p class="muted">Aplicación: <strong>ForoPlus</strong> (cliente <strong>no oficial</strong> para el foro forocoches.com)<br>
-Última actualización: 18 de octubre de 2026</p>
+Última actualización: 10 de noviembre de 2026</p>
 
 <p>ForoPlus es una aplicación Android <strong>no oficial</strong> e independiente para el foro
 <em>forocoches.com</em>. No está afiliada, asociada, autorizada ni respaldada por Forocoches ni por
@@ -26,15 +26,18 @@ donde se guardan las cookies de tu sesión—, no como la pantalla que ves. El c
 <h2>1. Resumen</h2>
 <p>La aplicación <strong>no recopila, no almacena en servidores y no comparte</strong> datos
 personales con el desarrollador ni con terceros. No incluye analítica, ni publicidad, ni
-rastreadores, y <strong>no se conecta a ningún servidor del desarrollador</strong>: lo que necesita lo pide al
-foro o lo descarga de GitHub. Toda la información se procesa <strong>en tu dispositivo</strong>.
-La única excepción es la subida de fotos, que solo ocurre si tú adjuntas una (ver punto 3).</p>
+rastreadores, y <strong>por defecto no se conecta a ningún servidor del desarrollador</strong>: lo que
+necesita lo pide al foro o lo descarga de GitHub. Toda la información se procesa <strong>en tu
+dispositivo</strong>. Hay dos excepciones, ambas voluntarias: la subida de fotos, que solo ocurre si tú
+adjuntas una (ver punto 3), y <strong>los votos y las playlists públicas de Música</strong>, que solo
+funcionan si verificas tu cuenta de ForoCoches en el apartado Música y en ese caso hablan con el
+servidor de Música de ForoPlus (ver punto 4). Si no usas esas funciones, no se envía nada a ese servidor.</p>
 
 <h2>2. Datos que se manejan en el dispositivo</h2>
 <ul>
   <li><strong>Sesión e inicio de sesión:</strong> necesitas tu propia cuenta de Forocoches. Cuando
   inicias sesión, tus credenciales se envían <strong>directamente a forocoches.com</strong> (nunca a
-  un servidor del desarrollador, que no existe). La contraseña no se guarda. Las <em>cookies</em> de
+  un servidor del desarrollador, ni siquiera al de Música). La contraseña no se guarda. Las <em>cookies</em> de
   sesión resultantes se guardan <strong>únicamente en tu dispositivo</strong>; si usas varias cuentas,
   las de cada una se guardan cifradas (en los pocos móviles donde el cifrado del sistema falla, se
   guardan en el almacenamiento privado de la aplicación). Cerrar sesión las elimina.</li>
@@ -87,7 +90,92 @@ conecta mientras la estás usando.</p>
   esa consulta no lleva ningún dato tuyo.</li>
 </ul>
 
-<h2>4. Permisos</h2>
+<h2>4. Música: votos y playlists públicas (opcional)</h2>
+<p>El apartado Música permite guardar canciones de YouTube y de Spotify, ordenarlas en playlists y
+escucharlas. <strong>Todo eso funciona solo en tu móvil</strong>: tus playlists privadas y tus favoritas se
+quedan en el almacenamiento privado de la aplicación y no se envían a ninguna parte. Solo si
+<strong>verificas tu cuenta de ForoCoches</strong> para votar la canción de la semana o publicar una
+playlist, la aplicación habla con el servidor de Música de ForoPlus, un servicio que se ejecuta en
+Cloudflare y cuyo código es público en
+<a href="https://github.com/neonforger/foroplus/tree/main/servidor/musica">servidor/musica</a>.
+Esa función puede estar apagada: se enciende o se apaga desde el fichero público de configuración.</p>
+
+<p><strong>Qué se envía y para qué</strong></p>
+<ul>
+  <li><strong>Verificación:</strong> el número de usuario (uid) de tu cuenta de ForoCoches, que es público,
+  para probar que la cuenta es tuya. El servidor te da un coche de prueba, la aplicación lo pone
+  temporalmente en el campo «coche» de <strong>tu propio perfil</strong> de ForoCoches (con tu sesión, desde tu
+  móvil), el servidor lee tu <strong>ficha pública</strong> de ForoCoches como invitado y comprueba que coincide, y la
+  aplicación <strong>restaura el coche que tenías</strong>. De la ficha pública el servidor guarda el nombre de
+  usuario y la fecha de alta (esta última solo para exigir una cuenta de al menos 90 días para votar).
+  A cambio recibes un <em>token</em> que se guarda en tu móvil y con el que la aplicación se identifica.</li>
+  <li><strong>Votar y proponer:</strong> la canción (enlace de YouTube o de Spotify) y tu voto o tu
+  propuesta de la semana.</li>
+  <li><strong>Publicar una playlist:</strong> su nombre y los enlaces de sus canciones. Se publica
+  <strong>bajo tu nombre de usuario de ForoCoches</strong> y cualquiera que use Música puede verla y guardarla.</li>
+  <li><strong>Guardar o denunciar</strong> una playlist de otra persona: qué playlist y, en la denuncia, el
+  motivo que escribas (hasta 300 caracteres).</li>
+  <li>Tus <strong>mensajes, tu contraseña y tus cookies de ForoCoches no se envían nunca</strong> al servidor de
+  Música, ni tampoco tus playlists privadas ni lo que escuchas.</li>
+</ul>
+
+<p><strong>Cuánto se guarda</strong></p>
+<ul>
+  <li><strong>Tu cuenta de Música</strong> (identificador interno, nombre de usuario, fecha de alta en
+  ForoCoches y fechas de creación y de última verificación), tus votos, tus propuestas, tus playlists
+  publicadas y lo que hayas guardado o denunciado: <strong>hasta que borres tu cuenta de Música</strong>.</li>
+  <li><strong>Tu uid de ForoCoches no se guarda en claro en la cuenta</strong>: solo una huella irreversible (un
+  HMAC con una clave secreta del servidor, que no está en el repositorio), suficiente para reconocer la misma
+  cuenta si vuelve a verificarse.</li>
+  <li><strong>Retos de verificación:</strong> el uid en claro solo vive mientras dura el reto, <strong>10 minutos
+  como máximo</strong> (hace falta para leer tu ficha); se borran al caducar y una tarea diaria repasa los que
+  hubieran quedado.</li>
+  <li><strong>Tokens:</strong> caducan al año. En el servidor solo se guarda su huella, no el token, y una tarea
+  diaria borra los caducados.</li>
+  <li><strong>Límites de uso:</strong> contadores para evitar abusos (por ejemplo, cuántas verificaciones se piden
+  por hora). Las claves se calculan con el mismo tipo de huella sobre la dirección IP (en IPv6, sobre el
+  bloque /64) y sobre el uid, <strong>nunca en claro</strong>, y se borran a los 2 días como mucho.</li>
+  <li><strong>No hay registros de peticiones</strong> en el servidor: el registro de Cloudflare Workers está
+  desactivado y el código no escribe ninguna dirección IP. Como cualquier servicio alojado en Cloudflare, la
+  conexión pasa por la red de Cloudflare, que puede tratar datos técnicos según
+  <a href="https://www.cloudflare.com/privacypolicy/">su propia política</a>; ForoPlus no tiene acceso a eso.</li>
+</ul>
+
+<p><strong>Cómo borrarlo todo</strong></p>
+<ul>
+  <li>En la aplicación: <strong>Música, «Borrar mi cuenta de Música»</strong>. El borrado es <strong>inmediato y
+  completo</strong>: se van tu cuenta, tus tokens, tus votos, tus propuestas, tus playlists publicadas
+  (desaparecen para todos, y con ellas lo que otros hubieran guardado de ellas), tus guardados, tus denuncias y tus
+  contadores. Después puedes volver a verificarte desde cero si quieres.</li>
+  <li>Si ya no tienes la aplicación, sigue <a href="https://neonforger.github.io/forolibre/borrar-cuenta-musica.html">esta
+  página</a> o escribe al correo de contacto del final.</li>
+  <li><strong>Lo que puede quedar tras borrar:</strong> (a) las canciones del catálogo común (título, artista,
+  portada y enlaces), que no están ligadas a ninguna cuenta; (b) los tops de semanas cerradas (canciones y número
+  de votos, sin cuentas); (c) si tu propuesta de la semana en curso ya tenía votos de otras personas, la propuesta
+  se queda <strong>sin autor</strong> para no borrarles sus votos; y (d) <strong>si tu cuenta de Música fue
+  bloqueada por incumplir las normas</strong>, al borrarla queda un registro mínimo (un identificador interno, la
+  huella del uid y la marca de bloqueo, sin nombre ni fechas) para que no se pueda saltar el bloqueo borrando la
+  cuenta y volviendo a verificarla.</li>
+</ul>
+
+<p><strong>Servicios de terceros de Música</strong></p>
+<ul>
+  <li><strong>YouTube y Spotify (oEmbed)</strong> — al añadir un enlace, tu móvil consulta a YouTube
+  (<code>youtube.com/oembed</code>) o a Spotify (<code>open.spotify.com/oembed</code>) el título y la portada de la
+  canción; con Spotify, además, lee la <strong>página pública</strong> de la canción para obtener el artista. El
+  servidor hace las mismas consultas cuando una canción nueva entra en el catálogo común. Esas consultas llevan el
+  enlace de la canción y tu dirección IP (o la del servidor), pero ningún dato de tu cuenta.</li>
+  <li><strong>Portadas</strong> — tu móvil descarga las imágenes directamente de <code>i.ytimg.com</code>,
+  <code>i.scdn.co</code> y <code>image-cdn-fa.spotifycdn.com</code>, y esos servicios pueden registrar tu IP.</li>
+  <li><strong>Reproductor de YouTube</strong> — las canciones se escuchan con el reproductor oficial incrustado de
+  YouTube, solo con la aplicación abierta; YouTube puede registrar tu IP y su propio uso, como en cualquier web
+  que lo incrusta. Las canciones de Spotify se abren en la app o la web de Spotify.</li>
+  <li><strong>Deezer</strong> — <strong>solo desde el servidor</strong>, nunca desde tu móvil: al entrar una canción
+  nueva en el catálogo, el servidor busca su artista y título en la API pública de Deezer
+  (<code>api.deezer.com</code>) para unificar nombres. Esa consulta lleva únicamente artista y título.</li>
+</ul>
+
+<h2>5. Permisos</h2>
 <ul>
   <li><code>INTERNET</code> — conectarse al foro y a los servicios anteriores. Es el único permiso que
   pide la aplicación.</li>
@@ -98,15 +186,15 @@ conecta mientras la estás usando.</p>
   ninguna.</li>
 </ul>
 
-<h2>5. Edad y contenido</h2>
+<h2>6. Edad y contenido</h2>
 <p>ForoPlus está dirigida a <strong>adultos</strong>. Muestra el contenido de un foro generado por sus
 usuarios, que puede incluir material para mayores de 18 años; la aplicación permite reportar contenido.
 No está dirigida a menores ni recopila intencionadamente datos de menores.</p>
 
-<h2>6. Cambios</h2>
+<h2>7. Cambios</h2>
 <p>Si esta política cambia, se actualizará esta misma página con una nueva fecha de revisión.</p>
 
-<h2>7. Contacto</h2>
+<h2>8. Contacto</h2>
 <p>Para cualquier consulta sobre privacidad: <a href="mailto:neonforger97@gmail.com">neonforger97@gmail.com</a></p>
 
 </body>
