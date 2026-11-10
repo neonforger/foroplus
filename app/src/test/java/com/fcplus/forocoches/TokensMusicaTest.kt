@@ -82,10 +82,10 @@ class TokensMusicaTest {
         assertEquals(false, tokens.baneada(""))
     }
 
-    @Test fun trasErrorTiraElTokenInservibleYRecuerdaElBaneoEnTodasLasRutas() {
+    @Test fun trasErrorTiraElTokenMuertoYDeUnaBaneadaSoloRecuerdaElBaneo() {
         tokens.guardar("111", "t"); tokens.guardar("222", "t"); tokens.guardar("333", "t")
         tokens.trasError("111", ApiMusica.R.Error("baneada", 403, null))
-        assertNull(tokens.de("111")); assertEquals(true, tokens.baneada("111"))
+        assertEquals("t", tokens.de("111")); assertEquals(true, tokens.baneada("111"))  // baneada: el token se queda para poder borrar la cuenta
         tokens.trasError("222", ApiMusica.R.Error("token", 401, null))
         assertNull(tokens.de("222")); assertEquals(false, tokens.baneada("222"))
         tokens.trasError("333", ApiMusica.R.Error("red", 0, null))

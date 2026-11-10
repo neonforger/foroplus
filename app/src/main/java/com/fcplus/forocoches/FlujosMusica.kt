@@ -148,11 +148,16 @@ class FlujosMusica(
             act.runOnUiThread {
                 ocupado = false
                 if (hecho) aviso("«${p.nombre}» retirada de «Playlists de los shurs»", largo = true)
-                else if (veredicto == RetirarPlaylist.Veredicto.NO_ES_DE_ESTA_CUENTA) dialogo(
-                    "No está con esta cuenta",
-                    "Con la cuenta que tienes ahora no se encuentra «${p.nombre}» en «Playlists de los shurs»: puede que la publicara otra de tus cuentas. " +
-                        "Cambia a esa cuenta para retirarla."
-                )
+                else if (veredicto == RetirarPlaylist.Veredicto.NO_ES_DE_ESTA_CUENTA) AlertDialog.Builder(act)
+                    .setTitle("No está con esta cuenta")
+                    .setMessage(
+                        "Con la cuenta que tienes ahora no se encuentra «${p.nombre}» en «Playlists de los shurs». " +
+                            "Si sigue publicada, hay que retirarla desde la cuenta que la publicó. " +
+                            "Quitar la marca solo la borra de este móvil (no toca el servidor): la playlist deja de figurar como publicada aquí."
+                    )
+                    .setPositiveButton("Quitar la marca") { _, _ -> if (almacen.marcarPublicada(p.id, null)) alCambiar() }
+                    .setNegativeButton("Cancelar", null)
+                    .show()
                 else aviso(TextosShurs.error(r as ApiMusica.R.Error), largo = true)
                 alCambiar()
             }

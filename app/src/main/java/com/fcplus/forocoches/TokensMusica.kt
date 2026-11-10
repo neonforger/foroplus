@@ -42,8 +42,9 @@ class TokensMusica(private val prefs: SharedPreferences) {
      */
     fun trasError(uid: String, e: ApiMusica.R.Error) {
         if (!e.tokenInservible) return
-        borrar(uid)
-        if (e.codigo == "baneada") marcarBaneada(uid)
+        // Una baneada CONSERVA el token: el servidor solo se lo acepta para borrar la cuenta (RGPD), y sin él no
+        // podría borrarla nunca desde la app. Solo se recuerda el baneo. Un 401 `token` sí es un token muerto.
+        if (e.codigo == "baneada") marcarBaneada(uid) else borrar(uid)
     }
 
     fun baneada(uid: String): Boolean = uid.isNotEmpty() && prefs.getBoolean(claveBaneada(uid), false)
