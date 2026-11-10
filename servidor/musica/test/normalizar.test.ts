@@ -95,3 +95,13 @@ describe("claveCancion", () => {
     expect(claveCancion("", "T")).toBe("|t");
   });
 });
+
+describe("refDe de Deezer", () => {
+  it("refDe reconoce deezer.com/track y deezer.com/es/track", () => {
+    const esperado = { fuente: "deezer", id: "92719900" };
+    expect(refDe("https://www.deezer.com/track/92719900")).toEqual(esperado);
+    expect(refDe("https://www.deezer.com/es/track/92719900?utm_source=x")).toEqual(esperado);
+    expect(refDe("https://deezer.com/en/track/92719900")).toEqual(esperado);
+    expect(refDe("https://www.deezer.com/album/92719900")).toBeNull();
+  });
+});

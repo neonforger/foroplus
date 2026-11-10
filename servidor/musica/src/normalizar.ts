@@ -2,7 +2,7 @@
 // TituloCancion.kt de la app: las listas de etiquetas y los casos se comparten por
 // app/src/test/resources/contrato/musica-*.json, y los tests de aquí los leen.
 
-export type Fuente = "youtube" | "spotify";
+export type Fuente = "youtube" | "spotify" | "deezer";
 export interface RefCancion {
   fuente: Fuente;
   id: string;
@@ -14,6 +14,9 @@ const YT = /(?:youtube[.]com\/(?:watch\?(?:[^ ]*&)?v=|shorts\/|embed\/)|youtu[.]
 const SPOTIFY =
   /(?:open[.]spotify[.]com\/(?:intl-[A-Za-z-]+\/)?track\/|^spotify:track:)([A-Za-z0-9]{22})(?![A-Za-z0-9])/i;
 
+// Deezer: /track/<n> con segmento de idioma opcional (/es/, /en/). Sin enlaces cortos (deezer.page.link).
+const DEEZER = /deezer[.]com\/(?:[a-z]{2}(?:-[a-z]{2})?\/)?track\/([0-9]+)(?![0-9])/i;
+
 /** Sin enlaces cortos (spotify.link): resolverlos exige red y no es cosa de esta función. */
 export function refDe(url: string): RefCancion | null {
   const u = url.trim();
@@ -21,6 +24,8 @@ export function refDe(url: string): RefCancion | null {
   if (y) return { fuente: "youtube", id: y[1] };
   const s = SPOTIFY.exec(u);
   if (s) return { fuente: "spotify", id: s[1] };
+  const d = DEEZER.exec(u);
+  if (d) return { fuente: "deezer", id: d[1] };
   return null;
 }
 

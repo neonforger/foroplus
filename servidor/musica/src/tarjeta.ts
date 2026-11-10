@@ -10,7 +10,9 @@ export interface Tarjeta {
   ref: RefCancion;
 }
 
-const HOSTS_PORTADA = new Set(["i.ytimg.com", "i.scdn.co", "image-cdn-fa.spotifycdn.com"]);
+const HOSTS_PORTADA = new Set([
+  "i.ytimg.com", "i.scdn.co", "image-cdn-fa.spotifycdn.com", "e-cdns-images.dzcdn.net", "cdn-images.dzcdn.net",
+]);
 
 function portadaPermitida(u: unknown): string | null {
   if (typeof u !== "string") return null;
@@ -29,9 +31,9 @@ export const USER_AGENT =
 export const CABECERAS: RequestInit = { headers: { "User-Agent": USER_AGENT, "Accept-Language": "en" } };
 
 export function enlaceDe(ref: RefCancion): string {
-  return ref.fuente === "youtube"
-    ? `https://www.youtube.com/watch?v=${ref.id}`
-    : `https://open.spotify.com/track/${ref.id}`;
+  if (ref.fuente === "youtube") return `https://www.youtube.com/watch?v=${ref.id}`;
+  if (ref.fuente === "deezer") return `https://www.deezer.com/track/${ref.id}`;
+  return `https://open.spotify.com/track/${ref.id}`;
 }
 
 async function jsonDe(red: Deps["red"], url: string): Promise<Record<string, unknown> | null> {
@@ -164,6 +166,7 @@ async function deLaDeezer(
  * busca en Deezer (sin artista no habría con qué casar).
  */
 export async function tarjetaDe(ref: RefCancion, red: Deps["red"]): Promise<Tarjeta | null> {
+  if (ref.fuente === "deezer") return tarjetaDeDeezer(Number(ref.id), red);
   const enlace = enlaceDe(ref);
   let titulo: string;
   let artista: string | null;
@@ -195,4 +198,37 @@ export async function tarjetaDe(ref: RefCancion, red: Deps["red"]): Promise<Tarj
     }
   }
   return { titulo, artista, portada, clave: claveCancion(artista ?? "", titulo), enlace, ref };
+}
+
+export type TarjetaDeezer = Tarjeta & { deezer: number; isrc: string | null };
+
+/**
+ * La tarjeta de una pista de Deezer: UNA subpetición (`/track/<id>`, sin clave). Deezer contesta 200
+ * con `{"error":{…}}` cuando el id no existe, así que se exige `title`. El artista lleva a los
+ * contribuidores si los hay ("AC/DC, Otro"), sin repetir al principal; la clave los ordena igual.
+ * El `preview` (URL firmada y con caducidad) NO se guarda nunca: la app pide una fresca por id.
+ */
+export async function tarjetaDeDeezer(id: number, red: Deps["red"]): Promise<TarjetaDeezer | null> {
+  const j = await jsonDe(red, `https://api.deezer.com/track/${id}`);
+  if (!j || typeof j.title !== "string" || !j.title.trim()) return null;
+  const nombres: string[] = [];
+  const poner = (n: unknown) => {
+    if (typeof n !== "string" || !n.trim()) return;
+    if (!nombres.some((x) => x.toLowerCase() === n.trim().toLowerCase())) nombres.push(n.trim());
+  };
+  poner((j.artist as { name?: unknown } | undefined)?.name);
+  if (Array.isArray(j.contributors)) for (const c of j.contributors as { name?: unknown }[]) poner(c?.name);
+  const artista = nombres.length ? nombres.join(", ") : null;
+  const titulo = j.title.trim();
+  const ref: RefCancion = { fuente: "deezer", id: String(id) };
+  return {
+    titulo,
+    artista,
+    portada: portadaPermitida((j.album as { cover_xl?: unknown } | undefined)?.cover_xl),
+    clave: claveCancion(artista ?? "", titulo),
+    enlace: enlaceDe(ref),
+    ref,
+    deezer: id,
+    isrc: typeof j.isrc === "string" && j.isrc ? j.isrc : null,
+  };
 }

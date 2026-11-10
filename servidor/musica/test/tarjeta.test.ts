@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import deezerEstopa from "./fixtures/deezer_estopa.json";
+import deezerTrack from "./fixtures/deezer_track_92719900.json";
 import deezerVacio from "./fixtures/deezer_vacio.json";
 import spEstopaMeta from "./fixtures/sp_estopa_meta.html?raw";
 import spEstopaOembed from "./fixtures/sp_estopa_oembed.json";
@@ -8,7 +9,7 @@ import spOembed from "./fixtures/sp_oembed.json";
 import ytEstopa from "./fixtures/yt_estopa_oembed.json";
 import ytOembed from "./fixtures/yt_oembed.json";
 import { claveCancion, type RefCancion } from "../src/normalizar";
-import { leerMetas, metasDe, tarjetaDe, USER_AGENT } from "../src/tarjeta";
+import { leerMetas, metasDe, tarjetaDe, tarjetaDeDeezer, USER_AGENT } from "../src/tarjeta";
 
 const YT_ESTOPA: RefCancion = { fuente: "youtube", id: "aaaaaaaaaaa" };
 const SP_ESTOPA: RefCancion = { fuente: "spotify", id: "0aaaaaaaaaaaaaaaaaaaaa" };
@@ -256,5 +257,45 @@ describe("metasDe (lectura en streaming)", () => {
     const m = await metasDe(redCon(r), "https://x/");
     const ref = leerMetas(spMeta);
     for (const k of ["og:description", "og:image", "music:musician_description"]) expect(m?.get(k)).toBe(ref.get(k));
+  });
+});
+
+describe("tarjetaDeDeezer", () => {
+  const PISTA = "https://api.deezer.com/track/92719900";
+  it("tarjetaDeDeezer lee título, artista, portada e isrc del fixture", async () => {
+    const { red, vistas } = redFalsa({ [PISTA]: json(deezerTrack) });
+    const t = await tarjetaDeDeezer(92719900, red);
+    expect(vistas).toEqual([PISTA]);
+    expect(t).toEqual({
+      titulo: "Highway to Hell",
+      artista: "AC/DC",
+      portada: deezerTrack.album.cover_xl,
+      clave: claveCancion("AC/DC", "Highway to Hell"),
+      enlace: "https://www.deezer.com/track/92719900",
+      ref: { fuente: "deezer", id: "92719900" },
+      deezer: 92719900,
+      isrc: "AUAP07900028",
+    });
+    expect(t!.portada).toContain("dzcdn.net");
+  });
+  it("une los contribuidores al artista, sin repetir el principal", async () => {
+    const o = { ...deezerTrack, contributors: [{ name: "AC/DC" }, { name: "Otro" }, { name: "ac/dc" }] };
+    const t = await tarjetaDeDeezer(92719900, redFalsa({ [PISTA]: json(o) }).red);
+    expect(t!.artista).toBe("AC/DC, Otro");
+  });
+  it("sin isrc guarda null", async () => {
+    const { isrc: _, ...sin } = deezerTrack;
+    const t = await tarjetaDeDeezer(92719900, redFalsa({ [PISTA]: json(sin) }).red);
+    expect(t!.isrc).toBeNull();
+  });
+  it("id que Deezer no tiene → null", async () => {
+    const e = { error: { type: "DataException", message: "no data", code: 800 } };
+    expect(await tarjetaDeDeezer(1, redFalsa({ "https://api.deezer.com/track/1": json(e) }).red)).toBeNull();
+  });
+  it("portada de host no permitido → null en portada", async () => {
+    const o = { ...deezerTrack, album: { ...deezerTrack.album, cover_xl: "https://malo.example/x.jpg" } };
+    const t = await tarjetaDeDeezer(92719900, redFalsa({ [PISTA]: json(o) }).red);
+    expect(t!.portada).toBeNull();
+    expect(t!.titulo).toBe("Highway to Hell");
   });
 });

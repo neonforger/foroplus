@@ -15,6 +15,8 @@ export interface CancionPub {
   portada: string | null;
   youtube?: string;
   spotify?: string;
+  /** Id de pista de Deezer: la app pide el fragmento de audio por él (la URL firmada caduca). */
+  deezer?: number;
 }
 
 export interface FilaCancion {
@@ -24,9 +26,12 @@ export interface FilaCancion {
   portada: string | null;
   /** JSON {"youtube"?: url, "spotify"?: url}: el PRIMER enlace que llegó de cada fuente. */
   enlaces: string;
+  deezer?: number | null;
+  /** Id de pista de Spotify (la columna; las filas viejas solo lo tienen dentro de `enlaces`). */
+  spotify?: string | null;
 }
 
-export const COLUMNAS_CANCION = "c.id, c.titulo, c.artista, c.portada, c.enlaces";
+export const COLUMNAS_CANCION = "c.id, c.titulo, c.artista, c.portada, c.enlaces, c.deezer, c.spotify";
 
 export function cancionPub(f: FilaCancion): CancionPub {
   let e: Record<string, unknown> = {};
@@ -42,11 +47,14 @@ export function cancionPub(f: FilaCancion): CancionPub {
     artista: f.artista,
     portada: f.portada,
     ...(typeof e.youtube === "string" ? { youtube: e.youtube } : {}),
-    ...(typeof e.spotify === "string" ? { spotify: e.spotify } : {}),
+    ...(f.spotify
+      ? { spotify: `https://open.spotify.com/track/${f.spotify}` }
+      : typeof e.spotify === "string" ? { spotify: e.spotify } : {}),
+    ...(typeof f.deezer === "number" ? { deezer: f.deezer } : {}),
   };
 }
 
-/** "youtube:ID" / "spotify:ID": la clave de `enlaces_cancion`, la misma venga el enlace como venga. */
+/** "youtube:ID" / "spotify:ID" / "deezer:ID": la clave de `enlaces_cancion`, la misma venga el enlace como venga. */
 export function claveRef(ref: RefCancion): string {
   return `${ref.fuente}:${ref.id}`;
 }
@@ -65,16 +73,33 @@ export function cancionPorRef(db: D1Database, ref: RefCancion): Promise<FilaCanc
  * misma canción nueva chocan en los UNIQUE (`clave`, `ref`), una no inserta nada y las dos acaban
  * leyendo la misma fila.
  */
-export async function guardarCancion(d: Deps, t: Tarjeta): Promise<FilaCancion> {
+/** Lo que una tarjeta aporta además de lo común: sin ello la fila queda como siempre (conversion 'hecha'). */
+export interface ExtrasCancion {
+  deezer?: number;
+  isrc?: string | null;
+  /** Id (no URL) de la pista de Spotify, si ya se conoce. */
+  spotify?: string;
+  conversion?: "pendiente" | "hecha";
+}
+
+export async function guardarCancion(d: Deps, t: Tarjeta & ExtrasCancion): Promise<FilaCancion> {
   const ref = claveRef(t.ref);
   const camino = "$." + t.ref.fuente;
   const r = await d.db.batch<FilaCancion>([
     d.db
       .prepare(
-        "INSERT INTO canciones (id, clave, titulo, artista, portada, isrc, enlaces) " +
-          "VALUES (?1, ?2, ?3, ?4, ?5, NULL, json_object(?6, ?7)) ON CONFLICT (clave) DO NOTHING",
+        "INSERT INTO canciones (id, clave, titulo, artista, portada, isrc, enlaces, deezer, spotify, conversion) " +
+          "VALUES (?1, ?2, ?3, ?4, ?5, ?8, json_object(?6, ?7), ?9, ?10, ?11) ON CONFLICT (clave) DO NOTHING",
       )
-      .bind(nuevoId(d.ahora()), t.clave, t.titulo, t.artista, t.portada, t.ref.fuente, t.enlace),
+      .bind(
+        nuevoId(d.ahora()), t.clave, t.titulo, t.artista, t.portada, t.ref.fuente, t.enlace,
+        t.isrc ?? null, t.deezer ?? null, t.spotify ?? null, t.conversion ?? "hecha",
+      ),
+    // Una canción que ya estaba (llegó por otra fuente) aprende su id de Deezer y su ISRC, pero NUNCA
+    // cambia spotify ni conversion: si ya está convertida, no se reconvierte.
+    d.db
+      .prepare("UPDATE canciones SET deezer = COALESCE(deezer, ?1), isrc = COALESCE(isrc, ?2) WHERE clave = ?3 AND (?1 IS NOT NULL OR ?2 IS NOT NULL)")
+      .bind(t.deezer ?? null, t.isrc ?? null, t.clave),
     // Si la canción ya existía sin enlace de esta fuente, este pasa a ser el suyo. Si ya tenía uno
     // (otro vídeo de la misma canción), se queda el primero: el nuevo solo entra en enlaces_cancion.
     d.db
@@ -86,7 +111,7 @@ export async function guardarCancion(d: Deps, t: Tarjeta): Promise<FilaCancion> 
     // Por la ref y no por la clave: si otra petición enganchó antes esta ref, manda la suya.
     d.db.prepare(POR_REF).bind(ref),
   ]);
-  const fila = r[3].results[0];
+  const fila = r[4].results[0];
   if (!fila) throw new Error("canción guardada sin fila: " + ref);
   return fila;
 }
@@ -111,4 +136,27 @@ export async function cancionDeEnlace(
   const t = await tarjetaDe(ref, d.red);
   if (!t) return { error: "no_encontrada" };
   return { cancion: await guardarCancion(d, t) };
+}
+
+/**
+ * La canción de una publicación del feed: por un id de Deezer (lo normal: la app busca ahí) o por
+ * un enlace. Sin red si la ref ya se conoce; si no, `antesDeLaRed` decide si se puede salir (false =
+ * "limite") y se monta la tarjeta. Una canción NUEVA queda `conversion = 'pendiente'` (el VPS le
+ * busca su Spotify), salvo que venga de un enlace de Spotify: entonces ya tiene su id y queda
+ * 'hecha'. Una existente (misma clave) se reutiliza tal cual.
+ */
+export async function cancionDeOrigen(
+  d: Deps, origen: { deezer: number } | { enlace: string }, antesDeLaRed: () => Promise<boolean>,
+): Promise<ResultadoEnlace> {
+  const ref: RefCancion | null =
+    "deezer" in origen ? { fuente: "deezer", id: String(origen.deezer) } : refDe(origen.enlace);
+  if (!ref) return { error: "no_es_cancion" };
+  const conocida = await cancionPorRef(d.db, ref);
+  if (conocida) return { cancion: conocida };
+  if (!(await antesDeLaRed())) return { error: "limite" };
+  const t = await tarjetaDe(ref, d.red);
+  if (!t) return { error: "no_encontrada" };
+  const extras: ExtrasCancion =
+    ref.fuente === "spotify" ? { spotify: ref.id, conversion: "hecha" } : { conversion: "pendiente" };
+  return { cancion: await guardarCancion(d, { ...t, ...extras }) };
 }
