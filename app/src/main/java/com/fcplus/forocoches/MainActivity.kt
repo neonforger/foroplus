@@ -655,7 +655,6 @@ class MainActivity : AppCompatActivity() {
         private const val TAG_POPURRI = -1
         private const val TAG_MAS18 = -2
         private const val TAG_MUSICA = -3
-        private const val SIN_TEMPORAL = Int.MIN_VALUE   // no -1: es TAG_POPURRI
         private val LISTAS_DE_SUBFORO = setOf("home", "top", "popurri")
     }
 
@@ -3490,7 +3489,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun aplicarBarra(nav: Boolean) {
-        if (nav) pintarBarraInferior() else { subforosFueraDeBarra.clear(); pintarPestanas() }
+        if (nav) pintarBarraInferior() else { sitios.alOrganizar(); pintarPestanas() }
     }
 
     /**
@@ -3650,7 +3649,7 @@ class MainActivity : AppCompatActivity() {
         pollBarDivider = findViewById(R.id.poll_bar_divider)
         pollBar.setOnClickListener { showPollSheet() }
         nativeHeader = findViewById(R.id.native_header)
-        cabecera = TituloCabecera(nativeHeader) { abrirSelectorSitio() }
+        cabecera = TituloCabecera(nativeHeader) { sitios.abrirSelector() }
         noticesPanel = findViewById(R.id.notices_panel)
         noticesHeader = findViewById(R.id.notices_header)
         noticesList = findViewById(R.id.notices_list)
@@ -4087,58 +4086,14 @@ class MainActivity : AppCompatActivity() {
         "musica" -> TAG_MUSICA; "popurri" -> TAG_POPURRI; "mas18" -> TAG_MAS18; else -> currentForumId
     }
 
-    /**
-     * Subforos que NO están en la barra (escondidos en Organizar) y que el usuario ha abierto a
-     * propósito desde el selector. Mientras se está en uno, la barra le añade al final una
-     * pestaña TEMPORAL con su nombre, marcada ([tabTemporalFid]): sin ella `pintarPestanas`
-     * creería que se está en un subforo que ya no existe y saltaría al primero visible. La
-     * pestaña desaparece al ir a cualquier otro sitio; el fid se recuerda para que el atrás (o
-     * volver de un hilo) a esa lista se quede en ella. Organizar la vacía: si escondes algo
-     * estando en ello, sí se salta, como siempre.
-     */
-    private val subforosFueraDeBarra = mutableSetOf<Int>()
-    private var tabTemporalFid = SIN_TEMPORAL
-
-    private fun quitarTabTemporal() {
-        val fid = tabTemporalFid
-        if (fid == SIN_TEMPORAL) return
-        tabTemporalFid = SIN_TEMPORAL
-        populatingTabs = true
-        for (i in 0 until forumTabs.tabCount) if (forumTabs.getTabAt(i)?.tag == fid) { forumTabs.removeTabAt(i); break }
-        populatingTabs = false
-    }
-
-    private fun abrirSelectorSitio() {
-        val enBarra = (0 until forumTabs.tabCount).mapNotNull { i ->
-            val t = forumTabs.getTabAt(i) ?: return@mapNotNull null
-            val k = t.tag as? Int ?: return@mapNotNull null
-            if (k == tabTemporalFid) null else Sitio(k, t.text?.toString().orEmpty())
-        }
-        val todos = subforosConocidos.map { Sitio(it.first, it.second) }
-        SelectorSitio.mostrar(this, enBarra, todos, lugarActualClave()) { elegirSitio(it) }
-    }
-
-    private fun elegirSitio(clave: Int) {
-        if (clave == lugarActualClave() && listSource != "top") return
-        val idx = (0 until forumTabs.tabCount).firstOrNull { forumTabs.getTabAt(it)?.tag == clave }
-        if (idx != null) {
-            // Se marca sin disparar onTabSelected (navega abrirDestino) y se deja a la vista.
-            populatingTabs = true
-            forumTabs.getTabAt(idx)?.select()
-            populatingTabs = false
-            abrirDestino(clave)
-            encuadrarPestanaEn = idx
-            encuadrarPestanas()
-        } else {
-            subforosFueraDeBarra += clave
-            abrirDestino(clave)
-            pintarPestanas()   // añade la pestaña temporal, marcada y a la vista
-        }
+    private val sitios by lazy {
+        SitioController(this, forumTabs, { lugarActualClave() }, { subforosConocidos.map { Sitio(it.first, it.second) } },
+            { abrirDestino(it) }, { pintarPestanas() }, { b -> populatingTabs = true; b(); populatingTabs = false })
     }
 
     /** Ir a un sitio de la barra (pestaña tocada) o del selector: sección, subforo o subforo suelto. */
     private fun abrirDestino(fid: Int) {
-        if (fid != tabTemporalFid) quitarTabTemporal()
+        if (fid != sitios.tabTemporalFid) sitios.quitarTabTemporal()
         if (fid == TAG_MAS18) { showMas18(); return }
         if (fid == TAG_POPURRI) { showPopurri(); return }
         if (fid == TAG_MUSICA) { showMusica(); return }
@@ -4224,12 +4179,11 @@ class MainActivity : AppCompatActivity() {
             vueltaAInicio = true
         }
         // Un subforo escondido que se abrió desde el selector no es un "subforo que ya no existe":
-        // se queda con una pestaña temporal (ver [subforosFueraDeBarra]).
-        val temporal = if ((listSource == "home" || listSource == "top") &&
-            currentForumId in subforosFueraDeBarra && visibles.none { it.fid == currentForumId })
-            porFid[currentForumId.toString()] else null
-        val saltar = listSource == "home" && visibles.isNotEmpty() && temporal == null &&
-            visibles.none { it.fid == currentForumId }
+        // se queda con una pestaña temporal (ver [SitioController]).
+        val fidsVisibles = visibles.map { it.fid }.toSet()
+        val temporal = BarraTemporal.temporal(listSource, currentForumId, sitios.fueraDeBarra, fidsVisibles)
+            ?.let { porFid[it.toString()] }
+        val saltar = BarraTemporal.saltar(listSource, visibles.isNotEmpty(), currentForumId, fidsVisibles, temporal != null)
         if (saltar) {
             currentForumId = visibles.first().fid
             shellPrefs.edit().putInt(PREF_LAST_FID, currentForumId).apply()
@@ -4268,10 +4222,10 @@ class MainActivity : AppCompatActivity() {
             forumTabs.addTab(tab, false)
             if (f.fid == currentForumId && !enSeccion) selectIdx = idx + desplazamiento
         }
-        tabTemporalFid = SIN_TEMPORAL
+        sitios.tabTemporalFid = BarraTemporal.NINGUNO
         if (temporal != null) {
             forumTabs.addTab(forumTabs.newTab().setText(temporal.name).also { it.tag = temporal.fid }, false)
-            tabTemporalFid = temporal.fid
+            sitios.tabTemporalFid = temporal.fid
             if (!enSeccion) selectIdx = forumTabs.tabCount - 1
         }
         if (listSource == "mas18") selectIdx = 0
@@ -7246,9 +7200,12 @@ class MainActivity : AppCompatActivity() {
         adapter.submit(emptyList())
         showNative()
         setSelectedNav(R.id.nav_home)
+        refrescarTitulo()   // venir de Suscripciones, Mis hilos… dejaba el título de allí
         if (tabIdx >= 0) forumTabs.getTabAt(tabIdx)?.select() else {
-            // Un subforo que no está en la barra (escondido): pestaña temporal, no un salto atrás.
-            if (currentForumId in nombresDeForo) { subforosFueraDeBarra += currentForumId; pintarPestanas() }
+            // Fuera de la barra (escondido): pestaña temporal, no un salto atrás. Se decide por el
+            // fid, no por si los nombres ya han llegado (si no, los pinta pintarPestanas al llegar).
+            sitios.recordarSiFuera(fid)
+            pintarPestanas()
             requestThreadList(1)
         }
     }

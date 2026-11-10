@@ -38,6 +38,8 @@
                     android:paddingEnd="8dp"
                     android:paddingTop="12dp"
                     android:paddingBottom="8dp"
+                    android:minHeight="48dp"
+                    android:gravity="center_vertical"
                     android:text="ForoPlus"
                     android:textColor="@color/fc_rojo"
                     android:textSize="20sp"
