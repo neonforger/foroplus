@@ -99,8 +99,11 @@ class FlujosMusica(
     private fun contar(p: Playlist, r: PublicarPlaylist.Resultado) {
         when (r) {
             is PublicarPlaylist.Resultado.Hecho -> {
-                val sin = if (r.fallidas.isEmpty()) "" else
-                    "\n\n${r.fallidas.size} no se han podido añadir (el servidor no ha podido leerlas)."
+                val sin = when (r.fallidas.size) {
+                    0 -> ""
+                    1 -> "\n\n1 no se ha podido añadir (el servidor no ha podido leerla)."
+                    else -> "\n\n${r.fallidas.size} no se han podido añadir (el servidor no ha podido leerlas)."
+                }
                 dialogo("Publicada", "«${p.nombre}» ya está en «Playlists de los shurs» con ${Musica.cuantas(r.canciones)}.$sin")
             }
             is PublicarPlaylist.Resultado.Parcial -> dialogo(
