@@ -655,6 +655,7 @@ class MainActivity : AppCompatActivity() {
         private const val TAG_POPURRI = -1
         private const val TAG_MAS18 = -2
         private const val TAG_MUSICA = -3
+        private const val SIN_TEMPORAL = Int.MIN_VALUE   // no -1: es TAG_POPURRI
         private val LISTAS_DE_SUBFORO = setOf("home", "top", "popurri")
     }
 
@@ -918,7 +919,7 @@ class MainActivity : AppCompatActivity() {
         // Que la pestaña marcada sea la del subforo y no la +18/Popurrí/Música de la que se sale.
         if (veniaDeSeccion) pintarPestanas()
         forumTabs.visibility = View.VISIBLE
-        nativeHeader.text = "ForoPlus"
+        refrescarTitulo()
         pintarBotonTop()
         showNative()
         fabNewThread.visibility = if (isLoggedIn()) View.VISIBLE else View.GONE
@@ -945,7 +946,7 @@ class MainActivity : AppCompatActivity() {
     private fun ponerModoTop(activo: Boolean) {
         listSource = if (activo) "top" else "home"
         forumTabs.visibility = View.VISIBLE
-        nativeHeader.text = if (activo) "Hilos del momento" else "ForoPlus"
+        refrescarTitulo()
         pintarBotonTop()
         setSelectedNav(R.id.nav_home)
         listLoaded = false
@@ -1008,7 +1009,7 @@ class MainActivity : AppCompatActivity() {
     private fun showPopurri() {
         listSource = "popurri"
         forumTabs.visibility = View.VISIBLE
-        nativeHeader.text = "Popurrí"
+        refrescarTitulo()
         pintarBotonTop()
         showNative()
         setSelectedNav(R.id.nav_home)
@@ -1055,7 +1056,7 @@ class MainActivity : AppCompatActivity() {
     private fun showMas18() {
         listSource = "mas18"
         forumTabs.visibility = View.VISIBLE
-        nativeHeader.text = "+18"
+        refrescarTitulo()
         pintarBotonTop()
         showNative()
         setSelectedNav(R.id.nav_home)
@@ -1201,7 +1202,7 @@ class MainActivity : AppCompatActivity() {
     private fun showMusica() {
         listSource = "musica"
         forumTabs.visibility = View.VISIBLE
-        nativeHeader.text = "Música"
+        refrescarTitulo()
         pintarBotonTop()
         // Lo que estuviera en vuelo era de la lista que se deja: con listaEsperada vacía se tira
         // al llegar (ver PeticionLista), y no puede dejar el aro girando ni la carga en alto
@@ -1324,7 +1325,7 @@ class MainActivity : AppCompatActivity() {
         listSource = "favs"
         pintarBotonTop()
         forumTabs.visibility = View.GONE
-        nativeHeader.text = "Suscripciones"
+        ponerTitulo("Suscripciones")
         listLoaded = false
         adapter.submit(emptyList())
         showNative()
@@ -1338,7 +1339,7 @@ class MainActivity : AppCompatActivity() {
         listSource = "mine"
         myThreadsBase = ""
         forumTabs.visibility = View.GONE
-        nativeHeader.text = "Mis hilos"
+        ponerTitulo("Mis hilos")
         listLoaded = false
         adapter.submit(emptyList())
         showNative()
@@ -1600,7 +1601,7 @@ class MainActivity : AppCompatActivity() {
         listSource = "search"
         myThreadsBase = ""
         forumTabs.visibility = View.GONE
-        nativeHeader.text = BusquedaPorUsuario.cabecera(searchQuery, searchUser, porMensajes = false)
+        ponerTitulo(BusquedaPorUsuario.cabecera(searchQuery, searchUser, porMensajes = false))
         listLoaded = false
         adapter.submit(emptyList())
         showNative()
@@ -1749,7 +1750,7 @@ class MainActivity : AppCompatActivity() {
         pintarBotonTop()
         myThreadsBase = ""
         forumTabs.visibility = View.GONE
-        nativeHeader.text = if (modo == "started") "@$usuario · hilos suyos" else "@$usuario · participa"
+        ponerTitulo(if (modo == "started") "@$usuario · hilos suyos" else "@$usuario · participa")
         listLoaded = false
         adapter.submit(emptyList())
         showNative()
@@ -1761,7 +1762,7 @@ class MainActivity : AppCompatActivity() {
         listSource = "participated"
         myThreadsBase = ""
         forumTabs.visibility = View.GONE
-        nativeHeader.text = "Participados"
+        ponerTitulo("Participados")
         listLoaded = false
         adapter.submit(emptyList())
         showNative()
@@ -3489,7 +3490,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun aplicarBarra(nav: Boolean) {
-        if (nav) pintarBarraInferior() else pintarPestanas()
+        if (nav) pintarBarraInferior() else { subforosFueraDeBarra.clear(); pintarPestanas() }
     }
 
     /**
@@ -3649,6 +3650,7 @@ class MainActivity : AppCompatActivity() {
         pollBarDivider = findViewById(R.id.poll_bar_divider)
         pollBar.setOnClickListener { showPollSheet() }
         nativeHeader = findViewById(R.id.native_header)
+        cabecera = TituloCabecera(nativeHeader) { abrirSelectorSitio() }
         noticesPanel = findViewById(R.id.notices_panel)
         noticesHeader = findViewById(R.id.notices_header)
         noticesList = findViewById(R.id.notices_list)
@@ -4050,24 +4052,7 @@ class MainActivity : AppCompatActivity() {
             override fun onTabSelected(tab: TabLayout.Tab) {
                 if (populatingTabs) return
                 val fid = tab.tag as? Int ?: return
-                if (fid == TAG_MAS18) { showMas18(); return }
-                if (fid == TAG_POPURRI) { showPopurri(); return }
-                if (fid == TAG_MUSICA) { showMusica(); return }
-                // Salir del Popurrí, de +18 o de Música a un subforo devuelve la lista a su modo
-                // normal (al cambiar listSource, el setter apaga la cabecera de +18 y el panel
-                // de Música).
-                if (listSource == "popurri" || listSource == "mas18" || listSource == "musica") {
-                    listSource = "home"
-                    nativeHeader.text = "ForoPlus"
-                    pintarBotonTop()
-                }
-                currentForumId = fid
-                getSharedPreferences(PREFS, MODE_PRIVATE).edit().putInt(PREF_LAST_FID, fid).apply()
-                listLoaded = false
-                adapter.submit(emptyList())
-                showNative()
-                anotarListaEnPila()
-                requestThreadList(1)
+                abrirDestino(fid)
             }
             override fun onTabUnselected(tab: TabLayout.Tab) {}
             override fun onTabReselected(tab: TabLayout.Tab) {
@@ -4083,6 +4068,95 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         })
+    }
+
+    // ── Título-selector de sitio (ver TituloCabecera, TituloSitio, SelectorSitio) ─────────
+
+    private lateinit var cabecera: TituloCabecera
+
+    /** Único sitio que pone el texto de la cabecera: el resto pasa por aquí o por [refrescarTitulo]. */
+    private fun ponerTitulo(texto: String) = cabecera.plano(texto)
+
+    /** Título de la lista actual si es "un sitio" (subforo, Popurrí, +18, Música) o los hilos del momento. */
+    private fun refrescarTitulo() {
+        val t = TituloSitio.deLista(listSource, currentForumId, nombresDeForo) ?: return
+        if (t.selector) cabecera.sitio(t.texto) else cabecera.plano(t.texto)
+    }
+
+    private fun lugarActualClave(): Int = when (listSource) {
+        "musica" -> TAG_MUSICA; "popurri" -> TAG_POPURRI; "mas18" -> TAG_MAS18; else -> currentForumId
+    }
+
+    /**
+     * Subforos que NO están en la barra (escondidos en Organizar) y que el usuario ha abierto a
+     * propósito desde el selector. Mientras se está en uno, la barra le añade al final una
+     * pestaña TEMPORAL con su nombre, marcada ([tabTemporalFid]): sin ella `pintarPestanas`
+     * creería que se está en un subforo que ya no existe y saltaría al primero visible. La
+     * pestaña desaparece al ir a cualquier otro sitio; el fid se recuerda para que el atrás (o
+     * volver de un hilo) a esa lista se quede en ella. Organizar la vacía: si escondes algo
+     * estando en ello, sí se salta, como siempre.
+     */
+    private val subforosFueraDeBarra = mutableSetOf<Int>()
+    private var tabTemporalFid = SIN_TEMPORAL
+
+    private fun quitarTabTemporal() {
+        val fid = tabTemporalFid
+        if (fid == SIN_TEMPORAL) return
+        tabTemporalFid = SIN_TEMPORAL
+        populatingTabs = true
+        for (i in 0 until forumTabs.tabCount) if (forumTabs.getTabAt(i)?.tag == fid) { forumTabs.removeTabAt(i); break }
+        populatingTabs = false
+    }
+
+    private fun abrirSelectorSitio() {
+        val enBarra = (0 until forumTabs.tabCount).mapNotNull { i ->
+            val t = forumTabs.getTabAt(i) ?: return@mapNotNull null
+            val k = t.tag as? Int ?: return@mapNotNull null
+            if (k == tabTemporalFid) null else Sitio(k, t.text?.toString().orEmpty())
+        }
+        val todos = subforosConocidos.map { Sitio(it.first, it.second) }
+        SelectorSitio.mostrar(this, enBarra, todos, lugarActualClave()) { elegirSitio(it) }
+    }
+
+    private fun elegirSitio(clave: Int) {
+        if (clave == lugarActualClave() && listSource != "top") return
+        val idx = (0 until forumTabs.tabCount).firstOrNull { forumTabs.getTabAt(it)?.tag == clave }
+        if (idx != null) {
+            // Se marca sin disparar onTabSelected (navega abrirDestino) y se deja a la vista.
+            populatingTabs = true
+            forumTabs.getTabAt(idx)?.select()
+            populatingTabs = false
+            abrirDestino(clave)
+            encuadrarPestanaEn = idx
+            encuadrarPestanas()
+        } else {
+            subforosFueraDeBarra += clave
+            abrirDestino(clave)
+            pintarPestanas()   // añade la pestaña temporal, marcada y a la vista
+        }
+    }
+
+    /** Ir a un sitio de la barra (pestaña tocada) o del selector: sección, subforo o subforo suelto. */
+    private fun abrirDestino(fid: Int) {
+        if (fid != tabTemporalFid) quitarTabTemporal()
+        if (fid == TAG_MAS18) { showMas18(); return }
+        if (fid == TAG_POPURRI) { showPopurri(); return }
+        if (fid == TAG_MUSICA) { showMusica(); return }
+        // Salir del Popurrí, de +18 o de Música a un subforo devuelve la lista a su modo
+        // normal (al cambiar listSource, el setter apaga la cabecera de +18 y el panel
+        // de Música).
+        if (listSource == "popurri" || listSource == "mas18" || listSource == "musica") {
+            listSource = "home"
+            pintarBotonTop()
+        }
+        currentForumId = fid
+        refrescarTitulo()
+        getSharedPreferences(PREFS, MODE_PRIVATE).edit().putInt(PREF_LAST_FID, fid).apply()
+        listLoaded = false
+        adapter.submit(emptyList())
+        showNative()
+        anotarListaEnPila()
+        requestThreadList(1)
     }
 
     /** Pestaña que hay que dejar a la vista en cuanto el listado se pinte. -1 = ninguna. */
@@ -4122,6 +4196,7 @@ class MainActivity : AppCompatActivity() {
         // Los nombres pueden llegar después que el Popurrí (arranque directo en él): sin esto
         // sus filas se quedarían sin miga hasta el siguiente refresco.
         nombresDeForo = subforosConocidos.toMap()
+        refrescarTitulo()   // los nombres pueden llegar después que la lista (el título lleva el del subforo)
         if (::adapter.isInitialized) adapter.nombresDeForoCambiados()
         // Y encima del defecto va lo que haya elegido el usuario.
         val porFid = forums.associateBy { it.fid.toString() }
@@ -4136,7 +4211,7 @@ class MainActivity : AppCompatActivity() {
         // que volver, así que la lista pasa a Inicio ANTES de pintar.
         if (listSource == "mas18" && configMas18() == null) {
             listSource = "home"
-            nativeHeader.text = "ForoPlus"
+            refrescarTitulo()
             pintarBotonTop()
             listLoaded = false
             adapter.submit(emptyList())
@@ -4148,7 +4223,12 @@ class MainActivity : AppCompatActivity() {
             listRefresh.isRefreshing = false
             vueltaAInicio = true
         }
-        val saltar = listSource == "home" && visibles.isNotEmpty() &&
+        // Un subforo escondido que se abrió desde el selector no es un "subforo que ya no existe":
+        // se queda con una pestaña temporal (ver [subforosFueraDeBarra]).
+        val temporal = if ((listSource == "home" || listSource == "top") &&
+            currentForumId in subforosFueraDeBarra && visibles.none { it.fid == currentForumId })
+            porFid[currentForumId.toString()] else null
+        val saltar = listSource == "home" && visibles.isNotEmpty() && temporal == null &&
             visibles.none { it.fid == currentForumId }
         if (saltar) {
             currentForumId = visibles.first().fid
@@ -4187,6 +4267,12 @@ class MainActivity : AppCompatActivity() {
             tab.tag = f.fid
             forumTabs.addTab(tab, false)
             if (f.fid == currentForumId && !enSeccion) selectIdx = idx + desplazamiento
+        }
+        tabTemporalFid = SIN_TEMPORAL
+        if (temporal != null) {
+            forumTabs.addTab(forumTabs.newTab().setText(temporal.name).also { it.tag = temporal.fid }, false)
+            tabTemporalFid = temporal.fid
+            if (!enSeccion) selectIdx = forumTabs.tabCount - 1
         }
         if (listSource == "mas18") selectIdx = 0
         if (listSource == "popurri" && idxPopurri >= 0) selectIdx = idxPopurri
@@ -7160,7 +7246,11 @@ class MainActivity : AppCompatActivity() {
         adapter.submit(emptyList())
         showNative()
         setSelectedNav(R.id.nav_home)
-        if (tabIdx >= 0) forumTabs.getTabAt(tabIdx)?.select() else requestThreadList(1)
+        if (tabIdx >= 0) forumTabs.getTabAt(tabIdx)?.select() else {
+            // Un subforo que no está en la barra (escondido): pestaña temporal, no un salto atrás.
+            if (currentForumId in nombresDeForo) { subforosFueraDeBarra += currentForumId; pintarPestanas() }
+            requestThreadList(1)
+        }
     }
 
     /**

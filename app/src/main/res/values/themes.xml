@@ -205,6 +205,12 @@
         <item name="android:background">@color/fc_texto_off</item>
     </style>
 
+    <!-- Selector de sitio: ventana a pantalla completa con el tema de la app (colores y modo
+         claro/oscuro). Los márgenes de las barras del sistema los pone SelectorSitio. -->
+    <style name="FC.PantallaCompleta" parent="Theme.FCForocoches">
+        <item name="android:windowIsFloating">false</item>
+    </style>
+
     <!-- Diálogo (fase 3): fondo redondeado con margen (bg_dialogo) y botones de la app. -->
     <style name="FC.Dialogo" parent="ThemeOverlay.MaterialComponents.Dialog.Alert">
         <item name="android:windowBackground">@drawable/bg_dialogo</item>
