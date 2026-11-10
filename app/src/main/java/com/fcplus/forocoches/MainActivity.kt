@@ -131,7 +131,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private lateinit var forumTabs: TabLayout
-    private lateinit var navTop: TextView
+    private lateinit var navTop: android.widget.ImageView
     /** Subforos reales del índice (fid → nombre), para la elección del Popurrí en Opciones. */
     private var subforosConocidos: List<Pair<Int, String>> = emptyList()
     /** Los mismos, por fid: los usa la miga de las filas del Popurrí. */
@@ -379,7 +379,7 @@ class MainActivity : AppCompatActivity() {
     private var currentMemberUsername = ""
 
     private lateinit var nativeHeader: TextView
-    private lateinit var fabNewThread: View
+    private lateinit var fabNewThread: com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
     // home | top | popurri | mas18 | musica | favs | mine (qué alimenta la lista)
     private var listSource = "home"
         set(valor) {
@@ -1313,7 +1313,7 @@ class MainActivity : AppCompatActivity() {
     /** El botón TOP encendido (rojo) o apagado. Se pinta SIEMPRE que cambia la fuente. */
     private fun pintarBotonTop() {
         val activo = listSource == "top"
-        navTop.setTextColor(color(if (activo) R.color.fc_rojo else R.color.fc_texto_2))
+        navTop.setColorFilter(color(if (activo) R.color.fc_rojo else R.color.fc_texto_2))
         // Solo tiene sentido sobre un subforo: en Suscripciones o en el buscador no pinta nada.
         navTop.visibility =
             if (sobreUnSubforo()) View.VISIBLE else View.GONE
@@ -3613,6 +3613,7 @@ class MainActivity : AppCompatActivity() {
         forumTabs = findViewById(R.id.forum_tabs)
         navTop = findViewById(R.id.native_top)
         navTop.setOnClickListener { alternarTop() }
+        androidx.appcompat.widget.TooltipCompat.setTooltipText(navTop, "Hilos del momento")
         threadPanel = findViewById(R.id.thread_panel)
         postList = findViewById(R.id.post_list)
         configurarBarrasLectura()
@@ -4034,6 +4035,17 @@ class MainActivity : AppCompatActivity() {
         // Scroll infinito BAJO DEMANDA (regla anti-crawler: solo se pide la página
         // siguiente cuando el usuario se acerca al final, nunca precarga en bucle).
         threadList.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+            // El FAB se encoge al bajar y se extiende arriba. Aquí y NO en onScrolled (tocar vistas
+            // ahí dentro corre durante el layout del RecyclerView).
+            override fun onScrollStateChanged(rv: RecyclerView, newState: Int) {
+                if (fabNewThread.visibility != View.VISIBLE) return
+                when (FabNuevoHilo.decidir(newState != RecyclerView.SCROLL_STATE_IDLE,
+                        rv.computeVerticalScrollOffset() == 0)) {
+                    FabNuevoHilo.Accion.EXTENDER -> fabNewThread.extend()
+                    FabNuevoHilo.Accion.ENCOGER -> fabNewThread.shrink()
+                    FabNuevoHilo.Accion.NADA -> {}
+                }
+            }
             override fun onScrolled(rv: RecyclerView, dx: Int, dy: Int) {
                 if (dy <= 0 || loadingPage || !listLoaded || listaAgotada) return
                 val last = layoutManager.findLastVisibleItemPosition()

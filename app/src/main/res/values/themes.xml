@@ -221,6 +221,20 @@
         <item name="buttonBarNeutralButtonStyle">@style/FC.Dialogo.Boton</item>
     </style>
 
+    <!-- "Nuevo hilo": FAB extendido en frase (no MAYÚSCULAS) con los colores de siempre. -->
+    <style name="FC.FabNuevoHilo" parent="Widget.MaterialComponents.ExtendedFloatingActionButton.Icon">
+        <item name="backgroundTint">@color/fc_rojo</item>
+        <item name="iconTint">@color/fc_sobre_rojo</item>
+        <item name="android:textColor">@color/fc_sobre_rojo</item>
+        <item name="android:textAppearance">@style/FC.FabNuevoHilo.Texto</item>
+    </style>
+
+    <style name="FC.FabNuevoHilo.Texto" parent="TextAppearance.MaterialComponents.Button">
+        <item name="textAllCaps">false</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:letterSpacing">0</item>
+    </style>
+
     <style name="FC.Dialogo.Boton" parent="Widget.MaterialComponents.Button.TextButton.Dialog">
         <item name="android:textAllCaps">false</item>
         <item name="android:letterSpacing">0</item>
