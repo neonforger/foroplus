@@ -1,14 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Playlists de los shurs (C4): las playlists que la gente publica con su nombre de FC. Va
-     incluido en panel_musica.xml DESPUÉS del botón "+", con fondo opaco: tapa la portada entera
-     (también el botón). Dos pantallas: la lista (recientes / más guardadas, paginada) y el
+     incluido en panel_musica.xml DESPUÉS del botón "+". Tapa la portada entera con el MISMO
+     fondo de dos capas que panel_musica (fc_fondo, opaco, y encima ?attr/fcFondoLista): solo con
+     fcFondoLista, que en Compacta es TRANSPARENTE, se veían las dos pantallas una sobre otra. La
+     elevación de 16dp le gana a la del "+" (6dp, 12dp pulsado), que si no se pinta encima aunque
+     vaya antes en el layout. Dos pantallas: la lista (recientes / más guardadas, paginada) y el
      detalle de una playlist ajena (solo lectura, reproducible). Lo llena PanelShurs. -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/musica_shurs"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="?attr/fcFondoLista"
+    android:background="@color/fc_fondo"
+    android:elevation="16dp"
     android:clickable="true"
     android:focusable="true"
     android:visibility="gone">
@@ -18,7 +22,8 @@
         android:id="@+id/shurs_lista"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:orientation="vertical">
+        android:orientation="vertical"
+        android:background="?attr/fcFondoLista">
 
         <LinearLayout
             android:layout_width="match_parent"
