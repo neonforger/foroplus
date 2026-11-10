@@ -180,6 +180,22 @@ class AlmacenMusicaTest {
         assertFalse(a.marcarPublicada("nope", "z"))
     }
 
+    @Test fun lamarcaGuardaLaCuentaQuePublicaYSeBorraConEllaYLeeFicherosAntiguos() {
+        val a = almacen()
+        val p = a.crearPlaylist("X")!!
+        assertTrue(a.marcarPublicada(p.id, "abc", "111"))
+        assertEquals("111", almacen().estado().playlists[0].publicadaPor)
+        assertTrue(a.marcarPublicada(p.id, null))
+        assertNull(a.estado().playlists[0].publicadaPor)
+        // Fichero escrito antes de existir `publicadaPor`: carga, y la marca queda sin dueña.
+        File(carpeta.root, "musica.json").writeText(
+            """{"v":1,"canciones":[],"playlists":[{"id":"i","nombre":"Vieja","claves":[],"creada":1,"modificada":1,"publicadaId":"pubV"}]}"""
+        )
+        val v = almacen().estado().playlists.single()
+        assertEquals("pubV", v.publicadaId)
+        assertNull(v.publicadaPor)
+    }
+
     @Test fun fechasDelReloj() {
         hora = 5000
         val a = almacen()

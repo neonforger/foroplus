@@ -39,7 +39,8 @@ class AlmacenMusica(
     fun quitar(id: String, clave: String): Boolean = synchronized(cerrojo) { quitarSin(id, clave) }
     fun mover(id: String, desde: Int, hasta: Int): Boolean = synchronized(cerrojo) { moverSin(id, desde, hasta) }
     fun importar(nombre: String, canciones: List<Cancion>): Playlist? = synchronized(cerrojo) { importarSin(nombre, canciones) }
-    fun marcarPublicada(id: String, publicadaId: String?): Boolean = synchronized(cerrojo) { marcarPublicadaSin(id, publicadaId) }
+    fun marcarPublicada(id: String, publicadaId: String?, publicadaPor: String? = null): Boolean =
+        synchronized(cerrojo) { marcarPublicadaSin(id, publicadaId, publicadaPor) }
 
     private fun estadoSin(): EstadoMusica = leer()
 
@@ -143,11 +144,11 @@ class AlmacenMusica(
         return if (escribir(EstadoMusica(todas, e.playlists + p))) p else null
     }
 
-    private fun marcarPublicadaSin(id: String, publicadaId: String?): Boolean {
+    private fun marcarPublicadaSin(id: String, publicadaId: String?, publicadaPor: String?): Boolean {
         val e = leer()
         if (e.playlists.none { it.id == id }) return false
         return escribir(e.copy(playlists = e.playlists.map {
-            if (it.id == id) it.copy(publicadaId = publicadaId) else it
+            if (it.id == id) it.copy(publicadaId = publicadaId, publicadaPor = if (publicadaId == null) null else publicadaPor) else it
         }))
     }
 
@@ -224,7 +225,7 @@ class AlmacenMusica(
                 playlists.add(
                     Playlist(
                         o.getString("id"), o.getString("nombre"), claves,
-                        o.optLong("creada"), o.optLong("modificada"), texto(o, "publicadaId")
+                        o.optLong("creada"), o.optLong("modificada"), texto(o, "publicadaId"), texto(o, "publicadaPor")
                     )
                 )
             }
@@ -268,6 +269,7 @@ class AlmacenMusica(
                         .put("claves", JSONArray(p.claves))
                         .put("creada", p.creada).put("modificada", p.modificada)
                         .put("publicadaId", p.publicadaId ?: JSONObject.NULL)
+                        .put("publicadaPor", p.publicadaPor ?: JSONObject.NULL)
                 )
             }
             val raiz = JSONObject().put("v", 1).put("canciones", canciones).put("playlists", playlists)

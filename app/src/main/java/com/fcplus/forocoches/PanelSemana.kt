@@ -300,6 +300,8 @@ class PanelSemana(
 
     private fun elegirComoProponer() {
         if (!verificada) { abrirVerificacion(); return }
+        // Los diálogos de proponer se dibujan sobre la portada: YouTube no puede sonar tapado (≥200×200 visible).
+        parar()
         AlertDialog.Builder(act)
             .setTitle("Proponer una canción")
             .setItems(arrayOf("Pegar un enlace…", "Elegir de mis canciones…")) { _, cual ->

@@ -37,6 +37,10 @@ class MenusMusica(
         fun servidorActivo(): Boolean
         /** Si la playlist abierta está publicada, su id en el servidor. */
         fun publicadaId(): String?
+        /** Publicada, pero por OTRA cuenta de este móvil: con la activa no se puede ni retirar ni volver a publicar. */
+        fun publicadaPorOtra(): Boolean
+        /** Para lo que suene: va antes de dibujar un diálogo encima del reproductor. */
+        fun pausar()
         fun publicar()
         fun retirar()
         fun nombreAbierta(): String
@@ -119,11 +123,12 @@ class MenusMusica(
         val menu = PopupMenu(act, ancla)
         menu.menu.add(0, 1, 1, "Renombrar")
         menu.menu.add(0, 2, 2, "Borrar playlist")
-        if (d.servidorActivo()) {
+        if (d.servidorActivo() && !d.publicadaPorOtra()) {
             if (d.publicadaId() == null) menu.menu.add(0, 3, 3, "Publicar en Playlists de los shurs")
             else menu.menu.add(0, 3, 3, "Retirar de Playlists de los shurs")
         }
         menu.setOnMenuItemClickListener { mi ->
+            d.pausar()  // los diálogos siguientes tapan el reproductor
             when (mi.itemId) {
                 1 -> pedirNombre("Renombrar playlist", nombre, "Guardar") { nuevo ->
                     d.escribir({ almacen.renombrar(id, nuevo).takeIf { it } }, "Ya tienes otra playlist con ese nombre.")
@@ -157,7 +162,7 @@ class MenusMusica(
 
     /** Si está publicada, borrarla aquí no la quita de «Playlists de los shurs»: se avisa. */
     private fun avisoPublicada() =
-        if (d.publicadaId() != null) "Sigue publicada en «Playlists de los shurs»: retírala antes si quieres que desaparezca.\n\n" else ""
+        if (d.publicadaId() != null || d.publicadaPorOtra()) "Sigue publicada en «Playlists de los shurs»: retírala antes si quieres que desaparezca.\n\n" else ""
 
     /** Pide un nombre de playlist (≤ [Musica.MAX_NOMBRE]); [alAceptar] lo recibe ya limpio. */
     private fun pedirNombre(titulo: String, inicial: String, boton: String, alAceptar: (String) -> Unit) {

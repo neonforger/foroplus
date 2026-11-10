@@ -47,6 +47,7 @@ object VistaSemana {
         "no_encontrada" -> "No se ha podido encontrar esa canción. Prueba con otro enlace"
         "limite" -> "Has propuesto muchas canciones nuevas en poco tiempo. Prueba dentro de un rato"
         "no_esta" -> "Esa canción ya no está en la votación de esta semana"
+        "oculta" -> "Esa canción la ha ocultado la moderación y no se puede proponer"
         else -> "No se ha podido hacer ahora mismo. Prueba en un rato"
     }
 

@@ -76,7 +76,7 @@ class FlujosMusica(
             val r = try {
                 PublicarPlaylist.publicar(
                     enganches.api(), p.nombre, enlaces,
-                    alCrear = { id -> almacen.marcarPublicada(p.id, id) },
+                    alCrear = { id -> almacen.marcarPublicada(p.id, id, uid) },
                     alTanda = { hechas, total ->
                         act.runOnUiThread { dlg.setMessage("Enviando canciones: tanda ${minOf(hechas + 1, total)} de $total") }
                     },
@@ -86,7 +86,7 @@ class FlujosMusica(
                 PublicarPlaylist.Resultado.Fallo(ApiMusica.R.Error("red", 0, null), dudosa = true)
             }
             val error = (r as? PublicarPlaylist.Resultado.Fallo)?.error ?: (r as? PublicarPlaylist.Resultado.Parcial)?.error
-            if (error != null && error.tokenInservible) enganches.tokens.borrar(uid)
+            if (error != null) enganches.tokens.trasError(uid, error)
             act.runOnUiThread {
                 ocupado = false
                 dlg.dismiss()
@@ -120,6 +120,9 @@ class FlujosMusica(
     // ── Retirar ──────────────────────────────────────────────────────────────
 
     fun retirar(p: Playlist) {
+        val uid = enganches.uidActivo()
+        // Solo la marca de la cuenta activa: la de otra cuenta de este móvil no se retira desde aquí.
+        if (!p.deLaCuenta(uid)) return
         val id = p.publicadaId ?: return
         if (ocupado) return
         AlertDialog.Builder(act)
@@ -128,23 +131,28 @@ class FlujosMusica(
                 "Deja de verse en «Playlists de los shurs». Quien ya la guardó conserva su copia. " +
                     "Tu playlist de este móvil no se toca."
             )
-            .setPositiveButton("Retirar") { _, _ -> retirando(p, id) }
+            .setPositiveButton("Retirar") { _, _ -> retirando(p, id, uid) }
             .setNegativeButton("Cancelar", null)
             .show()
     }
 
-    private fun retirando(p: Playlist, id: String) {
+    private fun retirando(p: Playlist, id: String, uid: String) {
         ocupado = true
-        val uid = enganches.uidActivo()
         hilo.execute {
             val r = try { enganches.api().retirar(id) } catch (_: Exception) { ApiMusica.R.Error("red", 0, null) }
-            // 404 = ya no está en el servidor (se retiró antes, o se borró la cuenta): la marca sobra.
-            val hecho = r is ApiMusica.R.Ok || (r is ApiMusica.R.Error && r.status == 404)
+            // 404 = ya no está con ESTA cuenta; solo sobra la marca si la publicó ella (ver RetirarPlaylist).
+            val veredicto = RetirarPlaylist.veredicto(r, p, uid)
+            val hecho = veredicto == RetirarPlaylist.Veredicto.RETIRADA
             if (hecho) almacen.marcarPublicada(p.id, null)
-            if (r is ApiMusica.R.Error && r.tokenInservible) enganches.tokens.borrar(uid)
+            if (r is ApiMusica.R.Error) enganches.tokens.trasError(uid, r)
             act.runOnUiThread {
                 ocupado = false
                 if (hecho) aviso("«${p.nombre}» retirada de «Playlists de los shurs»", largo = true)
+                else if (veredicto == RetirarPlaylist.Veredicto.NO_ES_DE_ESTA_CUENTA) dialogo(
+                    "No está con esta cuenta",
+                    "Con la cuenta que tienes ahora no se encuentra «${p.nombre}» en «Playlists de los shurs»: puede que la publicara otra de tus cuentas. " +
+                        "Cambia a esa cuenta para retirarla."
+                )
                 else aviso(TextosShurs.error(r as ApiMusica.R.Error), largo = true)
                 alCambiar()
             }
@@ -170,16 +178,27 @@ class FlujosMusica(
         ocupado = true
         val uid = enganches.uidActivo()
         hilo.execute {
-            val hecho = try {
+            val res = try {
                 BorrarCuentaMusica.borrar(enganches.api(), uid) { enganches.tokens.borrar(it) }
-            } catch (_: Exception) { false }
-            if (hecho) try { BorrarCuentaMusica.quitarMarcas(almacen) } catch (_: Exception) { }
+            } catch (_: Exception) { BorrarCuentaMusica.Resultado.FALLO }
+            if (res == BorrarCuentaMusica.Resultado.HECHO) try { BorrarCuentaMusica.quitarMarcas(almacen, uid) } catch (_: Exception) { }
             act.runOnUiThread {
                 ocupado = false
-                aviso(
-                    if (hecho) "Tu cuenta de Música se ha borrado" else "No se ha podido borrar la cuenta ahora. Prueba en un rato",
-                    largo = true
-                )
+                when (res) {
+                    BorrarCuentaMusica.Resultado.HECHO -> aviso("Tu cuenta de Música se ha borrado", largo = true)
+                    BorrarCuentaMusica.Resultado.FALLO -> aviso("No se ha podido borrar la cuenta ahora. Prueba en un rato", largo = true)
+                    // Un 401 también es un token caducado: la cuenta puede seguir en el servidor, así que NO se dice
+                    // que se ha borrado ni se quitan las marcas de publicada. Hay que verificarse antes.
+                    BorrarCuentaMusica.Resultado.VERIFICAR -> AlertDialog.Builder(act)
+                        .setTitle("Verifícate otra vez para borrarla")
+                        .setMessage(
+                            "Tu verificación ha caducado, así que no se ha podido borrar nada: tu cuenta de Música y tus playlists " +
+                                "públicas siguen en el servidor. Verifícate de nuevo y, después, vuelve a pedir el borrado."
+                        )
+                        .setPositiveButton("Verificar") { _, _ -> abrirVerificacion() }
+                        .setNegativeButton("Ahora no", null)
+                        .show()
+                }
                 alCambiar()
             }
         }

@@ -94,7 +94,7 @@ class ApiMusica(
         Propuesta(cancion(it.getJSONObject("cancion")), it.getBoolean("yaEstaba"), it.getInt("propuestasRestantes"))
     }
 
-    /** [si] = votar (POST) o quitar el voto (DELETE, también con cuerpo). */
+    /** [si] = votar (POST, con la canción en el cuerpo) o quitar el voto (DELETE, con la canción en la URL y sin cuerpo). */
     fun votar(cancion: String, si: Boolean): R<Voto> =
         // Quitar el voto va con la canción en la URL y sin cuerpo (ver redConGuarda).
         (if (si) llamar("POST", "/v1/semana/voto", JSONObject().put("cancion", cancion)) { j -> Voto(j.getBoolean("votada"), j.getInt("votosRestantes")) }

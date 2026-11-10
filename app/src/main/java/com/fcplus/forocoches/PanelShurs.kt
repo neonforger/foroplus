@@ -316,7 +316,7 @@ class PanelShurs(
             var contador: ApiMusica.R<Int>? = null
             if (local != null && uid.isNotEmpty() && try { enganches.tokens.de(uid) != null } catch (_: Exception) { false }) {
                 contador = enganches.api().guardarPublicada(p.id)
-                if (contador is ApiMusica.R.Error && contador.tokenInservible) enganches.tokens.borrar(uid)
+                if (contador is ApiMusica.R.Error) enganches.tokens.trasError(uid, contador)
             }
             act.runOnUiThread {
                 guardando = false
@@ -353,6 +353,7 @@ class PanelShurs(
     }
 
     private fun pedirMotivo(p: PlaylistPub) {
+        parar()  // el diálogo se dibuja sobre el reproductor, y YouTube no puede sonar tapado
         val densidad = act.resources.displayMetrics.density
         // El aspecto de @style/Campo a mano (ver MenusMusica.pedirNombre: con el estilo por
         // constructor el campo no coge el foco).
@@ -400,7 +401,7 @@ class PanelShurs(
         val uid = enganches.uidActivo()
         hilo.execute {
             val r = enganches.api().denunciar("playlist", p.id, motivo)
-            if (r is ApiMusica.R.Error && r.tokenInservible) enganches.tokens.borrar(uid)
+            if (r is ApiMusica.R.Error) enganches.tokens.trasError(uid, r)
             act.runOnUiThread {
                 Toast.makeText(
                     act,

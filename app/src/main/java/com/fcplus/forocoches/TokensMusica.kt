@@ -36,6 +36,16 @@ class TokensMusica(private val prefs: SharedPreferences) {
         prefs.edit().putBoolean(claveBaneada(uid), true).apply()
     }
 
+    /**
+     * Lo que toda ruta con token hace con un error: si el token ya no sirve (401 `token` o 403 `baneada`) se
+     * tira, y si es baneo se recuerda para que la portada lo diga. Un solo sitio para que no se desparejen.
+     */
+    fun trasError(uid: String, e: ApiMusica.R.Error) {
+        if (!e.tokenInservible) return
+        borrar(uid)
+        if (e.codigo == "baneada") marcarBaneada(uid)
+    }
+
     fun baneada(uid: String): Boolean = uid.isNotEmpty() && prefs.getBoolean(claveBaneada(uid), false)
 
     private fun claveBaneada(uid: String) = ClavesPorCuenta.clave("musica_baneada", uid)

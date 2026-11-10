@@ -361,7 +361,7 @@ class VerificacionMusicaTest {
         assertEquals(Fin.Error(Motivo.BANEADA), conComprobar(Respuesta(403, """{"error":"baneada"}""")))
         assertEquals(Fin.Error(Motivo.CADUCADO), conComprobar(Respuesta(410, """{"error":"caducado"}""")))
         assertEquals(Fin.Error(Motivo.CADUCADO), conComprobar(Respuesta(404, """{"error":"reto"}""")))
-        assertEquals(Fin.Error(Motivo.LIMITE), conComprobar(Respuesta(429, """{"error":"intentos"}""")))
+        assertEquals(Fin.Error(Motivo.INTENTOS), conComprobar(Respuesta(429, """{"error":"intentos"}""")))
         assertEquals(Fin.Error(Motivo.FC), conComprobar(Respuesta(500, "no es json")))
         assertEquals(original, motor.coche)
     }
@@ -447,6 +447,8 @@ class VerificacionMusicaTest {
 
     @Test fun elChallengeDiceElTextoFijo() {
         val challenge = "ForoCoches no deja comprobarlo ahora, prueba en un rato"
+        assertTrue(VerificacionMusica.aviso(Motivo.INTENTOS, null).texto.contains("nueva"))
+        assertFalse(VerificacionMusica.aviso(Motivo.INTENTOS, null).texto.contains("una hora"))
         assertEquals(VerificacionMusica.Aviso(challenge, false), VerificacionMusica.aviso(Motivo.CHALLENGE, null))
         // Si el challenge salta al leer el perfil, el motivo es "sin sesión" pero no lo es.
         assertEquals(VerificacionMusica.Aviso(challenge, false), VerificacionMusica.aviso(Motivo.SIN_SESION, "challenge"))

@@ -38,7 +38,7 @@ class VerificacionMusica(
     private val reloj: () -> Long,
     private val esperar: (Long) -> Unit
 ) {
-    enum class Motivo { SIN_SESION, CAMBIANDO_DE_CUENTA, CHALLENGE, NO_COINCIDE, CADUCADO, BANEADA, LIMITE, RED, FC, COCHE_ANTERIOR, SIN_GUARDAR }
+    enum class Motivo { SIN_SESION, CAMBIANDO_DE_CUENTA, CHALLENGE, NO_COINCIDE, CADUCADO, BANEADA, LIMITE, INTENTOS, RED, FC, COCHE_ANTERIOR, SIN_GUARDAR }
 
     sealed class Fin {
         data class Ok(val nombre: String, val token: String, val puedeVotar: Boolean) : Fin()
@@ -147,6 +147,8 @@ class VerificacionMusica(
             e.esChallenge -> Motivo.CHALLENGE
             e.retoCaducado -> Motivo.CADUCADO
             e.codigo == "no_coincide" -> Motivo.NO_COINCIDE
+            // `intentos` = este reto ya gastó sus 3 comprobaciones: la hora de espera NO aplica, basta pedir otro reto.
+            e.codigo == "intentos" -> Motivo.INTENTOS
             e.status == 429 -> Motivo.LIMITE
             e.codigo == "red" -> Motivo.RED
             else -> Motivo.FC
@@ -172,6 +174,7 @@ class VerificacionMusica(
             Motivo.CADUCADO -> Aviso("La comprobación ha caducado. Vuelve a probar.", false)
             Motivo.BANEADA -> Aviso("Esta cuenta de ForoCoches está bloqueada en Música.", false)
             Motivo.LIMITE -> Aviso("Demasiados intentos seguidos. Prueba dentro de una hora.", false)
+            Motivo.INTENTOS -> Aviso("Has gastado los 3 intentos de esta comprobación. Pide una nueva ahora mismo.", false)
             Motivo.RED -> Aviso("No se ha podido hablar con el servidor de Música. Mira la conexión y vuelve a probar.", false)
             Motivo.FC -> Aviso("ForoCoches no ha dejado completar la comprobación. Prueba en un rato.", false)
             Motivo.COCHE_ANTERIOR -> Aviso("No hemos podido devolver tu coche anterior; prueba en un rato.", false)

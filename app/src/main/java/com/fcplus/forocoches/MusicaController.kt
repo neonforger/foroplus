@@ -75,7 +75,13 @@ class MusicaController(
         override fun puedeProponer() = semana?.verificada == true
         override fun proponer(c: Cancion) { semana?.proponerCancion(c) }
         override fun servidorActivo() = enganches?.servidorActivo?.invoke() == true
-        override fun publicadaId() = estado.playlists.firstOrNull { it.id == abierta }?.publicadaId
+        override fun publicadaId() = enganches?.uidActivo?.invoke().orEmpty().let { uid ->
+            estado.playlists.firstOrNull { it.id == abierta }?.takeIf { it.deLaCuenta(uid) }?.publicadaId
+        }
+        override fun publicadaPorOtra() = enganches?.uidActivo?.invoke().orEmpty().let { uid ->
+            estado.playlists.firstOrNull { it.id == abierta }?.deOtraCuenta(uid) == true
+        }
+        override fun pausar() = this@MusicaController.pausar()
         override fun publicar() {
             val p = estado.playlists.firstOrNull { it.id == abierta } ?: return
             flujos?.publicar(p, canciones)
@@ -221,6 +227,7 @@ class MusicaController(
 
     /** La hoja "Añadir" (A10), con [texto] ya pegado si llega de Compartir (A12). */
     fun abrirAnadir(texto: String?) {
+        pausar()  // la hoja tapa el reproductor, y YouTube no puede sonar tapado
         // El portapapeles se lee AQUÍ, con la actividad en primer plano (en Android 10+ solo se lee
         // con foco); dentro de la hoja recién mostrada podía salir vacío. Solo si no llega texto de Compartir.
         val copiado = if (texto == null) leerPortapapeles() else null
@@ -237,6 +244,7 @@ class MusicaController(
     fun abrirVerificacion() {
         val e = enganches ?: return
         if (!e.servidorActivo()) return
+        pausar()  // la hoja tapa el reproductor, y YouTube no puede sonar tapado
         HojaVerificarMusica(act, e) {
             if (visible) recargar()
             semana?.refrescar(forzar = true)

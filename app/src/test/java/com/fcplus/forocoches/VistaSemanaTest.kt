@@ -82,6 +82,7 @@ class VistaSemanaTest {
         assertTrue(VistaSemana.textoError(err("enlace", 400), VistaSemana.Accion.PROPONER).contains("YouTube"))
         assertTrue(VistaSemana.textoError(err("no_es_cancion", 422), VistaSemana.Accion.PROPONER).contains("Spotify"))
         assertTrue(VistaSemana.textoError(err("limite", 429), VistaSemana.Accion.PROPONER).contains("rato"))
+        assertTrue(VistaSemana.textoError(err("oculta", 422), VistaSemana.Accion.PROPONER).contains("moderación"))
         assertTrue(VistaSemana.textoError(err("no_esta", 409), VistaSemana.Accion.VOTAR).contains("semana"))
         assertTrue(VistaSemana.textoError(err("red", 0), VistaSemana.Accion.VOTAR).contains("conectar"))
         assertTrue(VistaSemana.textoError(err("http_500", 500), VistaSemana.Accion.VOTAR).isNotEmpty())

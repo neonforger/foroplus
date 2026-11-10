@@ -97,21 +97,59 @@ object PublicarPlaylist {
 
 /** Borrar la cuenta de Música: el servidor, el token de este móvil y las marcas de "publicada". */
 object BorrarCuentaMusica {
-    /**
-     * Bloqueante. `true` = la cuenta ya no existe (borrada ahora, o el token ya no valía: el
-     * servidor no la conoce) y el token de [uid] se ha tirado. Sin respuesta, no se toca nada
-     * (se puede repetir).
-     */
-    fun borrar(api: ApiMusica, uid: String, borrarToken: (String) -> Unit): Boolean {
-        val r = api.borrarCuenta()
-        val hecho = r is ApiMusica.R.Ok || (r is ApiMusica.R.Error && r.status == 401 && r.codigo == "token")
-        if (hecho) borrarToken(uid)
-        return hecho
+    enum class Resultado {
+        /** La cuenta ya no existe en el servidor y el token de este móvil se ha tirado. */
+        HECHO,
+
+        /**
+         * 401 `token`: el token no vale (caducó al año, o lo purgó el servidor), pero la cuenta y sus playlists
+         * públicas PUEDEN seguir ahí: no se da por borrada. Se tira el token muerto y hay que verificarse otra vez.
+         */
+        VERIFICAR,
+
+        /** Sin respuesta que valga: no se toca nada (se puede repetir). */
+        FALLO
     }
 
-    /** Quita la marca de "publicada" de todas las playlists de este móvil (ya no existen en el servidor). */
-    fun quitarMarcas(almacen: AlmacenMusica) {
-        for (p in almacen.estado().playlists) if (p.publicadaId != null) almacen.marcarPublicada(p.id, null)
+    /** Bloqueante. El token de [uid] se tira si el servidor borró la cuenta o si ya no valía. */
+    fun borrar(api: ApiMusica, uid: String, borrarToken: (String) -> Unit): Resultado {
+        val r = api.borrarCuenta()
+        val res = when {
+            r is ApiMusica.R.Ok -> Resultado.HECHO
+            r is ApiMusica.R.Error && r.status == 401 && r.codigo == "token" -> Resultado.VERIFICAR
+            else -> Resultado.FALLO
+        }
+        if (res != Resultado.FALLO) borrarToken(uid)
+        return res
+    }
+
+    /**
+     * Quita la marca de "publicada" de las playlists que publicó [uid] (ya no existen en el servidor).
+     * Las de otras cuentas de este móvil siguen publicadas, y las marcas antiguas sin dueña no se tocan a ciegas.
+     */
+    fun quitarMarcas(almacen: AlmacenMusica, uid: String) {
+        for (p in almacen.estado().playlists) if (p.publicadaId != null && p.publicadaPor == uid) almacen.marcarPublicada(p.id, null)
+    }
+}
+
+/** Qué hacer con la marca de una playlist según lo que contesta el servidor al retirarla. */
+object RetirarPlaylist {
+    enum class Veredicto {
+        /** Ya no está publicada: se quita la marca. */
+        RETIRADA,
+
+        /** 404 sin saber que fuese de esta cuenta: puede estar publicada por otra; la marca se queda. */
+        NO_ES_DE_ESTA_CUENTA,
+
+        ERROR
+    }
+
+    fun veredicto(r: ApiMusica.R<*>, p: Playlist, uid: String): Veredicto = when {
+        r is ApiMusica.R.Ok -> Veredicto.RETIRADA
+        r is ApiMusica.R.Error && r.status == 404 ->
+            // 404 = no está con ESTA cuenta. Solo vale como "ya retirada" si la publicó ella.
+            if (p.publicadaPor == uid) Veredicto.RETIRADA else Veredicto.NO_ES_DE_ESTA_CUENTA
+        else -> Veredicto.ERROR
     }
 }
 

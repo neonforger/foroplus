@@ -100,7 +100,7 @@ class HojaVerificarMusica(
                 is Fin.Ok -> enganches.tokens.guardar(uid, fin.token)
                 // `baneada` antes que cualquier "token inservible": el que hubiera ya no sirve, y lo
                 // que se dice es que la cuenta está bloqueada.
-                is Fin.Error -> if (fin.motivo == Motivo.BANEADA) enganches.tokens.borrar(uid)
+                is Fin.Error -> if (fin.motivo == Motivo.BANEADA) { enganches.tokens.borrar(uid); enganches.tokens.marcarBaneada(uid) }
             }
             val quedaPuesto = enganches.pendientes.de(uid) != null
             // Nunca `$fin` a secas: el toString de Ok lleva el token.
