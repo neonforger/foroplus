@@ -39,16 +39,29 @@ describe("andamio", () => {
     expect(await r.json()).toEqual({ error: "metodo" });
   });
 
-  it("el esquema trae las 12 tablas", async () => {
+  it("el esquema trae las tablas del feed", async () => {
     const { results } = await env.DB.prepare(
       "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite%' AND name NOT LIKE 'd1_%' AND name NOT LIKE '_cf%'",
     ).all<{ name: string }>();
     expect(results.map((f) => f.name).sort()).toEqual(
       [
-        "canciones", "cuentas", "denuncias", "enlaces_cancion", "guardados", "limites",
-        "playlists_pub", "propuestas", "retos", "semanas", "tokens", "votos",
+        "canciones", "conversor", "corazones", "cuentas", "denuncias", "enlaces_cancion", "limites", "mas_querida",
+        "publicaciones", "retos", "tokens",
       ].sort(),
     );
+  });
+});
+
+describe("rutas retiradas", () => {
+  it("GET /v1/semana es 404 no_existe", async () => {
+    const r = await app().fetch(new Request("https://x/v1/semana"));
+    expect(r.status).toBe(404);
+    expect(await r.json()).toEqual({ error: "no_existe" });
+  });
+
+  it("POST /v1/playlists es 404", async () => {
+    const r = await app().fetch(new Request("https://x/v1/playlists", { method: "POST", body: "{}" }));
+    expect(r.status).toBe(404);
   });
 });
 

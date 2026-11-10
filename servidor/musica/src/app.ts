@@ -2,8 +2,7 @@ import { programado } from "./cron";
 import { acceder, type Cuenta } from "./auth";
 import { error, json } from "./http";
 import { rutasAdmin } from "./rutas/admin";
-import { rutasPlaylists } from "./rutas/playlists";
-import { rutasSemana } from "./rutas/semana";
+import { rutasCuenta } from "./rutas/cuenta";
 import { rutasVerificacion } from "./rutas/verificacion";
 
 export interface Deps {
@@ -22,7 +21,7 @@ export interface Deps {
 export interface OpcionesApp {
   /** Tope global de lecturas de fichas de FC por hora; sin él, `LECTURAS_FC_HORA` (600). */
   lecturasFcHora?: number;
-  /** Tope de enlaces nuevos por cuenta y hora (proponer y playlists); sin él, `TARJETAS_POR_HORA`. */
+  /** Tope de enlaces nuevos por cuenta y hora; sin él, `TARJETAS_POR_HORA`. */
   tarjetasHora?: number;
 }
 
@@ -69,7 +68,7 @@ function casar(patron: string, ruta: string): Record<string, string> | null {
 }
 
 function rutas(o: OpcionesApp): Ruta[] {
-  return [["GET", "/v1/salud", () => json({ ok: true }), "publica"], ...rutasVerificacion(o), ...rutasSemana(o), ...rutasPlaylists(o), ...rutasAdmin()];
+  return [["GET", "/v1/salud", () => json({ ok: true }), "publica"], ...rutasVerificacion(o), ...rutasCuenta(o), ...rutasAdmin()];
 }
 
 export function crearApp(d: Deps, o: OpcionesApp = {}): App {

@@ -2,10 +2,6 @@
 // quien las arma les pasa el HMAC con el pepper (`limites` sobrevive a los retos y no puede ser la
 // lista de quién usa ForoPlus).
 
-/** Topes de la semana (spec): los lee /v1/yo y los aplicarán votar y proponer. */
-export const VOTOS_POR_SEMANA = 10;
-export const PROPUESTAS_POR_SEMANA = 3;
-
 /**
  * Cuenta una petición más para `clave` en la ventana de `ventanaSeg` que contiene `ahora` y dice si
  * sigue dentro de `max`. La fila se suma con un único UPSERT ... RETURNING, así dos peticiones a la

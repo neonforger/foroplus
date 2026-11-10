@@ -1,18 +1,16 @@
-// Ayudas comunes de admin.test.ts y cron.test.ts: cuentas, canciones, propuestas y votos directos en
+// Ayudas comunes de admin.test.ts, cuenta.test.ts y cron.test.ts: cuentas, canciones y publicaciones directas en
 // la base, sin pasar por la red ni por la app (la app la montan los tests).
 import { env } from "cloudflare:workers";
 import { crearApp, type Deps } from "../src/app";
 import { hashToken, nuevoId, nuevoToken } from "../src/cripto";
 
 export const T0 = new Date("2026-11-04T12:00:00Z").getTime();
-export const W45 = "2026-W45";
-export const W46 = "2026-W46";
 export const MIN = 60_000;
 export const HORA = 3_600_000;
 export const DIA = 86_400_000;
 export const TABLAS = [
-  "cuentas", "tokens", "retos", "canciones", "enlaces_cancion", "semanas", "propuestas", "votos",
-  "playlists_pub", "guardados", "denuncias", "limites",
+  "cuentas", "tokens", "retos", "canciones", "enlaces_cancion", "publicaciones", "corazones", "mas_querida",
+  "conversor", "denuncias", "limites",
 ];
 
 export type Json = Record<string, any>;
@@ -102,12 +100,18 @@ export async function cancion(n: number): Promise<string> {
 }
 export const enlaceDe = (n: number) => "https://www.youtube.com/watch?v=tema" + String(n).padStart(7, "0");
 
-export async function proponerDirecto(semana: string, cancionId: string, cuenta: string, creada = T0): Promise<void> {
-  await env.DB.batch([
-    env.DB.prepare("INSERT INTO semanas (id) VALUES (?) ON CONFLICT (id) DO NOTHING").bind(semana),
-    env.DB.prepare("INSERT INTO propuestas (semana, cancion, cuenta, creada) VALUES (?, ?, ?, ?)").bind(semana, cancionId, cuenta, creada),
-  ]);
+/** Una publicación directa en la base (sin pasar por la app); vive 24 h desde `creada`. */
+export async function publicacionDirecta(
+  cuenta: string, cancionId: string, o: { creada?: number; oculta?: boolean; corazones?: number; texto?: string } = {},
+): Promise<string> {
+  const creada = o.creada ?? T0;
+  const id = nuevoId(new Date(creada));
+  await env.DB
+    .prepare("INSERT INTO publicaciones (id, cuenta, cancion, texto, creada, caduca, oculta, corazones) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+    .bind(id, cuenta, cancionId, o.texto ?? "Una canción", creada, creada + DIA, o.oculta ? 1 : 0, o.corazones ?? 0)
+    .run();
+  return id;
 }
-export async function votarDirecto(semana: string, cancionId: string, cuenta: string, creado = T0): Promise<void> {
-  await env.DB.prepare("INSERT INTO votos (semana, cancion, cuenta, creado) VALUES (?, ?, ?, ?)").bind(semana, cancionId, cuenta, creado).run();
+export async function corazonDirecto(publicacion: string, cuenta: string, creado = T0): Promise<void> {
+  await env.DB.prepare("INSERT INTO corazones (publicacion, cuenta, creado) VALUES (?, ?, ?)").bind(publicacion, cuenta, creado).run();
 }

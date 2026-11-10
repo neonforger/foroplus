@@ -12,7 +12,7 @@
       "migrations_dir": "migrations"
     }
   ],
-  "triggers": { "crons": ["0 22,23 * * SUN", "30 3 * * *"] },
+  "triggers": { "crons": ["30 3 * * *", "*/15 * * * *"] },
   "vars": { "DIAS_MIN_VOTO": "90", "LECTOR_EN_VPS": "false" },
   // Sin registros de peticiones: no guardamos nada que no haga falta.
   "observability": { "enabled": false }

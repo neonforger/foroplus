@@ -10,7 +10,6 @@ import { uidHmac } from "../src/cripto";
 import { permitido } from "../src/limites";
 import { LECTURAS_FC_HORA } from "../src/rutas/verificacion";
 import { USER_AGENT } from "../src/tarjeta";
-import { semanaDe, semanaAnterior } from "../src/tiempo";
 
 const T0 = new Date("2026-11-08T12:00:00Z").getTime();
 const MIN = 60_000;
@@ -23,8 +22,7 @@ const FICHA = "https://forocoches.com/foro/member.php?u=";
 const COCHE_FIXTURE = "Seat Ibiza 1.9 TDI 2004";
 const TITULO_FIXTURE = "<title>Forocoches - Ver Perfil: YoMismo</title>";
 const TABLAS = [
-  "cuentas", "tokens", "retos", "canciones", "enlaces_cancion", "semanas", "propuestas", "votos",
-  "playlists_pub", "guardados", "denuncias", "limites",
+  "cuentas", "tokens", "retos", "canciones", "enlaces_cancion", "publicaciones", "corazones", "denuncias", "limites",
 ];
 
 interface Pagina { status: number; cabeceras: Record<string, string>; html: string }
@@ -325,7 +323,7 @@ describe("POST /v1/verificacion/comprobar", () => {
     const yo = await llamar(app(), get("/v1/yo", conToken(r.cuerpo.token)));
     expect(yo.status).toBe(200);
     expect(yo.cuerpo).toEqual({
-      nombre: "YoMismo", diasCuenta: 162, puedeVotar: true, votosRestantes: 10, propuestasRestantes: 3,
+      nombre: "YoMismo", diasCuenta: 162, puedePublicar: true, publicacionesRestantes: 6,
     });
 
     // En la base solo el hash del token, y la cuenta con el HMAC del uid.
@@ -543,7 +541,7 @@ describe("POST /v1/verificacion/comprobar", () => {
     expect(ilegible.status).toBe(200);
     expect(ilegible.cuerpo).toMatchObject({ diasCuenta: null, puedeVotar: false });
     const yo = await llamar(app(), get("/v1/yo", conToken(ilegible.cuerpo.token)));
-    expect(yo.cuerpo).toMatchObject({ diasCuenta: null, puedeVotar: false });
+    expect(yo.cuerpo).toMatchObject({ diasCuenta: null, puedePublicar: false });
   });
 
   it("baneadaNoVerifica: ni reto, ni comprobar, ni sus tokens", async () => {
@@ -588,26 +586,6 @@ describe("token y GET /v1/yo", () => {
       expect(r.status, JSON.stringify(cab)).toBe(401);
       expect(r.cuerpo).toEqual({ error: "token" });
     }
-  });
-
-  it("votos y propuestas restantes: solo los de esta cuenta y de la semana en curso", async () => {
-    const ok = await verificar();
-    const yo = await env.DB.prepare("SELECT id FROM cuentas").first<string>("id");
-    const semana = semanaDe(new Date(T0));
-    const pasada = semanaAnterior(semana);
-    const filas: [string, string, string][] = [
-      [semana, "c1", yo!], [semana, "c2", yo!], [semana, "c3", yo!], // 3 votos esta semana
-      [pasada, "c4", yo!], // de la semana pasada: no cuenta
-      [semana, "c5", "OTRA"], // de otra cuenta: no cuenta
-    ];
-    await env.DB.batch([
-      ...filas.map(([s, c, cu]) => env.DB.prepare("INSERT INTO votos VALUES (?, ?, ?, ?)").bind(s, c, cu, T0)),
-      env.DB.prepare("INSERT INTO propuestas VALUES (?, 'p1', ?, ?)").bind(semana, yo, T0),
-      env.DB.prepare("INSERT INTO propuestas VALUES (?, 'p2', ?, ?)").bind(pasada, yo, T0),
-      env.DB.prepare("INSERT INTO propuestas VALUES (?, 'p3', 'OTRA', ?)").bind(semana, T0),
-    ]);
-    const r = await llamar(app(), get("/v1/yo", conToken(ok.cuerpo.token)));
-    expect(r.cuerpo).toMatchObject({ votosRestantes: 7, propuestasRestantes: 2 });
   });
 });
 
