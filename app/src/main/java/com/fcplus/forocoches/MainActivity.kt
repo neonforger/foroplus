@@ -1238,11 +1238,14 @@ class MainActivity : AppCompatActivity() {
         for (i in 0 until forumTabs.tabCount) {
             val tab = forumTabs.getTabAt(i) ?: continue
             if (tab.tag != TAG_MUSICA) continue
-            if (!tab.isSelected) {
-                populatingTabs = true
-                tab.select()
-                populatingTabs = false
-            }
+            // Ya marcada = se ha entrado tocando o deslizando la pestaña: TabLayout la está
+            // llevando a la vista con su animación, y encuadrarla aquí (setScrollPosition sin
+            // animar) la cortaba a medias: la tira pegaba un salto al llegar a Música que no pega
+            // entre subforos. Solo se encuadra cuando se marca desde aquí (pila, Compartir).
+            if (tab.isSelected) return
+            populatingTabs = true
+            tab.select()
+            populatingTabs = false
             encuadrarPestanaEn = i
             encuadrarPestanas()
             return
