@@ -518,7 +518,10 @@ describe("DELETE /v1/cuenta", () => {
     await guardar(b, mia);
     const cancion = await propuestaDe(a, tema(9));
     await env.DB.prepare("INSERT INTO votos (semana, cancion, cuenta, creado) VALUES (?, ?, ?, ?)").bind(W45, cancion, a.id, T0).run();
-    await env.DB.prepare("UPDATE cuentas SET baneada = 1 WHERE id = ?").bind(a.id).run();
+    // Se banea por la ruta REAL de administración: un UPDATE directo no vio que el baneo borraba los tokens
+    // y dejaba esta ruta inalcanzable.
+    const ban = await llamar(en(), peticion("POST", "/v1/admin/banear", { cuenta: a.id, baneada: true }, { "X-Admin": "admin" }));
+    expect(ban.status).toBe(200);
     // El resto de rutas de cuenta siguen cerradas a una baneada.
     expect((await publicar(a, "X", [])).cuerpo).toEqual({ error: "baneada" });
     const r = await borrarCuenta(a);

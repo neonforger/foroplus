@@ -51,7 +51,7 @@ describe("acceso de administración", () => {
 });
 
 describe("POST /v1/admin/banear", () => {
-  it("banear borra sus tokens y sus votos de semanas abiertas; los de semanas cerradas se quedan", async () => {
+  it("banear conserva sus tokens (la cuenta solo puede borrarse) y borra sus votos de semanas abiertas; los de semanas cerradas se quedan", async () => {
     const mala = await shur();
     const otra = await shur();
     const c1 = await cancion(1);
@@ -67,7 +67,7 @@ describe("POST /v1/admin/banear", () => {
     expect(r.status).toBe(200);
     expect(r.cuerpo).toEqual({ ok: true });
     expect((await filas("SELECT baneada FROM cuentas WHERE id = ?", mala.id))[0].baneada).toBe(1);
-    expect(await filas("SELECT 1 FROM tokens WHERE cuenta = ?", mala.id)).toHaveLength(0);
+    expect(await filas("SELECT 1 FROM tokens WHERE cuenta = ?", mala.id)).toHaveLength(1);
     expect(await filas("SELECT 1 FROM tokens WHERE cuenta = ?", otra.id)).toHaveLength(1);
     expect(await filas("SELECT cuenta, semana FROM votos ORDER BY semana, cuenta")).toEqual([
       { cuenta: mala.id, semana: "2026-W44" },

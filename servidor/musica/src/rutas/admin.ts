@@ -39,7 +39,7 @@ async function banear(c: Contexto): Promise<Response> {
   if (!(await db.prepare("SELECT 1 AS x FROM cuentas WHERE id = ?").bind(cuenta).first())) return error("no_existe", 404);
   await db.batch([
     db.prepare("UPDATE cuentas SET baneada = 1 WHERE id = ?1").bind(cuenta),
-    db.prepare("DELETE FROM tokens WHERE cuenta = ?1").bind(cuenta),
+    // Los tokens NO se borran (ver cuentaDe): una baneada sigue pudiendo borrar su cuenta (RGPD) con el suyo.
     // Lo que ya no cuenta: sus votos en semanas abiertas (el concurso de la semana en curso no puede
     // llevar votos de una cuenta baneada). Sus propuestas con votos de OTROS se quedan sin dueña (los
     // votos de los demás no se pierden, igual que al borrar la cuenta); las demás se van.
