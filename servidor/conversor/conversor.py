@@ -6,6 +6,7 @@ La app nunca habla con el VPS y el VPS no abre puertos: es este bucle quien llam
 import json
 import os
 import sys
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -18,7 +19,10 @@ LATIDO_CADA_S = 6 * 3600
 # Spotify: como mucho una búsqueda por segundo.
 ENTRE_BUSQUEDAS_S = 1.0
 PRUEBA_ISRC = "AUAP07900028"
+PRUEBA = {"titulo": "Highway to Hell", "artista": "AC/DC"}
+TIMEOUT_BUSQUEDA_S = 20
 _ultima_busqueda = 0.0
+_timeouts_seguidos = 0
 
 
 def log(*a):
@@ -36,18 +40,14 @@ def llamar(metodo: str, ruta: str, cuerpo: dict | None = None, timeout: int = 30
         return json.loads(resp) if resp else None
 
 
-def buscar(consulta: str) -> list[dict]:
-    """Una búsqueda en Spotify -> [{id, titulo, artistas}] en su orden (respetando el ritmo)."""
-    global _ultima_busqueda
+class TiempoAgotado(Exception):
+    pass
+
+
+def _buscar_spotify(consulta: str) -> list[dict]:
     from spotapi import Song
 
-    espera = _ultima_busqueda + ENTRE_BUSQUEDAS_S - time.monotonic()
-    if espera > 0:
-        time.sleep(espera)
-    try:
-        r = Song().query_songs(consulta, limit=5)
-    finally:
-        _ultima_busqueda = time.monotonic()
+    r = Song().query_songs(consulta, limit=5)
     salida = []
     for it in r["data"]["searchV2"]["tracksV2"]["items"]:
         d = it["item"]["data"]
@@ -62,6 +62,44 @@ def buscar(consulta: str) -> list[dict]:
     return salida
 
 
+def buscar(consulta: str) -> list[dict]:
+    """Una búsqueda en Spotify con ritmo (1/s) y tope de tiempo.
+
+    Sin tope, una búsqueda colgada paraba el bucle en silencio (proceso vivo, systemd sin reiniciarlo).
+    Corre en un hilo aparte: si no vuelve a tiempo se abandona (hilo demonio) y cuenta como fallo.
+    """
+    global _ultima_busqueda, _timeouts_seguidos
+    espera = _ultima_busqueda + ENTRE_BUSQUEDAS_S - time.monotonic()
+    if espera > 0:
+        time.sleep(espera)
+    caja: dict = {}
+
+    def trabajo():
+        try:
+            caja["ok"] = _buscar_spotify(consulta)
+        except BaseException as e:  # noqa: BLE001
+            caja["error"] = e
+
+    hilo = threading.Thread(target=trabajo, daemon=True)
+    hilo.start()
+    hilo.join(TIMEOUT_BUSQUEDA_S)
+    _ultima_busqueda = time.monotonic()
+    if hilo.is_alive():
+        _timeouts_seguidos += 1
+        raise TiempoAgotado(f"la busqueda tardo mas de {TIMEOUT_BUSQUEDA_S} s")
+    _timeouts_seguidos = 0
+    if "error" in caja:
+        raise caja["error"]
+    return caja["ok"]
+
+
+def comprobar_colgado():
+    """Dos búsquedas seguidas colgadas: algo está roto de verdad, que systemd nos levante de nuevo."""
+    if _timeouts_seguidos >= 2:
+        log("dos busquedas colgadas seguidas: salgo para que systemd reinicie")
+        sys.exit(1)
+
+
 def convertir(c: dict) -> str | None:
     """Lanza excepción si SpotAPI falla (el llamador lo cuenta como motivo "error")."""
     buscado = {"titulo": c["titulo"], "artista": c["artista"]}
@@ -74,7 +112,8 @@ def convertir(c: dict) -> str | None:
 
 def latido():
     try:
-        ok, detalle = (True, "prueba ok") if buscar(f"isrc:{PRUEBA_ISRC}") else (False, "la prueba no devolvio resultados")
+        # Solo vale si el emparejado reconoce la canción conocida (no basta con "hay resultados").
+        ok, detalle = (True, "prueba ok") if elegir(PRUEBA, buscar(f"isrc:{PRUEBA_ISRC}")) else (False, "la prueba no emparejo")
     except Exception as e:  # noqa: BLE001
         ok, detalle = False, f"prueba: {type(e).__name__}: {e}"[:200]
     try:
@@ -82,6 +121,7 @@ def latido():
     except Exception as e:  # noqa: BLE001
         log("latido no enviado:", e)
     log("latido", ok, detalle)
+    comprobar_colgado()
 
 
 def atender(c: dict):
@@ -99,6 +139,15 @@ def atender(c: dict):
         log("resultado rechazado", c["id"], e.code)
     except Exception as e:  # noqa: BLE001
         log("resultado no enviado", c["id"], type(e).__name__, e)
+    comprobar_colgado()
+
+
+def pausa_si_vacia(canciones: list, desde: float):
+    """Respuesta vacía en menos de 1 s (el Worker no esperó): sin pausa sería un bucle caliente."""
+    if not canciones:
+        resto = 1.0 - (time.monotonic() - desde)
+        if resto > 0:
+            time.sleep(resto)
 
 
 def main():
@@ -110,13 +159,16 @@ def main():
         if time.monotonic() >= proximo_latido:
             latido()
             proximo_latido = time.monotonic() + LATIDO_CADA_S
+        desde = time.monotonic()
         try:
             r = llamar("GET", "/v1/conversor/pendientes", timeout=30)
         except Exception as e:  # noqa: BLE001
             log("pendientes:", type(e).__name__, e)
             time.sleep(30)
             continue
-        for c in (r or {}).get("canciones", []):
+        canciones = (r or {}).get("canciones", [])
+        pausa_si_vacia(canciones, desde)
+        for c in canciones:
             atender(c)
 
 

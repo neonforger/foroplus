@@ -7,7 +7,7 @@ Requires=docker.service
 [Service]
 # FOROPLUS_API y CONVERSOR_SECRETO viven en /etc/foroplus/conversor.env (fuera del repo, 600, root).
 ExecStartPre=-/usr/bin/docker rm -f foroplus-conversor
-ExecStart=/usr/bin/docker run --rm --name foroplus-conversor --env-file /etc/foroplus/conversor.env foroplus-conversor
+ExecStart=/usr/bin/docker run --rm --init --name foroplus-conversor --env-file /etc/foroplus/conversor.env foroplus-conversor
 ExecStop=/usr/bin/docker stop foroplus-conversor
 Restart=always
 RestartSec=30

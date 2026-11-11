@@ -21,6 +21,19 @@ def test_normal_quita_acentos_remaster_y_feat():
     assert normal("  ÁÉÍ  ") == "aei"
 
 
+def test_normal_no_corta_palabras_que_solo_contienen_edit_o_live():
+    assert normal("Tema - Credits") == "tema credits"
+    assert normal("Tema - Alive") == "tema alive"
+    assert normal("Tema - Radio Edit") == "tema"
+
+
+def test_normal_conserva_otros_alfabetos():
+    assert normal("Группа крови") == "группа крови"
+    assert normal("夜に駆ける") != ""
+    r = [{"id": "y" * 22, "titulo": "Группа крови", "artistas": ["Кино"]}]
+    assert elegir({"titulo": "группа крови (Remastered)", "artista": "Кино"}, r) == "y" * 22
+
+
 def test_elegir_coge_el_que_casa_titulo_y_artista():
     assert elegir(BUSCADO, TITULO) == "2zYzyRzz6pRmhPzyfMEC8s"
     assert elegir({"titulo": "Highway to Hell (Remastered)", "artista": "ac/dc"}, TITULO) == "2zYzyRzz6pRmhPzyfMEC8s"

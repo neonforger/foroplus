@@ -9,7 +9,8 @@ import unicodedata
 
 _PARENTESIS = re.compile(r"\([^)]*\)|\[[^\]]*\]")
 # "- Remastered 2011", "- 2009 Remaster", "- Live ...", "- Radio Edit", "- Single Version"
-_COLA = re.compile(r"\s-\s.*(remaster|live|edit|version|mono|stereo|mix).*$")
+# Palabras ENTERAS: "- Credits" (lleva "edit") o "- Alive" (lleva "live") no son sufijos de edición.
+_COLA = re.compile(r"\s-\s.*\b(remaster|remastered|live|edit|version|mono|stereo|mix)\b.*$")
 _FEAT = re.compile(r"\s(feat\.?|ft\.?|featuring)\s.*$")
 _FEAT_SEP = re.compile(r"\s(feat\.?|ft\.?|featuring)\s", re.I)
 _SEPARADORES = re.compile(r"\s*(?:,|;|&|/|\sy\s|\sand\s|\sx\s)\s*")
@@ -21,8 +22,10 @@ def normal(s: str) -> str:
     s = _PARENTESIS.sub(" ", s)
     s = _COLA.sub("", s)
     s = _FEAT.sub("", s)
-    s = re.sub(r"[^a-z0-9]+", " ", s)
-    return s.strip()
+    # Letras y dígitos de cualquier alfabeto: con [^a-z0-9] un título japonés o cirílico quedaba en "" y
+    # nunca emparejaba (siempre "no_esta").
+    s = "".join(c if c.isalnum() else " " for c in s)
+    return " ".join(s.split())
 
 
 def _artistas(texto_o_lista) -> set[str]:
