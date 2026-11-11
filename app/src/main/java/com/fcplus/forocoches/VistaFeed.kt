@@ -62,9 +62,14 @@ object VistaFeed {
         "limite" -> "Por hoy ya has compartido muchas canciones; mañana puedes seguir."
         "no_es_cancion" -> "Ese enlace no es de una canción."
         "no_encontrada" -> "No hemos encontrado esa canción."
+        "deezer" -> "El buscador de canciones no responde ahora mismo. Inténtalo de nuevo en un rato."
         "cuerpo" -> "Faltan datos para publicar. Revisa lo que has escrito."
         else -> "No ha salido bien. Inténtalo de nuevo en un rato."
     }
+
+    /** Lo mismo para un corazón: su tope (`limite`) no es el de compartir canciones. */
+    fun textoErrorCorazon(e: ApiMusica.R.Error): String =
+        if (e.codigo == "limite") "Por hoy ya has dado muchos corazones; mañana puedes seguir." else textoError(e)
 
     fun estadoVacio(orden: OrdenFeed, hayRed: Boolean): String = when {
         !hayRed -> "No hemos podido cargar las canciones. Comprueba tu conexión y pulsa Reintentar."

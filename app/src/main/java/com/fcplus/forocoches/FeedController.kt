@@ -182,6 +182,23 @@ class FeedController(
         pedir(null, reiniciar = true)
     }
 
+    /**
+     * Recién publicada desde la pantalla de compartir: con Recientes se mete ARRIBA al instante (el
+     * autor la ve aunque el servidor aún la esté convirtiendo y aunque la red tarde) y, además, se
+     * pide el feed de nuevo para que quede con su sitio y su hora reales. Con Top no se mete a mano:
+     * con 0 corazones su sitio no es arriba; ya la traerá el refresco.
+     */
+    fun publicada(item: ItemFeed) {
+        if (orden == OrdenFeed.RECIENTES && items.none { it.id == item.id }) {
+            items = listOf(item) + items
+            if (viva()) {
+                pintar(null)
+                lista.scrollToPosition(0)
+            }
+        }
+        refrescar(true)
+    }
+
     private fun elegir(o: OrdenFeed) {
         if (o == orden && items.isNotEmpty()) return
         orden = o
@@ -331,7 +348,7 @@ class FeedController(
                         if (r.codigo == "no_existe" || r.codigo == "oculta") quitar(id) else poner(id, antes)
                         if (r.tokenInservible) enganches.tokens.trasError(uid, r)
                         if (r.codigo == "antiguedad") puede[uid] = false
-                        aviso(VistaFeed.textoError(r))
+                        aviso(VistaFeed.textoErrorCorazon(r))
                     }
                 }
             }
@@ -460,8 +477,11 @@ class FeedController(
     private fun dp(v: Int) = (v * act.resources.displayMetrics.density).toInt()
 
     companion object {
-        /** Cada cuánto se refresca como mucho mientras el feed está a la vista. */
-        const val REFRESCO_MS = 30_000L
+        /**
+         * Cada cuánto se refresca como mucho mientras el feed está a la vista. Un minuto: las
+         * publicaciones viven 24 h, y lo propio ya sale al instante al publicar ([publicada]).
+         */
+        const val REFRESCO_MS = 60_000L
         private const val MAX_MOTIVO = 300  // el tope de cuenta.ts
 
         /** Un par de hilos para la red del feed: un corazón no espera a una carga lenta. */

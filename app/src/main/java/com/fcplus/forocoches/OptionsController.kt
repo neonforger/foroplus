@@ -61,8 +61,12 @@ class OptionsController(
      * cuenta de Música" solo se enseña con un sí.
      */
     private val tieneCuentaMusica: ((Boolean) -> Unit) -> Unit = { it(false) },
-    /** Tocar "Borrar mi cuenta de Música": lanza el flujo de Música (pregunta y borra). */
-    private val onBorrarCuentaMusica: () -> Unit = {}
+    /**
+     * Tocar "Borrar mi cuenta de Música": lanza el flujo de Música (pregunta y borra). Recibe a quién
+     * avisar al terminar (en el hilo de la interfaz): la fila se repinta, para que tras borrar no siga
+     * ofreciendo borrar una cuenta que ya no existe.
+     */
+    private val onBorrarCuentaMusica: (alTerminar: () -> Unit) -> Unit = {}
 ) {
     companion object {
         /**
@@ -238,7 +242,7 @@ class OptionsController(
         categoria(catAcerca, R.drawable.ic_opt_acerca, "Acerca de", "Novedades de cada versión")
         categoria(catMusicaBorrar, R.drawable.ic_musica, panel.context.getString(R.string.opt_musica_borrar),
             "Tu cuenta, tus canciones y tus corazones del servidor", flecha = false)
-        catMusicaBorrar.setOnClickListener { onBorrarCuentaMusica() }
+        catMusicaBorrar.setOnClickListener { onBorrarCuentaMusica { pintarMusicaBorrar() } }
 
         catApariencia.setOnClickListener { abrir(R.id.opt_sec_apariencia, "Apariencia") }
         catFiltros.setOnClickListener { abrir(R.id.opt_sec_filtros, "Filtros") }

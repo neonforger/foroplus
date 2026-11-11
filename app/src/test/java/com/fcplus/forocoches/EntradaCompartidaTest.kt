@@ -135,4 +135,24 @@ class EntradaCompartidaTest {
         assertEquals(DestinoCompartido.MUSICA_EN_SU_SITIO, EntradaCompartida.destino(escribiendo = false, enRaizConPestanas = true))
         assertEquals(DestinoCompartido.MUSICA_APILADA, EntradaCompartida.destino(escribiendo = false, enRaizConPestanas = false))
     }
+
+    // ── Cuándo se entrega (arranque en frío sin config) ──────────────────────
+
+    @Test
+    fun `apagado con la config aun sin refrescar no se tira y espera a la config fresca`() {
+        assertEquals(AhoraCompartido.ESPERAR, EntradaCompartida.ahora(servidorActivo = false, configFresca = false, hayPestana = false))
+        assertEquals(AhoraCompartido.ESPERAR, EntradaCompartida.ahora(servidorActivo = false, configFresca = false, hayPestana = true))
+    }
+
+    @Test
+    fun `apagado con la config fresca avisa`() {
+        assertEquals(AhoraCompartido.AVISAR_APAGADO, EntradaCompartida.ahora(servidorActivo = false, configFresca = true, hayPestana = false))
+    }
+
+    @Test
+    fun `encendido espera a la pestana y con ella se entrega, sea o no fresca la config`() {
+        assertEquals(AhoraCompartido.ESPERAR, EntradaCompartida.ahora(servidorActivo = true, configFresca = true, hayPestana = false))
+        assertEquals(AhoraCompartido.ENTREGAR, EntradaCompartida.ahora(servidorActivo = true, configFresca = true, hayPestana = true))
+        assertEquals(AhoraCompartido.ENTREGAR, EntradaCompartida.ahora(servidorActivo = true, configFresca = false, hayPestana = true))
+    }
 }

@@ -62,11 +62,17 @@ class VistaFeedTest {
     @Test fun `textoError cubre todos los codigos con texto propio`() {
         val codigos = listOf(
             "red", "respuesta", "token", "baneada", "antiguedad", "texto", "oculta", "propia",
-            "no_existe", "limite", "no_es_cancion", "no_encontrada", "cuerpo"
+            "no_existe", "limite", "no_es_cancion", "no_encontrada", "cuerpo", "deezer"
         )
         val textos = codigos.map { VistaFeed.textoError(err(it)) }
         assertTrue(textos.all { it.isNotBlank() })
         assertEquals(textos.size, textos.toSet().size)
         assertTrue(textos.none { it.contains("Deezer", ignoreCase = true) })
+    }
+
+    @Test fun `el tope de corazones tiene su texto, sin cifras, y lo demas es como textoError`() {
+        val t = VistaFeed.textoErrorCorazon(err("limite", 429))
+        assertTrue(t.contains("corazones") && t.none { it.isDigit() })
+        assertEquals(VistaFeed.textoError(err("propia")), VistaFeed.textoErrorCorazon(err("propia")))
     }
 }

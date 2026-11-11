@@ -252,4 +252,16 @@ class CompartirCancionTest {
         assertEquals(View.VISIBLE, vacio.visibility)
         assertTrue(vacio.text.isNotEmpty())
     }
+
+    @Test fun `una hoja reabierta mientras publicaba empieza sin el Publicando de antes`() {
+        val h = hoja(); h.mostrar(enlaceSpotify)
+        h.motivo().setText("buena")
+        h.boton().performClick()  // la publicación queda en el aire (el hilo de fondo no corre)
+        assertFalse(h.boton().isEnabled)
+        h.vista!!.findViewById<View>(R.id.compartir_cerrar).performClick()
+        assertFalse(h.abierta)
+        h.mostrar(enlaceSpotify)
+        h.motivo().setText("otra")
+        assertTrue("el botón vuelve a valer", h.boton().isEnabled)
+    }
 }

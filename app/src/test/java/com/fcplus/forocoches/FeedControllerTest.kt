@@ -107,18 +107,52 @@ class FeedControllerTest {
         assertFalse(raiz.findViewById<View>(R.id.musica_chip_recientes).isSelected)
     }
 
-    @Test fun `no recarga antes de 30 s`() {
+    @Test fun `no recarga antes de 60 s`() {
         val f = controlador()
         f.mostrar()
         ahora += 10_000
         f.refrescar(false)
         f.mostrar()
         assertEquals(1, llamadas.count { it.contains("/v1/feed") })
-        ahora += 21_000
+        ahora += 40_000  // 50 s: aún no
+        f.refrescar(false)
+        assertEquals(1, llamadas.count { it.contains("/v1/feed") })
+        ahora += 11_000
         f.refrescar(false)
         assertEquals(2, llamadas.count { it.contains("/v1/feed") })
         f.refrescar(true)
         assertEquals(3, llamadas.count { it.contains("/v1/feed") })
+    }
+
+    private fun nueva(id: String) = ItemFeed(
+        id, "YoMismo", "Mi frase", ahora, ahora + 86_400_000L, 0, false, true,
+        CancionFeed("c$id", "Tema nuevo", "Alguien", null, null, null, 1L)
+    )
+
+    @Test fun `al publicar la nueva sale arriba al instante y se pide el feed otra vez`() {
+        val f = controlador()
+        f.mostrar()
+        // El refresco que sigue falla (sin red): la nueva sigue arriba, no depende de él.
+        responder = { _, _ -> throw java.io.IOException("sin red") }
+        val antes = llamadas.count { it.contains("/v1/feed") }
+        f.publicada(nueva("P9"))
+        assertEquals(3, filas())
+        assertEquals("Mi frase", fila(0).findViewById<TextView>(R.id.pub_texto).text.toString())
+        assertEquals(antes + 1, llamadas.count { it.contains("/v1/feed") })
+        // Dos avisos de la misma publicación no la duplican.
+        f.publicada(nueva("P9"))
+        assertEquals(3, filas())
+    }
+
+    @Test fun `al publicar con Top no se mete a mano, solo se refresca`() {
+        val f = controlador()
+        f.mostrar()
+        raiz.findViewById<View>(R.id.musica_chip_top).performClick()
+        val antes = llamadas.count { it.contains("/v1/feed") }
+        f.publicada(nueva("P9"))
+        assertEquals(2, filas())
+        assertEquals(antes + 1, llamadas.count { it.contains("/v1/feed") })
+        assertTrue(llamadas.last(), llamadas.last().contains("orden=queridas"))
     }
 
     @Test fun `corazon sin token abre verificacion`() {

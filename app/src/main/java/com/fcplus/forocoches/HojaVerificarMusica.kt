@@ -30,6 +30,9 @@ class HojaVerificarMusica(
     private val cerrarAlVerificar: Boolean = false
 ) {
     private var dialog: BottomSheetDialog? = null
+
+    /** ¿Está a la vista? (MusicaController no abre otra encima: dos toques no dan dos hojas.) */
+    val abierta: Boolean get() = dialog != null
     private lateinit var progreso: View
     private lateinit var progresoTexto: TextView
     private lateinit var resultado: TextView

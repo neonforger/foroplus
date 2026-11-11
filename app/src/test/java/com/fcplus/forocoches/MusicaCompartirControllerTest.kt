@@ -29,6 +29,8 @@ class MusicaCompartirControllerTest {
     private var servidor = true
     private val enCola = ArrayList<() -> Unit>()
     private val enlace = "https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC"
+    /** Lo que "resuelve" cada spotify.link (sin red); lo que no está, no se resuelve. */
+    private val resueltos = HashMap<String, RefCancion>()
 
     @Before fun preparar() {
         val ctx = ApplicationProvider.getApplicationContext<Context>()
@@ -52,6 +54,8 @@ class MusicaCompartirControllerTest {
             { ApiMusica({ null }, red = { _, _, _, _ -> Respuesta(404, "{}") }) }
         ) {}
         m.hiloToken = { enCola.add(it) }  // mirar el token queda en cola: cada test decide cuándo corre
+        m.hiloRed = { enCola.add(it) }
+        m.resolverCorto = { resueltos[it] }
         return m
     }
 
@@ -112,13 +116,38 @@ class MusicaCompartirControllerTest {
         assertEquals("hola, esto no es una canción", h.findViewById<EditText>(R.id.compartir_buscar).text.toString())
     }
 
-    @Test fun `compartido un spotify link corto va tal cual al buscador`() {
+    @Test fun `compartido un spotify link corto se resuelve y la hoja sale con el enlace largo`() {
+        tokens.guardar("123456", "tok")
+        resueltos["https://spotify.link/AbCdEf123"] = RefCancion(FuenteMusica.SPOTIFY, "4uLU6hMCjMI75M1A2tKUQC")
+        val m = controlador()
+        m.recibirCompartido("mira https://spotify.link/AbCdEf123 ¿eh?")
+        assertTrue("nada se abre antes de resolverlo", hojasCompartir().isEmpty())
+        correrCola()  // resuelve (hilo de red) y encola mirar el token
+        correrCola()
+        val h = hojasCompartir().single()
+        assertEquals(enlace, h.findViewById<EditText>(R.id.compartir_buscar).text.toString())
+    }
+
+    @Test fun `un spotify link corto que no se resuelve va tal cual al buscador`() {
         tokens.guardar("123456", "tok")
         val m = controlador()
         m.recibirCompartido("mira https://spotify.link/AbCdEf123 ¿eh?")
         correrCola()
+        correrCola()
         val h = hojasCompartir().single()
         assertEquals("https://spotify.link/AbCdEf123", h.findViewById<EditText>(R.id.compartir_buscar).text.toString())
+    }
+
+    @Test fun `sin token dos toques no abren dos verificaciones`() {
+        val m = controlador()
+        m.abrirCompartir(null)
+        correrCola()
+        assertEquals(1, hojasVerificar().size)
+        m.abrirCompartir(null)  // segundo toque con la verificación ya abierta
+        correrCola()
+        m.abrirVerificacion()   // y un corazón sin token
+        assertEquals(1, hojasVerificar().size)
+        assertTrue(enCola.isEmpty())
     }
 
     @Test fun `compartido con el servidor apagado avisa y no abre nada`() {

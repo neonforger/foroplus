@@ -142,16 +142,23 @@ class MusicaController(
     fun abrirVerificacion(despues: (() -> Unit)? = null) {
         val e = enganches
         if (!e.servidorActivo()) return
+        // Una sola a la vez: dos toques en "Compartir canción" (o un corazón y luego Compartir) sin
+        // token abrían dos hojas de verificación, una encima de otra.
+        if (hojaVerificar?.abierta == true) return
         pausar()  // la hoja tapa el reproductor, y YouTube no puede sonar tapado
-        HojaVerificarMusica(act, e, {
+        hojaVerificar = HojaVerificarMusica(act, e, {
             feed.olvidarCuenta()
             feed.refrescar(true)
             despues?.invoke()
-        }, cerrarAlVerificar = despues != null).mostrar()
+        }, cerrarAlVerificar = despues != null).also { it.mostrar() }
     }
 
-    /** "Borrar mi cuenta de Música" de Opciones: pregunta y, si se confirma, borra. */
-    fun borrarMiCuenta() = flujos.borrarCuenta()
+    /** La hoja de verificación viva (si la hay). */
+    internal var hojaVerificar: HojaVerificarMusica? = null
+        private set
+
+    /** "Borrar mi cuenta de Música" de Opciones: pregunta y, si se confirma, borra; [alTerminar] al acabar (se haya borrado o no). */
+    fun borrarMiCuenta(alTerminar: () -> Unit = {}) = flujos.borrarCuenta(alTerminar)
 
     /**
      * ¿Hay token de Música para la cuenta activa? Se mira en el hilo del disco (la primera lectura
@@ -178,7 +185,8 @@ class MusicaController(
         val e = enganches
         if (!e.servidorActivo()) return
         // Dos toques seguidos (o dos compartidos) no abren dos pantallas: las dos podrían publicar.
-        if (hojaCompartir?.abierta == true || abriendoCompartir) return
+        // Tampoco con la verificación ya abierta (sin token): el segundo toque abría otra encima.
+        if (hojaCompartir?.abierta == true || abriendoCompartir || hojaVerificar?.abierta == true) return
         abriendoCompartir = true
         pausar()
         val uid = e.uidActivo()
@@ -202,29 +210,44 @@ class MusicaController(
     private fun mostrarCompartir(e: EnganchesMusica, enlace: String?) {
         // Único sitio por donde se abre: con la verificación de por medio también pueden llegar dos.
         if (hojaCompartir?.abierta == true) return
-        // Publicada: el feed se pide de nuevo (forzado) y la nueva sale arriba, con su sitio entre
-        // las recientes. Es la vía más corta y la misma que usa tras verificarse; evita meter a mano
-        // en la lista una tarjeta que el servidor puede tener ya con otra hora de caducidad.
-        hojaCompartir = HojaCompartirCancion(act, e, { feed.refrescar(true) }).also { it.mostrar(enlace) }
+        // Publicada: sale arriba del feed al instante (la que devuelve el servidor) y el feed se pide
+        // de nuevo para que quede con su sitio y su hora reales ([FeedController.publicada]).
+        hojaCompartir = HojaCompartirCancion(act, e, { feed.publicada(it) }).also { it.mostrar(enlace) }
     }
 
     /**
      * Algo compartido desde otra app hacia Música: SIEMPRE la pantalla de compartir con el enlace
-     * puesto. Con varias canciones va la primera que se reconozca (una publicación lleva una); si
-     * no se reconoce ninguna (un `spotify.link` corto sin resolver, texto suelto), la pantalla sale
-     * con eso pegado en el buscador y que decida quien compartió. Con el servidor apagado: se avisa
-     * y no se hace nada más.
+     * puesto. Con varias canciones va la primera que se reconozca (una publicación lleva una). Un
+     * `spotify.link` corto (lo que comparte la app de Spotify) se resuelve antes, fuera del hilo de la
+     * interfaz ([resolverCorto]), y la pantalla se abre con el enlace largo, que ya es una canción; si
+     * no se resuelve, o no se reconoce ninguna canción (texto suelto), la pantalla sale con eso pegado
+     * en el buscador y que decida quien compartió. Con el servidor apagado: se avisa y no se hace nada más.
      */
     fun recibirCompartido(texto: String) {
         if (!enganches.servidorActivo()) {
             Toast.makeText(act, R.string.musica_no_disponible, Toast.LENGTH_LONG).show()
             return
         }
-        val enlace = HojaCompartirCancion.enlaceDe(texto)
-            ?: EnlaceMusica.cortosSpotify(texto).firstOrNull()
-            ?: texto.trim().take(MAX_PEGADO).ifEmpty { null }
-        abrirCompartir(enlace)
+        HojaCompartirCancion.enlaceDe(texto)?.let { abrirCompartir(it); return }
+        val corto = EnlaceMusica.cortosSpotify(texto).firstOrNull()
+        if (corto == null) {
+            abrirCompartir(texto.trim().take(MAX_PEGADO).ifEmpty { null })
+            return
+        }
+        hiloRed {
+            val largo = try { resolverCorto(corto)?.url() } catch (_: Exception) { null }
+            act.runOnUiThread {
+                if (act.isFinishing || act.isDestroyed) return@runOnUiThread
+                abrirCompartir(largo ?: corto)
+            }
+        }
     }
+
+    /** Resuelve un `spotify.link` (red: sigue sus redirecciones); los tests ponen el suyo. */
+    internal var resolverCorto: (String) -> RefCancion? = { BuscadorMusica.resolverCorto(it) }
+
+    /** Dónde se resuelve: un hilo de red, no el del disco (que mira el token); los tests lo cambian. */
+    internal var hiloRed: (() -> Unit) -> Unit = { red.execute(it) }
 
     companion object {
         /** Lo que se pega en el buscador cuando lo compartido no trae ninguna canción reconocible. */
@@ -232,6 +255,9 @@ class MusicaController(
 
         /** Un solo hilo para el disco (el token, la limpieza de la carpeta vieja), compartido por todas las instancias. */
         private val disco = Executors.newSingleThreadExecutor()
+
+        /** Para resolver enlaces cortos de Spotify: red, que puede tardar, fuera del hilo del disco. */
+        private val red = Executors.newSingleThreadExecutor()
 
         /**
          * Abre una canción FUERA, en la app que reclame el enlace (YouTube, Spotify) o, si no hay,

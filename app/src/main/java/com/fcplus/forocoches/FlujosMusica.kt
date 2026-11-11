@@ -22,7 +22,8 @@ class FlujosMusica(
 
     // ── Borrar la cuenta ─────────────────────────────────────────────────────
 
-    fun borrarCuenta() {
+    /** [alTerminar]: en el hilo de la interfaz cuando acaba el borrado (bien o mal); si se cancela, no. */
+    fun borrarCuenta(alTerminar: () -> Unit = {}) {
         if (ocupado) return
         AlertDialog.Builder(act)
             .setTitle("Borrar mi cuenta de Música")
@@ -30,12 +31,12 @@ class FlujosMusica(
                 "Se borran del servidor tu cuenta de Música, tus publicaciones y tus corazones. " +
                     "Podrás verificarte otra vez cuando quieras."
             )
-            .setPositiveButton("Borrar") { _, _ -> borrando() }
+            .setPositiveButton("Borrar") { _, _ -> borrando(alTerminar) }
             .setNegativeButton("Cancelar", null)
             .show()
     }
 
-    private fun borrando() {
+    private fun borrando(alTerminar: () -> Unit) {
         ocupado = true
         val uid = enganches.uidActivo()
         hilo.execute {
@@ -60,6 +61,7 @@ class FlujosMusica(
                         .show()
                 }
                 alCambiar()
+                alTerminar()
             }
         }
     }

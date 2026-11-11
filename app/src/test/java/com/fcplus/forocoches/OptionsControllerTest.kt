@@ -130,7 +130,7 @@ class OptionsControllerTest {
     // ── "Borrar mi cuenta de Música" (2026-11-11: pasó de la portada de Música a Opciones) ──
 
     /** Opciones tal como vive en activity_main.xml, con lo de Música contestado por [tiene]. */
-    private fun opciones(tiene: ((Boolean) -> Unit) -> Unit, alBorrar: () -> Unit = {}): android.view.View {
+    private fun opciones(tiene: ((Boolean) -> Unit) -> Unit, alBorrar: (() -> Unit) -> Unit = {}): android.view.View {
         val act = org.robolectric.Robolectric.buildActivity(androidx.appcompat.app.AppCompatActivity::class.java).get()
         act.setTheme(R.style.Theme_FCForocoches)
         act.setContentView(R.layout.activity_main)
@@ -150,7 +150,7 @@ class OptionsControllerTest {
         assertEquals(android.view.View.GONE, sin.findViewById<android.view.View>(R.id.opt_musica_borrar).visibility)
 
         var borrados = 0
-        val con = opciones({ it(true) }, { borrados++ })
+        val con = opciones({ it(true) }, { _ -> borrados++ })
         val fila = con.findViewById<android.view.View>(R.id.opt_musica_borrar)
         assertEquals(android.view.View.VISIBLE, fila.visibility)
         assertEquals(
@@ -170,5 +170,19 @@ class OptionsControllerTest {
         assertEquals(android.view.View.GONE, fila.visibility)
         pendiente!!(true)
         assertEquals(android.view.View.VISIBLE, fila.visibility)
+    }
+
+    @Test
+    fun `tras borrar la cuenta de Musica la fila se repinta y desaparece`() {
+        var tiene = true
+        var terminar: (() -> Unit)? = null
+        val panel = opciones({ it(tiene) }, { alTerminar -> terminar = alTerminar })
+        val fila = panel.findViewById<android.view.View>(R.id.opt_musica_borrar)
+        assertEquals(android.view.View.VISIBLE, fila.visibility)
+        fila.performClick()
+        // El servidor ya la ha borrado (el token se fue): al terminar el flujo, la fila se vuelve a mirar.
+        tiene = false
+        terminar!!()
+        assertEquals(android.view.View.GONE, fila.visibility)
     }
 }

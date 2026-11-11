@@ -401,6 +401,12 @@ class MainActivity : AppCompatActivity() {
     private lateinit var panelMusica: View
     /** Lo llegado por "Compartir en Música" antes de que hubiera pestaña de Música (ver [recibirCompartido]). */
     private var compartidoPendiente: String? = null
+    /**
+     * ¿Ya se sabe si Música está encendida en ESTE arranque? Se pone en la vuelta de
+     * `RemoteConfig.cuandoEsteFresca` (config recién bajada o tope agotado). Hasta entonces un
+     * "apagado" puede ser solo la config vieja o la de fábrica (ver [EntradaCompartida.ahora]).
+     */
+    private var configMusicaFresca = false
     /** Sección +18: lo ya pintado, sin filtrar por chips (para refiltrar sin volver a bajar). */
     private var mas18Hilos: List<HiloMas18> = emptyList()
     private var mas18Total = 1
@@ -1277,24 +1283,29 @@ class MainActivity : AppCompatActivity() {
      * puesto. Siempre a ESTA MainActivity, la única (Ruling 30): por onNewIntent si ya estaba, por
      * onCreate si no.
      *
-     * - Servidor apagado: se avisa "Música no está disponible" y no se hace nada más (la pestaña
-     *   ni existe).
-     * - Sin pestaña de Música todavía (arranque en frío: sale con el índice del foro, como el
-     *   Popurrí y +18) se aparta en [compartidoPendiente], se dice que no se ha perdido, y lo
-     *   entrega [onForumListJson].
+     * Qué toca lo decide [EntradaCompartida.ahora]:
+     * - Servidor apagado con la config de este arranque ya leída: se avisa "Música no está
+     *   disponible" y no se hace nada más (la pestaña ni existe).
+     * - Apagado pero con la config aún sin refrescar (arranque en frío sin config guardada), o sin
+     *   pestaña de Música todavía (sale con el índice del foro, como el Popurrí y +18): se aparta
+     *   en [compartidoPendiente], se dice que no se ha perdido, y lo vuelven a intentar la config
+     *   fresca y [onForumListJson].
      * - Si no, a donde diga [EntradaCompartida.destino] (escribiendo, solo la hoja; en la lista
      *   raíz, Música en su sitio; sobre otra cosa, apilada).
      */
     private fun recibirCompartido(texto: String) {
-        if (!enganchesMusica.servidorActivo()) {
-            compartidoPendiente = null
-            toast(getString(R.string.musica_no_disponible))
-            return
-        }
-        if (!hayPestanaMusica()) {
-            if (compartidoPendiente == null) toast("Abriendo Música en cuanto cargue el foro…")
-            compartidoPendiente = texto
-            return
+        when (EntradaCompartida.ahora(enganchesMusica.servidorActivo(), configMusicaFresca, hayPestanaMusica())) {
+            AhoraCompartido.AVISAR_APAGADO -> {
+                compartidoPendiente = null
+                toast(getString(R.string.musica_no_disponible))
+                return
+            }
+            AhoraCompartido.ESPERAR -> {
+                if (compartidoPendiente == null) toast("Abriendo Música en cuanto cargue el foro…")
+                compartidoPendiente = texto
+                return
+            }
+            AhoraCompartido.ENTREGAR -> {}
         }
         compartidoPendiente = null
         val destino = EntradaCompartida.destino(
@@ -3974,7 +3985,7 @@ class MainActivity : AppCompatActivity() {
                 recargarListaPorFiltros()
             },
             tieneCuentaMusica = { alSaber -> musica.tieneCuenta(alSaber) },
-            onBorrarCuentaMusica = { musica.borrarMiCuenta() }
+            onBorrarCuentaMusica = { alTerminar -> musica.borrarMiCuenta(alTerminar) }
         )
         // Comunidad y apoyo: enlaces EXTERNOS (Telegram / navegador), nunca la capa web.
         optionsPanel.findViewById<View>(R.id.opt_telegram).setOnClickListener {
@@ -8211,7 +8222,12 @@ class MainActivity : AppCompatActivity() {
         // gente ya habría actualizado y no vería las notas nunca. Con tope, para que un remoto
         // caído no retrase nada.
         RemoteConfig.cuandoEsteFresca(3_000, skinHandler) {
-            runOnUiThread { pintarAviso(); pintarPestanas() }   // la config fresca puede traer/quitar +18
+            runOnUiThread {
+                pintarAviso(); pintarPestanas()   // la config fresca puede traer/quitar +18 (y Música)
+                // Lo compartido en frío que esperaba a saber si Música está encendida: ahora se sabe.
+                configMusicaFresca = true
+                compartidoPendiente?.let { recibirCompartido(it) }
+            }
             EmoticonosRemotos.sincronizar(this, RemoteConfig.cached(this))   // y emoticonos nuevos
             actualizador.comprobar { nueva ->
                 if (nueva == null) return@comprobar

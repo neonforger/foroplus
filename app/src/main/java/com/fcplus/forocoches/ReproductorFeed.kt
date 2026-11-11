@@ -1,7 +1,11 @@
 package com.fcplus.forocoches
 
+import android.content.Context
 import android.media.AudioAttributes
+import android.media.AudioFocusRequest
+import android.media.AudioManager
 import android.media.MediaPlayer
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.view.Gravity
@@ -43,12 +47,7 @@ class AudioMediaPlayer : AudioFragmento {
 
     override fun preparar(url: String, alListo: () -> Unit, alAcabar: () -> Unit, alFallar: () -> Unit) {
         val m = mp ?: return
-        m.setAudioAttributes(
-            AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_MEDIA)
-                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                .build()
-        )
+        m.setAudioAttributes(ATRIBUTOS)
         m.setOnPreparedListener { listo = true; it.start(); alListo() }
         m.setOnCompletionListener { alAcabar() }
         m.setOnErrorListener { _, _, _ -> alFallar(); true }
@@ -78,6 +77,60 @@ class AudioMediaPlayer : AudioFragmento {
         m.setOnErrorListener(null)
         try { m.release() } catch (_: Exception) {}
     }
+
+    companion object {
+        /** Música: los mismos para el MediaPlayer y para pedir el foco ([FocoAudioSistema]). */
+        val ATRIBUTOS: AudioAttributes = AudioAttributes.Builder()
+            .setUsage(AudioAttributes.USAGE_MEDIA)
+            .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+            .build()
+    }
+}
+
+/**
+ * El foco de audio del sistema para el fragmento de Deezer (el único audio propio: Spotify y YouTube
+ * van en su WebView). Sin pedirlo, el fragmento sonaba encima de otra música o de una llamada, y no
+ * se callaba cuando otra app empezaba a sonar.
+ */
+interface FocoAudio {
+    /** Pide el foco; [alPerder] si otra app se lo lleva (llamada, otra música). false = denegado. */
+    fun pedir(alPerder: () -> Unit): Boolean
+    fun soltar()
+}
+
+/** [FocoAudio] con el AudioManager. API 26+ con AudioFocusRequest; Android 7 con la llamada vieja. */
+class FocoAudioSistema(ctx: Context) : FocoAudio {
+    private val am = ctx.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+    private var peticion: AudioFocusRequest? = null
+    private var oyente: AudioManager.OnAudioFocusChangeListener? = null
+
+    override fun pedir(alPerder: () -> Unit): Boolean {
+        soltar()
+        // Perderlo del todo o por un rato (una llamada) pausa; "bajar el volumen" lo hace el sistema solo.
+        val o = AudioManager.OnAudioFocusChangeListener { c ->
+            if (c == AudioManager.AUDIOFOCUS_LOSS || c == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT) alPerder()
+        }
+        oyente = o
+        val r = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val p = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+                .setAudioAttributes(AudioMediaPlayer.ATRIBUTOS)
+                .setOnAudioFocusChangeListener(o, Handler(Looper.getMainLooper()))
+                .build()
+            peticion = p
+            am.requestAudioFocus(p)
+        } else {
+            @Suppress("DEPRECATION")
+            am.requestAudioFocus(o, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN)
+        }
+        return r == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+    }
+
+    override fun soltar() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) peticion?.let { am.abandonAudioFocusRequest(it) }
+        else oyente?.let { @Suppress("DEPRECATION") am.abandonAudioFocus(it) }
+        peticion = null
+        oyente = null
+    }
 }
 
 /**
@@ -105,7 +158,8 @@ class ReproductorFeed(
     private val fragmento: (Long) -> String? = { BuscadorDeezer.fragmento(it) },
     private val segundoPlano: (() -> Unit) -> Unit = { Thread(it).start() },
     private val crearAudio: () -> AudioFragmento = { AudioMediaPlayer() },
-    private val avisar: (String) -> Unit = { Toast.makeText(act, it, Toast.LENGTH_SHORT).show() }
+    private val avisar: (String) -> Unit = { Toast.makeText(act, it, Toast.LENGTH_SHORT).show() },
+    private val foco: FocoAudio = FocoAudioSistema(act)
 ) {
     private var idActual: String? = null
     private var hueco: FrameLayout? = null
@@ -172,6 +226,7 @@ class ReproductorFeed(
         pulso = null
         audio?.soltar()
         audio = null
+        foco.soltar()
         embed?.let { e ->
             e.alTerminar = null
             e.alFallar = null
@@ -213,10 +268,13 @@ class ReproductorFeed(
             parar()
             return
         }
+        // Sin el foco (una llamada en curso, otra app que no lo suelta) no se empieza a sonar encima.
+        if (!pedirFoco(boton)) { parar(); return }
         val a = crearAudio()
         audio = a
         boton.setOnClickListener {
             if (a.sonando()) a.pausar() else {
+                if (!pedirFoco(boton)) return@setOnClickListener
                 a.reanudar()
                 if (pulso == null) empezarPulso(a, barra)  // volver a darle tras acabar: la barra se mueve otra vez
             }
@@ -249,6 +307,18 @@ class ReproductorFeed(
             },
             alFallar = { if (audio === a) { avisar(act.getString(R.string.pub_sin_fragmento)); parar() } }
         )
+    }
+
+    /**
+     * Pide el foco de audio. Si otra app se lo lleva (llamada, otra música), el fragmento se pausa y el
+     * botón vuelve a "escuchar"; darle otra vez lo pide de nuevo. Se suelta en [parar].
+     */
+    private fun pedirFoco(boton: ImageView): Boolean = foco.pedir {
+        handler.post {
+            val a = audio ?: return@post
+            if (a.sonando()) a.pausar()
+            pintarBoton(boton, a)
+        }
     }
 
     private fun pintarBoton(boton: ImageView, a: AudioFragmento, acabado: Boolean = false) {

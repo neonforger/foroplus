@@ -4,6 +4,9 @@ import android.content.Intent
 
 enum class DestinoCompartido { SOLO_HOJA, MUSICA_EN_SU_SITIO, MUSICA_APILADA }
 
+/** Qué se hace con lo compartido AHORA: avisar de que Música no está, guardarlo para luego o entregarlo. */
+enum class AhoraCompartido { AVISAR_APAGADO, ESPERAR, ENTREGAR }
+
 /**
  * "Compartir en Música": lo que otra app (YouTube, Spotify, WhatsApp…) comparte con ForoPlus por el
  * menú de Android. Lo recibe [GuardarEnMusica], que solo declara `SEND` de `text/plain`, lo acota
@@ -56,6 +59,22 @@ object EntradaCompartida {
         if (accion != Intent.ACTION_MAIN || categorias?.contains(Intent.CATEGORY_BROWSABLE) == true) return null
         val t = extra?.trim().orEmpty()
         return if (t.isEmpty()) null else recortar(t)
+    }
+
+    /**
+     * ¿Qué se hace con lo compartido en este momento? MainActivity lo aparta en `compartidoPendiente`
+     * con ESPERAR y lo vuelve a preguntar cuando cambia algo (config fresca, pestañas pintadas).
+     * - Servidor apagado según la config, pero esa config aún no es la de este arranque
+     *   ([configFresca] false: arranque en frío, sin config guardada o con una vieja): ESPERAR. Antes
+     *   se avisaba "no disponible" y se tiraba lo compartido aunque la config buena llegara un segundo
+     *   después con Música encendida.
+     * - Apagado con la config ya fresca (o el tope de espera agotado): AVISAR_APAGADO.
+     * - Encendido pero sin la pestaña de Música todavía (el índice del foro no ha cargado): ESPERAR.
+     */
+    fun ahora(servidorActivo: Boolean, configFresca: Boolean, hayPestana: Boolean): AhoraCompartido = when {
+        !servidorActivo -> if (configFresca) AhoraCompartido.AVISAR_APAGADO else AhoraCompartido.ESPERAR
+        !hayPestana -> AhoraCompartido.ESPERAR
+        else -> AhoraCompartido.ENTREGAR
     }
 
     /**

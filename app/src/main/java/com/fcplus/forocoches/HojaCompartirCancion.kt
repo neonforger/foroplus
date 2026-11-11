@@ -31,8 +31,10 @@ import androidx.core.view.WindowInsetsCompat
  *   [OrigenCancion.Enlace].
  * - El tope diario no se mira antes ni se cuenta: la hoja se abre siempre y solo el 429 `limite`
  *   del servidor lo explica (dueño: los topes no se anuncian).
- * - Si el servidor no convierte la canción a tiempo, igualmente contesta (espera de 8 s en él);
- *   aquí cualquier error devuelve el botón a "Compartir", nunca se queda en "Publicando…".
+ * - El servidor contesta en cuanto guarda la publicación (201), sin esperar a la conversión a
+ *   Spotify/YouTube: aquí no hay nada que esperar. La nueva sale arriba del feed al momento
+ *   ([alPublicar]); a los demás les sale cuando se convierte o pasados 8 s. Cualquier error
+ *   devuelve el botón a "Compartir", nunca se queda en "Publicando…".
  *
  * Los parámetros con valor por defecto son las costuras de los tests (red, hilo, espera).
  *
@@ -76,6 +78,10 @@ class HojaCompartirCancion(
 
     fun mostrar(enlaceInicial: String? = null) {
         if (dialog != null) return
+        // Una hoja reabierta empieza limpia: un "Publicando…" de la vez anterior no la deja bloqueada.
+        publicando = false
+        eleccion = null
+        resultados = emptyList()
         val d = Dialog(act, R.style.FC_PantallaCompleta)
         val v = LayoutInflater.from(d.context).inflate(R.layout.hoja_compartir_cancion, null)
         vista = v

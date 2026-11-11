@@ -41,19 +41,27 @@ class ReproductorFeedTest {
         override fun soltar() { soltado = true }
     }
 
-    private class Montaje(val r: ReproductorFeed, val abiertas: MutableList<String>, val avisos: MutableList<String>,
-                          val audios: MutableList<FakeAudio>, val act: AppCompatActivity)
+    private class FakeFoco(var concede: Boolean = true) : FocoAudio {
+        var pedidos = 0
+        var tiene = false
+        var alPerder: () -> Unit = {}
+        override fun pedir(alPerder: () -> Unit): Boolean { pedidos++; this.alPerder = alPerder; tiene = concede; return concede }
+        override fun soltar() { tiene = false }
+    }
 
-    private fun montar(fragmento: (Long) -> String? = { "https://cdnt-preview.dzcdn.net/x.mp3" }): Montaje {
+    private class Montaje(val r: ReproductorFeed, val abiertas: MutableList<String>, val avisos: MutableList<String>,
+                          val audios: MutableList<FakeAudio>, val act: AppCompatActivity, val foco: FakeFoco)
+
+    private fun montar(foco: FakeFoco = FakeFoco(), fragmento: (Long) -> String? = { "https://cdnt-preview.dzcdn.net/x.mp3" }): Montaje {
         val ctrl = Robolectric.buildActivity(AppCompatActivity::class.java)
         ctrl.get().setTheme(R.style.Theme_FCForocoches)
         ctrl.setup()
         val ab = ArrayList<String>(); val av = ArrayList<String>(); val au = ArrayList<FakeAudio>()
         val r = ReproductorFeed(
             ctrl.get(), { ab.add(it) }, fragmento, segundoPlano = { it() },
-            crearAudio = { FakeAudio().also { a -> au.add(a) } }, avisar = { av.add(it) }
+            crearAudio = { FakeAudio().also { a -> au.add(a) } }, avisar = { av.add(it) }, foco = foco
         )
-        return Montaje(r, ab, av, au, ctrl.get())
+        return Montaje(r, ab, av, au, ctrl.get(), foco)
     }
 
     private fun hueco(m: Montaje) = FrameLayout(m.act).also { it.visibility = View.GONE }
@@ -214,6 +222,30 @@ class ReproductorFeedTest {
         assertTrue(m.r.pulsando())
         m.audios[0].alAcabar()
         assertTrue(!m.r.pulsando())
+    }
+
+    @Test
+    fun `el fragmento pide el foco de audio, lo suelta al parar y se pausa si otra app se lo lleva`() {
+        val m = montar()
+        m.r.tocar(item("1", deezer = 9), hueco(m))
+        assertEquals(1, m.foco.pedidos)
+        assertTrue(m.foco.tiene)
+        val a = m.audios[0]
+        a.suena = true  // el MediaPlayer arranca solo al estar listo
+        a.alListo()
+        m.foco.alPerder()  // una llamada entrante
+        org.robolectric.shadows.ShadowLooper.idleMainLooper()
+        assertTrue("al perder el foco el fragmento se pausa", !a.suena)
+        m.r.parar()
+        assertTrue("parar suelta el foco", !m.foco.tiene)
+    }
+
+    @Test
+    fun `sin el foco de audio el fragmento no empieza a sonar`() {
+        val m = montar(foco = FakeFoco(concede = false))
+        m.r.tocar(item("1", deezer = 9), hueco(m))
+        assertTrue(m.audios.isEmpty())
+        assertNull(m.r.sonando())
     }
 
     // ── La caja del vídeo de YouTube: 16:9 a todo el ancho y nunca menos de 200 dp (spec). ──
