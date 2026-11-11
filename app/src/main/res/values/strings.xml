@@ -12,4 +12,7 @@
     <string name="pub_guardar">Guardar</string>
     <string name="pub_guardar_desc">Guardar la canción en mis playlists</string>
     <string name="pub_menu_desc">Más opciones de la publicación</string>
+    <string name="pub_pausar">Pausar</string>
+    <string name="pub_entera_spotify">Entera en Spotify</string>
+    <string name="pub_sin_fragmento">No se ha podido cargar el fragmento. Prueba otra vez en unos segundos.</string>
 </resources>
