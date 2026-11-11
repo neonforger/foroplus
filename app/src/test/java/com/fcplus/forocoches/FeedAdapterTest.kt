@@ -222,7 +222,7 @@ class FeedAdapterTest {
     private class ConSpotify(
         val rv: RecyclerView, val ad: FeedAdapter,
         val montados: MutableList<String>, val soltados: MutableList<android.widget.FrameLayout>,
-        val listos: MutableList<() -> Unit>
+        val listos: MutableList<(Boolean) -> Unit>, val salidas: MutableList<String>
     )
 
     private fun montarConSpotify(): ConSpotify {
@@ -231,17 +231,18 @@ class FeedAdapterTest {
         ctrl.setup()
         val a = ctrl.get()
         val mon = ArrayList<String>(); val sol = ArrayList<android.widget.FrameLayout>()
-        val lis = ArrayList<() -> Unit>()
+        val lis = ArrayList<(Boolean) -> Unit>(); val sal = ArrayList<String>()
         val ad = FeedAdapter(
             alCorazon = {}, alPlay = { _, _ -> }, alMenu = { _, _ -> }, alAutorCorazones = {},
-            montarSpotify = { item, c, alListo -> mon.add(item.id); c.addView(View(a)); lis.add(alListo) },
+            montarSpotify = { item, c, marcador -> mon.add(item.id); c.addView(View(a)); lis.add(marcador) },
+            alSalirDePantalla = { sal.add(it) },
             soltarSpotify = { c -> sol.add(c); c.removeAllViews() }
         )
         val rv = RecyclerView(a)
         rv.layoutManager = LinearLayoutManager(a)
         rv.adapter = ad
         a.setContentView(rv)
-        return ConSpotify(rv, ad, mon, sol, lis)
+        return ConSpotify(rv, ad, mon, sol, lis, sal)
     }
 
     private fun ConSpotify.medir() {
@@ -278,7 +279,7 @@ class FeedAdapterTest {
         m.medir()
         val f = m.fila(0)
         val alto = f.findViewById<View>(R.id.pub_marcador).height
-        m.listos[0]()
+        m.listos[0](false)
         m.medir()
         assertEquals(View.INVISIBLE, f.findViewById<View>(R.id.pub_marcador).visibility)
         assertEquals(alto, f.findViewById<View>(R.id.pub_marcador).height)
@@ -322,5 +323,28 @@ class FeedAdapterTest {
         m.medir()
         assertEquals(View.GONE, m.fila(0).findViewById<View>(R.id.pub_play).visibility)
         assertEquals(listOf(d.id), m.montados)
+    }
+
+    @Test fun `si el reproductor se vuelve a montar el marcador vuelve a verse`() {
+        val m = montarConSpotify()
+        m.ad.poner(listOf(item("1", spotify = pista)), ahora)
+        m.medir()
+        m.listos[0](false)
+        m.listos[0](true)
+        assertEquals(View.VISIBLE, m.fila(0).findViewById<View>(R.id.pub_marcador).visibility)
+    }
+
+    @Test fun `si la cancion gana su spotify se para lo que sonaba de ella antes de cambiar la caja`() {
+        val m = montarConSpotify()
+        val sinSpotify = item("1", spotify = null, youtube = "https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+        m.ad.poner(listOf(sinSpotify), ahora)
+        m.medir()
+        assertTrue(m.salidas.isEmpty())
+        // El conversor le pone Spotify: misma publicación, repintado parcial.
+        m.ad.poner(listOf(sinSpotify.copy(cancion = sinSpotify.cancion.copy(spotify = pista))), ahora)
+        m.medir()
+        assertEquals(listOf("1"), m.salidas)
+        assertEquals(listOf("1"), m.montados)
+        assertEquals(View.GONE, m.fila(0).findViewById<View>(R.id.pub_play).visibility)
     }
 }

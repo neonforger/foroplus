@@ -49,7 +49,7 @@ class ReproductorFeedTest {
         override fun soltar() { tiene = false }
     }
 
-    private class Montaje(val r: ReproductorFeed, val pausados: MutableList<EmbedView>, val abiertas: MutableList<String>, val avisos: MutableList<String>,
+    private class Montaje(val r: ReproductorFeed, val pausados: MutableList<EmbedView>, val recargados: MutableList<EmbedView>, val abiertas: MutableList<String>, val avisos: MutableList<String>,
                           val audios: MutableList<FakeAudio>, val act: AppCompatActivity, val foco: FakeFoco)
 
     private fun montar(foco: FakeFoco = FakeFoco(), fragmento: (Long) -> String? = { "https://cdnt-preview.dzcdn.net/x.mp3" }): Montaje {
@@ -57,13 +57,13 @@ class ReproductorFeedTest {
         ctrl.get().setTheme(R.style.Theme_FCForocoches)
         ctrl.setup()
         val ab = ArrayList<String>(); val av = ArrayList<String>(); val au = ArrayList<FakeAudio>()
-        val pa = ArrayList<EmbedView>()
+        val pa = ArrayList<EmbedView>(); val re = ArrayList<EmbedView>()
         val r = ReproductorFeed(
             ctrl.get(), { ab.add(it) }, fragmento, segundoPlano = { it() },
             crearAudio = { FakeAudio().also { a -> au.add(a) } }, avisar = { av.add(it) }, foco = foco,
-            pausarEmbed = { pa.add(it) }
+            pausarEmbed = { pa.add(it) }, recargar = { re.add(it) }
         )
-        return Montaje(r, pa, ab, av, au, ctrl.get(), foco)
+        return Montaje(r, pa, re, ab, av, au, ctrl.get(), foco)
     }
 
     private fun hueco(m: Montaje) = FrameLayout(m.act).also { it.visibility = View.GONE }
@@ -339,17 +339,53 @@ class ReproductorFeedTest {
         assertEquals("Y", m.r.sonando())
     }
 
-    @Test fun `la tarjeta de spotify que sale de la pantalla se pausa`() {
+    @Test fun `la tarjeta de spotify que sale de la pantalla se suelta sin recargar la pista por JS`() {
         val m = montar()
         val a = FrameLayout(m.act)
-        m.r.montarSpotify(item("A", spotify = sp), a) {}
+        val marcador = ArrayList<Boolean>()
+        m.r.montarSpotify(item("A", spotify = sp), a) { marcador.add(it) }
         val ea = embeds(a)[0]
         ea.alSonar!!.invoke(true)
         m.r.pararSi("B")
-        assertTrue(m.pausados.isEmpty())
+        org.robolectric.shadows.ShadowLooper.idleMainLooper()
+        assertTrue(m.pausados.isEmpty() && m.recargados.isEmpty())
         m.r.pararSi("A")
-        assertTrue(ea in m.pausados)
         assertNull(m.r.sonando())
+        // En el frame siguiente (pararSi llega durante el layout de la lista).
+        org.robolectric.shadows.ShadowLooper.idleMainLooper()
+        assertTrue("no se pausa por JS: eso recarga la pista con red", m.pausados.isEmpty())
+        assertEquals(listOf(ea), m.recargados)
+        assertEquals("el marcador vuelve hasta que el nuevo se vea", listOf(true), marcador)
+    }
+
+    @Test fun `un spotify a pelo solo se calla si el usuario lo toco`() {
+        val m = montar()
+        val a = FrameLayout(m.act); val b = FrameLayout(m.act)
+        m.r.montarSpotify(item("A", spotify = sp), a) {}
+        m.r.montarSpotify(item("B", spotify = sp), b) {}
+        val ea = embeds(a)[0]; val eb = embeds(b)[0]
+        ea.enPlano = true; ea.enUso = true  // a pelo y tocado: puede estar sonando
+        eb.enPlano = true                    // a pelo sin tocar: seguro que no
+        m.r.parar()
+        assertEquals(listOf(ea), m.pausados)
+        // Y cuando suena otro Spotify con la API, también se calla al tocado.
+        ea.enUso = true
+        m.pausados.clear()
+        val c = FrameLayout(m.act)
+        m.r.montarSpotify(item("C", spotify = sp), c) {}
+        embeds(c)[0].alSonar!!.invoke(true)
+        assertEquals(listOf(ea), m.pausados)
+    }
+
+    @Test fun `la pagina de la tarjeta tiene plan B si la API de Spotify no carga`() {
+        val m = montar()
+        val e = EmbedView(m.act).apply { tarjetaSpotify = true }
+        val html = e.paginaParaTest(EmbedSpec("spotify", sp, "4uLU6hMCjMI75M1A2tKUQC"))
+        assertTrue("onerror del script de la API", html.contains("iframe-api/v1\" async onerror=\"plano()\""))
+        assertTrue("tope de espera al ready", html.contains("setTimeout(function(){ if(!listo) plano(); }, 8000)"))
+        assertTrue("el plan B es el reproductor a pelo de la misma pista",
+            html.contains("https://open.spotify.com/embed/track/4uLU6hMCjMI75M1A2tKUQC"))
+        assertTrue("y avisa de que ya se ve", html.contains("AndroidEmbed.onPlano()") && html.contains("AndroidEmbed.onListo()"))
     }
 
     @Test fun `soltar todo libera los spotify montados`() {

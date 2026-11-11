@@ -60,7 +60,7 @@ class FeedController(
         alMenu = { item, ancla -> menu(item, ancla) },
         alAutorCorazones = { quienes(it) },
         alSalirDePantalla = { reproductor.pararSi(it) },
-        montarSpotify = { item, contenedor, alListo -> reproductor.montarSpotify(item, contenedor, alListo) },
+        montarSpotify = { item, contenedor, marcador -> reproductor.montarSpotify(item, contenedor, marcador) },
         soltarSpotify = { reproductor.soltarSpotify(it) }
     )
 

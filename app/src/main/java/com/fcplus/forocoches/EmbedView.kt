@@ -68,7 +68,7 @@ class EmbedView(context: Context) : FrameLayout(context) {
      * decidir a cuál de los dos hay que salvarle la vida al reciclar el mensaje.
      */
     var enUso = false
-        private set
+        internal set
 
     /** Qué embed es, para poder reengancharlo al mensaje correcto cuando vuelva a pantalla. */
     var clave: String = ""
@@ -176,6 +176,7 @@ class EmbedView(context: Context) : FrameLayout(context) {
     fun bind(spec: EmbedSpec) {
         this.spec = spec
         enUso = false
+        enPlano = false
         release()
         removeAllViews()
         if (!tarjetaSpotify) addView(buildLoading())
@@ -225,9 +226,31 @@ class EmbedView(context: Context) : FrameLayout(context) {
         // Y `loadUri` después: también medido, tras un pause() de la API el play del propio
         // reproductor se queda MUERTO (tocarlo no suena ni manda nada); recargar la misma pista lo
         // rearma (vuelve al principio, que en un fragmento de 30 s no se echa de menos).
+        // Sin controlador ([enPlano]: la iFrame API no cargó y va el iframe a pelo) no hay pause():
+        // se recarga el iframe. Y no `onPause()` del WebView: lo congela entero y el siguiente toque
+        // en su play ya no sonaría hasta despertarlo a mano; recargar calla y deja la tarjeta viva.
         web?.evaluateJavascript(
-            "try{if(window.ctl){ctl.pause();pausado=true;rearmado=true;ctl.loadUri(uri);}}catch(e){}", null
+            "try{if(window.ctl){ctl.pause();pausado=true;rearmado=true;ctl.loadUri(uri);}" +
+                "else{var f=document.querySelector('iframe');if(f)f.src=f.src;}}catch(e){}", null
         )
+    }
+
+    /**
+     * Solo con [tarjetaSpotify]: la iFrame API no cargó (sin red, bloqueada) o no dijo `ready` a
+     * tiempo, y la página puso el reproductor de Spotify A PELO (se oye, pero no avisa de cuándo
+     * suena). Quien coordina entonces solo puede callarlo si el usuario lo ha tocado ([enUso]).
+     */
+    var enPlano = false
+        internal set
+
+    /**
+     * Vuelve a montar el reproductor desde cero (WebView nuevo 300 ms después de estar en la
+     * ventana). Para una tarjeta que sonaba y sale de la pantalla: desenganchada no hay nada que
+     * oír ni enseñar, así que en vez de recargar la pista por JS (red sin que nadie mire) se suelta
+     * el WebView, y el nuevo solo se crea si la fila vuelve.
+     */
+    fun recargar() {
+        spec?.let { bind(it) }
     }
 
     /** Lo contrario de [pausar]. NO vuelve a dar al play: solo deja el reproductor operativo. */
@@ -460,13 +483,21 @@ class EmbedView(context: Context) : FrameLayout(context) {
         /** La página avisa de si el vídeo está sonando. Ver [reproduciendo]. */
         @JavascriptInterface
         fun onEstado(activo: Boolean) {
-            post { reproduciendo = activo; respondio = true; alSonar?.invoke(activo) }
+            // alSonar solo en la tarjeta de Spotify: un embed de un hilo (o el YouTube de Música)
+            // también llama aquí, y no debe mover al coordinador del feed.
+            post { reproduciendo = activo; respondio = true; if (tarjetaSpotify) alSonar?.invoke(activo) }
         }
 
-        /** El reproductor de Spotify de una [tarjetaSpotify] ya se ve (evento `ready`). */
+        /** El reproductor de Spotify de una [tarjetaSpotify] ya se ve (evento `ready`, o el plan B a pelo). */
         @JavascriptInterface
         fun onListo() {
-            post { alListo?.invoke() }
+            post { if (tarjetaSpotify) alListo?.invoke() }
+        }
+
+        /** La [tarjetaSpotify] cayó al reproductor a pelo: ver [enPlano]. */
+        @JavascriptInterface
+        fun onPlano() {
+            post { if (tarjetaSpotify) enPlano = true }
         }
 
         /** El vídeo de YouTube ha llegado al final (la página ya evita avisar dos veces). */
@@ -539,6 +570,9 @@ class EmbedView(context: Context) : FrameLayout(context) {
         else -> "https://www.youtube.com"
     }
 
+    /** Solo para los tests: la página que cargaría este embed. */
+    internal fun paginaParaTest(spec: EmbedSpec): String = pageHtml(spec)
+
     /** HTML mínimo que monta el embed OFICIAL de cada plataforma + reporte de altura. */
     private fun pageHtml(spec: EmbedSpec): String {
         val body = when (spec.kind) {
@@ -577,16 +611,31 @@ class EmbedView(context: Context) : FrameLayout(context) {
                 // su play ya no hace nada, ni seek(0) lo revive. Solo loadUri de la misma pista lo
                 // rearma (con eso el siguiente toque suena desde el principio). Así que el final
                 // cuenta como pausa (para que la app no crea que sigue sonando) y se recarga una vez.
-                if (tarjetaSpotify) """<div id="sp"></div>
+                // Plan B (plano): si el script de la API falla (onerror) o no hay `ready` en 8 s, se
+                // pone el iframe a pelo con la misma pista: se oye igual, solo que sin avisar de
+                // cuándo suena (ver [enPlano]). Sin esto la tarjeta se quedaba en el marcador, sin
+                // ningún play que tocar.
+                if (tarjetaSpotify) """<div id="caja"><div id="sp"></div></div>
                    <script>
-                     var ctl=null, pausado=true, rearmado=false, uri='spotify:track:$id';
+                     var ctl=null, pausado=true, rearmado=false, listo=false, plan=false, uri='spotify:track:$id';
+                     function plano(){
+                       if(listo||plan) return;
+                       plan=true; ctl=null;
+                       document.getElementById('caja').innerHTML='<iframe src="https://open.spotify.com/embed/track/$id" frameborder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" style="width:100%;height:${ReproductorFeed.ALTO_TARJETA_SPOTIFY}px;border:0"></iframe>';
+                       try{AndroidEmbed.onPlano();}catch(e){}
+                       try{AndroidEmbed.onListo();}catch(e){}
+                     }
+                     setTimeout(function(){ if(!listo) plano(); }, $ESPERA_API_SPOTIFY_MS);
                      window.onSpotifyIframeApiReady=function(api){
+                       if(plan) return;
                        api.createController(document.getElementById('sp'),
                          {uri:uri, width:'100%', height:${ReproductorFeed.ALTO_TARJETA_SPOTIFY}},
                          function(c){
+                           if(plan) return;
                            ctl=c;
-                           c.addListener('ready',function(){try{AndroidEmbed.onListo();}catch(e){}});
+                           c.addListener('ready',function(){if(plan)return;listo=true;try{AndroidEmbed.onListo();}catch(e){}});
                            c.addListener('playback_update',function(e){
+                             if(plan) return;
                              var d=(e&&e.data)||{};
                              var fin=d.duration>0&&d.position>=d.duration-500;
                              var p=!!d.isPaused||fin||!(e&&e.data);
@@ -597,7 +646,7 @@ class EmbedView(context: Context) : FrameLayout(context) {
                          });
                      };
                    </script>
-                   <script src="https://open.spotify.com/embed/iframe-api/v1" async></script>"""
+                   <script src="https://open.spotify.com/embed/iframe-api/v1" async onerror="plano()"></script>"""
                 else """<iframe src="https://open.spotify.com/embed/track/$id" frameborder="0"
                    allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
                    style="width:100%;height:${ALTO_SPOTIFY}px;border:0"></iframe>"""
@@ -701,5 +750,8 @@ class EmbedView(context: Context) : FrameLayout(context) {
     private companion object {
         /** Alto fijo del reproductor compacto de Spotify (CSS px). */
         const val ALTO_SPOTIFY = 152
+
+        /** Lo que se espera al `ready` de la iFrame API de Spotify antes de poner el reproductor a pelo. */
+        const val ESPERA_API_SPOTIFY_MS = 8000
     }
 }

@@ -169,15 +169,20 @@ class ReproductorFeed(
     private val avisar: (String) -> Unit = { Toast.makeText(act, it, Toast.LENGTH_SHORT).show() },
     private val foco: FocoAudio = FocoAudioSistema(act),
     /** Pausa un reproductor de Spotify sin desmontarlo. Los tests miran a quién se le pide. */
-    private val pausarEmbed: (EmbedView) -> Unit = { it.pausarSpotify() }
+    private val pausarEmbed: (EmbedView) -> Unit = { it.pausarSpotify() },
+    /** Vuelve a montar un reproductor de Spotify desde cero ([EmbedView.recargar]). Los tests lo cuentan. */
+    private val recargar: (EmbedView) -> Unit = { it.recargar() }
 ) {
     private var idActual: String? = null
     private var hueco: FrameLayout? = null
     private var embed: EmbedView? = null
     private var audio: AudioFragmento? = null
 
-    /** Los reproductores de Spotify montados en tarjetas, con el id de su publicación. */
-    private val spotifys = LinkedHashMap<EmbedView, String>()
+    /** Un reproductor de Spotify montado: de qué publicación es y cómo enseñar o esconder su marcador. */
+    private class Montado(val id: String, val marcador: (Boolean) -> Unit)
+
+    /** Los reproductores de Spotify montados en tarjetas. */
+    private val spotifys = LinkedHashMap<EmbedView, Montado>()
 
     /** El de Spotify que suena (lo dijo su página), o null. */
     private var spotifySonando: EmbedView? = null
@@ -238,20 +243,21 @@ class ReproductorFeed(
 
     /**
      * Monta en [contenedor] el reproductor de Spotify de [item] (la tarjeta entera, ver la clase).
-     * [alListo] cuando ya se ve, para que el adapter esconda el marcador. false si [item] no tiene
-     * una pista de Spotify válida (entonces no se monta nada).
+     * [marcador] dice al adapter si enseñar el marcador: false cuando el reproductor ya se ve, true
+     * cuando se vuelve a montar ([pararSi]). false si [item] no tiene una pista de Spotify válida
+     * (entonces no se monta nada).
      */
-    fun montarSpotify(item: ItemFeed, contenedor: FrameLayout, alListo: () -> Unit): Boolean {
+    fun montarSpotify(item: ItemFeed, contenedor: FrameLayout, marcador: (Boolean) -> Unit): Boolean {
         val f = fuente(item) as? FuenteFeed.Spotify ?: return false
         soltarSpotify(contenedor)
         val e = EmbedView(act)
         e.tarjetaSpotify = true
-        e.alListo = alListo
+        e.alListo = { marcador(false) }
         val id = item.id
         e.alSonar = { suena -> if (spotifys.containsKey(e)) suenaSpotify(e, id, suena) }
         contenedor.addView(e, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         contenedor.visibility = View.VISIBLE
-        spotifys[e] = id
+        spotifys[e] = Montado(id, marcador)
         e.bind(EmbedSpec("spotify", "https://open.spotify.com/track/${f.id}", f.id))
         return true
     }
@@ -289,6 +295,7 @@ class ReproductorFeed(
         // los de la pantalla en cada cambio de panel sería red tirada.
         pararPropio()
         spotifySonando?.takeIf { it !== e }?.let(pausarEmbed)
+        pausarPlanos(excepto = e)
         spotifySonando = e
         idActual = id
     }
@@ -300,8 +307,27 @@ class ReproductorFeed(
     fun parar() {
         spotifySonando?.let(pausarEmbed)
         spotifySonando = null
+        pausarPlanos(excepto = null)
         pararPropio()
         idActual = null
+    }
+
+    /**
+     * Los Spotify a pelo ([EmbedView.enPlano]: la iFrame API no cargó) no avisan de cuándo suenan:
+     * se calla a los que el usuario ha TOCADO, que son los únicos que pueden estar sonando.
+     */
+    private fun pausarPlanos(excepto: EmbedView?) {
+        spotifys.keys.filter { it !== excepto && it.enPlano && it.enUso }.forEach {
+            pausarEmbed(it)
+            it.enUso = false
+        }
+    }
+
+    /** Vuelve a montar [e] desde cero, con el marcador a la vista hasta que el nuevo se vea. */
+    private fun recargarEmbed(e: EmbedView) {
+        val m = spotifys[e] ?: return
+        m.marcador(true)
+        recargar(e)
     }
 
     /** Desmonta el YouTube o el fragmento de Deezer del `pub_hueco`, si hay. */
@@ -324,8 +350,20 @@ class ReproductorFeed(
         hueco = null
     }
 
-    /** La tarjeta [id] sale de la ventana: solo para si es la que suena (no callar la que se ve). */
+    /**
+     * La tarjeta [id] sale de la ventana: solo para si es la que suena (no callar la que se ve).
+     *
+     * Si es un Spotify (o uno a pelo que se tocó), no se le pausa por JS, que RECARGA la pista
+     * ([EmbedView.pausarSpotify]): eso sería red para una tarjeta que nadie ve. Se suelta su WebView
+     * y el nuevo se crea solo si la fila vuelve a la ventana ([EmbedView.recargar]). En el frame
+     * siguiente: esto llega desde onViewDetachedFromWindow, que corre durante el layout de la lista.
+     */
     fun pararSi(id: String) {
+        val fuera = spotifys.filter { (e, m) -> m.id == id && (e === spotifySonando || (e.enPlano && e.enUso)) }.keys
+        if (fuera.isNotEmpty()) {
+            if (spotifySonando in fuera) { spotifySonando = null; idActual = null }
+            fuera.forEach { e -> handler.post { recargarEmbed(e) } }
+        }
         if (idActual == id) parar()
     }
 

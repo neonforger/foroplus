@@ -18,7 +18,8 @@ import androidx.recyclerview.widget.RecyclerView
  * reproductor montado debe seguir sonando. Solo se vacía cuando la fila se recicla
  * ([onViewRecycled]) o cuando un bind completo le pone otra publicación.
  *
- * [alSalirDePantalla] avisa con el id de la publicación cuando su fila sale de la ventana; no
+ * [alSalirDePantalla] avisa con el id de la publicación cuando su fila sale de la ventana (y cuando
+ * la publicación cambia de fuente, ver [cambiarCaja]); no
  * toques vistas desde ahí (es para que A5 pare el reproductor).
  *
  * Con Spotify ([ReproductorFeed.tarjeta]) la caja ES el reproductor de Spotify (A9): sin nuestro
@@ -33,7 +34,7 @@ class FeedAdapter(
     private val alMenu: (ItemFeed, View) -> Unit,
     private val alAutorCorazones: (ItemFeed) -> Unit,
     private val alSalirDePantalla: (id: String) -> Unit = {},
-    private val montarSpotify: (ItemFeed, FrameLayout, alListo: () -> Unit) -> Unit = { _, _, _ -> },
+    private val montarSpotify: (ItemFeed, FrameLayout, marcador: (Boolean) -> Unit) -> Unit = { _, _, _ -> },
     private val soltarSpotify: (FrameLayout) -> Unit = {}
 ) : RecyclerView.Adapter<FeedAdapter.Fila>() {
 
@@ -105,7 +106,7 @@ class FeedAdapter(
         h.artista.text = pub.cancion.artista.orEmpty()
         h.artista.visibility = if (pub.cancion.artista.isNullOrBlank()) View.GONE else View.VISIBLE
         PortadasMusica.pintar(ctx, h.portada, pub.cancion.portada)
-        if (nueva || h.conSpotify != esSpotify(pub)) pintarCaja(h, pub)
+        if (nueva) pintarCaja(h, pub) else if (h.conSpotify != esSpotify(pub)) cambiarCaja(h, pub)
         pintarVivo(h, pub)
     }
 
@@ -117,7 +118,7 @@ class FeedAdapter(
             // reproductor de Spotify tampoco... salvo que la canción acabe de GANAR (o perder) su
             // Spotify: el conversor del servidor la completa unos segundos después de publicarla.
             h.texto.text = pub.texto
-            if (h.conSpotify != esSpotify(pub)) pintarCaja(h, pub)
+            if (h.conSpotify != esSpotify(pub)) cambiarCaja(h, pub)
             pintarVivo(h, pub)
         }
     }
@@ -139,11 +140,22 @@ class FeedAdapter(
         if (!spotify) return
         val id = pub.id
         h.spotify.visibility = View.VISIBLE
-        montarSpotify(pub, h.spotify) {
+        montarSpotify(pub, h.spotify) { ver ->
             // Ya se ve el reproductor: el marcador se esconde SIN soltar su sitio (INVISIBLE, no
-            // GONE), así que la fila no cambia de alto.
-            if (h.idPintado == id) h.marcador.visibility = View.INVISIBLE
+            // GONE), así que la fila no cambia de alto. Vuelve a verse si el reproductor se monta
+            // de nuevo (la tarjeta que sonaba salió de la pantalla: ReproductorFeed.pararSi).
+            if (h.idPintado == id) h.marcador.visibility = if (ver) View.VISIBLE else View.INVISIBLE
         }
+    }
+
+    /**
+     * La misma publicación cambia de fuente (el conversor le acaba de poner Spotify): lo que sonara
+     * de ella (el YouTube o el Deezer del hueco) se para ANTES de cambiar la caja; si no, el hueco
+     * se quedaba sonando debajo del reproductor de Spotify nuevo.
+     */
+    private fun cambiarCaja(h: Fila, pub: ItemFeed) {
+        alSalirDePantalla(pub.id)
+        pintarCaja(h, pub)
     }
 
     /** Suelta el reproductor de Spotify de la fila (si lo hay) y deja la caja como recién inflada. */
