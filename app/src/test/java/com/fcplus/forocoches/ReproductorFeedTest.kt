@@ -49,7 +49,7 @@ class ReproductorFeedTest {
         override fun soltar() { tiene = false }
     }
 
-    private class Montaje(val r: ReproductorFeed, val abiertas: MutableList<String>, val avisos: MutableList<String>,
+    private class Montaje(val r: ReproductorFeed, val pausados: MutableList<EmbedView>, val abiertas: MutableList<String>, val avisos: MutableList<String>,
                           val audios: MutableList<FakeAudio>, val act: AppCompatActivity, val foco: FakeFoco)
 
     private fun montar(foco: FakeFoco = FakeFoco(), fragmento: (Long) -> String? = { "https://cdnt-preview.dzcdn.net/x.mp3" }): Montaje {
@@ -57,11 +57,13 @@ class ReproductorFeedTest {
         ctrl.get().setTheme(R.style.Theme_FCForocoches)
         ctrl.setup()
         val ab = ArrayList<String>(); val av = ArrayList<String>(); val au = ArrayList<FakeAudio>()
+        val pa = ArrayList<EmbedView>()
         val r = ReproductorFeed(
             ctrl.get(), { ab.add(it) }, fragmento, segundoPlano = { it() },
-            crearAudio = { FakeAudio().also { a -> au.add(a) } }, avisar = { av.add(it) }, foco = foco
+            crearAudio = { FakeAudio().also { a -> au.add(a) } }, avisar = { av.add(it) }, foco = foco,
+            pausarEmbed = { pa.add(it) }
         )
-        return Montaje(r, ab, av, au, ctrl.get(), foco)
+        return Montaje(r, pa, ab, av, au, ctrl.get(), foco)
     }
 
     private fun hueco(m: Montaje) = FrameLayout(m.act).also { it.visibility = View.GONE }
@@ -95,13 +97,8 @@ class ReproductorFeedTest {
     }
 
     @Test
-    fun `tocar monta spotify y youtube en el hueco`() {
+    fun `tocar monta youtube en el hueco`() {
         val m = montar()
-        val h = hueco(m)
-        m.r.tocar(item("1", spotify = sp), h)
-        assertEquals("1", m.r.sonando())
-        assertEquals(1, embeds(h).size)
-        assertEquals(View.VISIBLE, h.visibility)
         val h2 = hueco(m)
         m.r.tocar(item("2", youtube = yt), h2)
         assertEquals(1, embeds(h2).size)
@@ -114,14 +111,14 @@ class ReproductorFeedTest {
     fun `tocar otra para la anterior`() {
         val m = montar()
         val h1 = hueco(m); val h2 = hueco(m)
-        m.r.tocar(item("1", spotify = sp), h1)
+        m.r.tocar(item("1", youtube = yt), h1)
         m.r.tocar(item("2", deezer = 7), h2)
         assertEquals("2", m.r.sonando())
         assertEquals(0, h1.childCount)
         assertEquals(View.GONE, h1.visibility)
         // y el audio de la nueva suena; al volver a otra se suelta
         val h3 = hueco(m)
-        m.r.tocar(item("3", spotify = sp), h3)
+        m.r.tocar(item("3", youtube = yt), h3)
         assertTrue(m.audios[0].soltado)
     }
 
@@ -129,7 +126,7 @@ class ReproductorFeedTest {
     fun `pararSi de otra no para`() {
         val m = montar()
         val h = hueco(m)
-        m.r.tocar(item("1", spotify = sp), h)
+        m.r.tocar(item("1", youtube = yt), h)
         m.r.pararSi("2")
         assertEquals("1", m.r.sonando())
         m.r.pararSi("1")
@@ -176,12 +173,12 @@ class ReproductorFeedTest {
     }
 
     @Test
-    fun `entera en spotify con id abre la pista`() {
+    fun `entera en spotify en una de youtube abre la busqueda`() {
         val m = montar()
         val h = hueco(m)
-        m.r.tocar(item("1", spotify = sp), h)
+        m.r.tocar(item("1", youtube = yt, titulo = "Solo", artista = null), h)
         todas(h).filterIsInstance<android.widget.TextView>().first { it.text == "Entera en Spotify" }.performClick()
-        assertEquals(listOf("https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC"), m.abiertas)
+        assertEquals(listOf("https://open.spotify.com/search/Solo"), m.abiertas)
     }
 
     @Test
@@ -198,7 +195,7 @@ class ReproductorFeedTest {
     fun `el boton entera en spotify mide 48 dp`() {
         val m = montar()
         val h = hueco(m)
-        m.r.tocar(item("1", spotify = sp), h)
+        m.r.tocar(item("1", deezer = 4), h)
         val b = todas(h).filterIsInstance<android.widget.TextView>().first { it.text == "Entera en Spotify" }
         assertEquals((48 * m.act.resources.displayMetrics.density).toInt(), b.layoutParams.height)
     }
@@ -265,5 +262,103 @@ class ReproductorFeedTest {
     @Test fun `en horizontal sube a 200 dp si el 55 por ciento de la pantalla se queda corto`() {
         // 594 px (198 dp) → 600 px = 200 dp.
         assertEquals(600, ReproductorFeed.altoCaja(2340, 1080, 3.0f))
+    }
+
+    // ── A9: la tarjeta de Spotify ES el reproductor de Spotify (un toque). ──
+
+    @Test fun `que pinta la tarjeta segun la fuente`() {
+        assertEquals(ReproductorFeed.TarjetaFeed.SPOTIFY_EMBED, ReproductorFeed.tarjeta(item("1", spotify = sp, youtube = yt, deezer = 5)))
+        assertEquals(ReproductorFeed.TarjetaFeed.YOUTUBE_AL_TOCAR, ReproductorFeed.tarjeta(item("1", youtube = yt, deezer = 5)))
+        assertEquals(ReproductorFeed.TarjetaFeed.DEEZER_NATIVA, ReproductorFeed.tarjeta(item("1", deezer = 5)))
+        assertEquals(ReproductorFeed.TarjetaFeed.SIN_FUENTE, ReproductorFeed.tarjeta(item("1")))
+        // Un enlace de Spotify que no es una pista no hace tarjeta de Spotify: cae a lo siguiente.
+        assertEquals(ReproductorFeed.TarjetaFeed.DEEZER_NATIVA, ReproductorFeed.tarjeta(item("1", spotify = "https://open.spotify.com/track/x", deezer = 5)))
+    }
+
+    @Test fun `montar spotify pone un EmbedView en el contenedor y soltarlo lo quita`() {
+        val m = montar()
+        val c = FrameLayout(m.act)
+        assertTrue(m.r.montarSpotify(item("1", spotify = sp), c) {})
+        assertEquals(1, embeds(c).size)
+        assertEquals(1, m.r.spotifysMontados())
+        m.r.soltarSpotify(c)
+        assertEquals(0, c.childCount)
+        assertEquals(0, m.r.spotifysMontados())
+        // Sin pista de Spotify no se monta nada.
+        assertTrue(!m.r.montarSpotify(item("2", deezer = 3), c) {})
+        assertEquals(0, c.childCount)
+    }
+
+    @Test fun `tocar spotify no monta nada en el hueco`() {
+        val m = montar()
+        val h = hueco(m)
+        m.r.tocar(item("1", spotify = sp), h)
+        assertEquals(0, h.childCount)
+        assertNull(m.r.sonando())
+    }
+
+    @Test fun `cuando suena un spotify se pausan los demas y se para el fragmento`() {
+        val m = montar()
+        val a = FrameLayout(m.act); val b = FrameLayout(m.act)
+        m.r.montarSpotify(item("A", spotify = sp), a) {}
+        m.r.montarSpotify(item("B", spotify = sp), b) {}
+        val ea = embeds(a)[0]; val eb = embeds(b)[0]
+        // Suena un fragmento de Deezer...
+        val h = hueco(m)
+        m.r.tocar(item("D", deezer = 9), h)
+        assertEquals("D", m.r.sonando())
+        // ...y el usuario da al play del Spotify A: el fragmento se suelta. B no sonaba: no se le
+        // toca (pausar desde fuera recarga la pista, ver EmbedView.pausarSpotify).
+        ea.alSonar!!.invoke(true)
+        assertTrue(m.audios[0].soltado)
+        assertEquals(0, h.childCount)
+        assertEquals("A", m.r.sonando())
+        assertTrue(m.pausados.isEmpty())
+        // Ahora suena B: A recibe la pausa, y B no.
+        eb.alSonar!!.invoke(true)
+        assertEquals("B", m.r.sonando())
+        assertEquals(listOf(ea), m.pausados)
+        // B se pausa desde su propio botón: ya no suena nada.
+        eb.alSonar!!.invoke(false)
+        assertNull(m.r.sonando())
+    }
+
+    @Test fun `parar pausa los spotify y tocar un youtube tambien`() {
+        val m = montar()
+        val a = FrameLayout(m.act)
+        m.r.montarSpotify(item("A", spotify = sp), a) {}
+        val ea = embeds(a)[0]
+        ea.alSonar!!.invoke(true)
+        m.r.parar()
+        assertTrue(ea in m.pausados)
+        assertNull(m.r.sonando())
+        m.pausados.clear()
+        ea.alSonar!!.invoke(true)
+        m.r.tocar(item("Y", youtube = yt), hueco(m))
+        assertTrue(ea in m.pausados)
+        assertEquals("Y", m.r.sonando())
+    }
+
+    @Test fun `la tarjeta de spotify que sale de la pantalla se pausa`() {
+        val m = montar()
+        val a = FrameLayout(m.act)
+        m.r.montarSpotify(item("A", spotify = sp), a) {}
+        val ea = embeds(a)[0]
+        ea.alSonar!!.invoke(true)
+        m.r.pararSi("B")
+        assertTrue(m.pausados.isEmpty())
+        m.r.pararSi("A")
+        assertTrue(ea in m.pausados)
+        assertNull(m.r.sonando())
+    }
+
+    @Test fun `soltar todo libera los spotify montados`() {
+        val m = montar()
+        val a = FrameLayout(m.act); val b = FrameLayout(m.act)
+        m.r.montarSpotify(item("A", spotify = sp), a) {}
+        m.r.montarSpotify(item("B", spotify = sp), b) {}
+        m.r.soltarTodo()
+        assertEquals(0, m.r.spotifysMontados())
+        assertEquals(0, a.childCount + b.childCount)
     }
 }

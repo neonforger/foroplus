@@ -214,4 +214,113 @@ class FeedAdapterTest {
         ad.onViewDetachedFromWindow(rv.findViewHolderForAdapterPosition(0) as FeedAdapter.Fila)
         assertEquals(listOf("7"), salidas)
     }
+
+    // ── A9: con Spotify, la tarjeta es el reproductor de Spotify (sin nuestro play). ──
+
+    private val pista = "https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC"
+
+    private class ConSpotify(
+        val rv: RecyclerView, val ad: FeedAdapter,
+        val montados: MutableList<String>, val soltados: MutableList<android.widget.FrameLayout>,
+        val listos: MutableList<() -> Unit>
+    )
+
+    private fun montarConSpotify(): ConSpotify {
+        val ctrl = Robolectric.buildActivity(AppCompatActivity::class.java)
+        ctrl.get().setTheme(R.style.Theme_FCForocoches)
+        ctrl.setup()
+        val a = ctrl.get()
+        val mon = ArrayList<String>(); val sol = ArrayList<android.widget.FrameLayout>()
+        val lis = ArrayList<() -> Unit>()
+        val ad = FeedAdapter(
+            alCorazon = {}, alPlay = { _, _ -> }, alMenu = { _, _ -> }, alAutorCorazones = {},
+            montarSpotify = { item, c, alListo -> mon.add(item.id); c.addView(View(a)); lis.add(alListo) },
+            soltarSpotify = { c -> sol.add(c); c.removeAllViews() }
+        )
+        val rv = RecyclerView(a)
+        rv.layoutManager = LinearLayoutManager(a)
+        rv.adapter = ad
+        a.setContentView(rv)
+        return ConSpotify(rv, ad, mon, sol, lis)
+    }
+
+    private fun ConSpotify.medir() {
+        rv.measure(
+            View.MeasureSpec.makeMeasureSpec(1080, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(4000, View.MeasureSpec.EXACTLY)
+        )
+        rv.layout(0, 0, 1080, 4000)
+    }
+
+    private fun ConSpotify.fila(i: Int): View = rv.findViewHolderForAdapterPosition(i)!!.itemView
+
+    @Test fun `con spotify no hay play nuestro y se monta el reproductor de spotify`() {
+        val m = montarConSpotify()
+        m.ad.poner(listOf(item("1", spotify = pista), item("2", spotify = null, youtube = "https://www.youtube.com/watch?v=dQw4w9WgXcQ")), ahora)
+        m.medir()
+        val s = m.fila(0)
+        assertEquals(View.GONE, s.findViewById<View>(R.id.pub_play).visibility)
+        val c = s.findViewById<android.widget.FrameLayout>(R.id.pub_spotify)
+        assertEquals(View.VISIBLE, c.visibility)
+        assertEquals(1, c.childCount)
+        assertEquals(listOf("1"), m.montados)
+        // El marcador (título y artista) se ve mientras carga.
+        assertEquals(View.VISIBLE, s.findViewById<View>(R.id.pub_titulo).visibility)
+        // La de YouTube sigue como hoy: play nuestro y sin reproductor de Spotify.
+        val y = m.fila(1)
+        assertEquals(View.VISIBLE, y.findViewById<View>(R.id.pub_play).visibility)
+        assertEquals(View.GONE, y.findViewById<View>(R.id.pub_spotify).visibility)
+    }
+
+    @Test fun `al cargar el reproductor de spotify el marcador se esconde sin cambiar de alto`() {
+        val m = montarConSpotify()
+        m.ad.poner(listOf(item("1", spotify = pista)), ahora)
+        m.medir()
+        val f = m.fila(0)
+        val alto = f.findViewById<View>(R.id.pub_marcador).height
+        m.listos[0]()
+        m.medir()
+        assertEquals(View.INVISIBLE, f.findViewById<View>(R.id.pub_marcador).visibility)
+        assertEquals(alto, f.findViewById<View>(R.id.pub_marcador).height)
+    }
+
+    @Test fun `un corazon o un refresco no desmontan el reproductor de spotify`() {
+        val m = montarConSpotify()
+        m.ad.poner(listOf(item("1", spotify = pista)), ahora)
+        m.medir()
+        val c = m.fila(0).findViewById<android.widget.FrameLayout>(R.id.pub_spotify)
+        val hijo = c.getChildAt(0)
+        m.ad.cambiarCorazon("1", EstadoCorazon(4, true))
+        m.medir()
+        m.ad.poner(listOf(item("1", spotify = pista)), ahora + 60_000L)
+        m.medir()
+        assertEquals(c, hijo.parent)
+        assertEquals(listOf("1"), m.montados)
+        assertTrue(m.soltados.isEmpty())
+    }
+
+    @Test fun `reciclar la fila suelta el reproductor de spotify`() {
+        val m = montarConSpotify()
+        m.ad.poner(listOf(item("1", spotify = pista)), ahora)
+        m.medir()
+        val h = m.rv.findViewHolderForAdapterPosition(0) as FeedAdapter.Fila
+        val c = h.itemView.findViewById<android.widget.FrameLayout>(R.id.pub_spotify)
+        m.ad.onViewRecycled(h)
+        assertEquals(listOf(c), m.soltados)
+        assertEquals(0, c.childCount)
+        assertEquals(View.GONE, c.visibility)
+        assertEquals(View.VISIBLE, h.itemView.findViewById<View>(R.id.pub_marcador).visibility)
+    }
+
+    @Test fun `la destacada con spotify tambien es el reproductor de spotify`() {
+        val m = montarConSpotify()
+        val d = MasQuerida(
+            "2026-W45", "Pepe", "La de la semana", 12,
+            CancionFeed("top", "Titulo top", "Artista", null, pista, null, 1L)
+        ).comoItem()
+        m.ad.poner(listOf(d), ahora)
+        m.medir()
+        assertEquals(View.GONE, m.fila(0).findViewById<View>(R.id.pub_play).visibility)
+        assertEquals(listOf(d.id), m.montados)
+    }
 }

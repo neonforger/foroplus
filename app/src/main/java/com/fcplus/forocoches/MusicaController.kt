@@ -90,10 +90,11 @@ class MusicaController(
         feed.ocultar()
     }
 
-    /** `onDestroy` de la actividad: el reloj del feed y lo que suene, fuera. */
+    /** `onDestroy` de la actividad: el reloj del feed y lo que suene, fuera (y los WebView de Spotify, destruidos). */
     fun destruir() {
         feed.ocultar()
         pausar()
+        reproductorFeed.soltarTodo()
     }
 
     /** `onPause` de la actividad y todo lo que tape el panel: "La música se para al salir de la app". */
@@ -117,13 +118,17 @@ class MusicaController(
      * ¿Puede empezar en este punto de la pantalla ([x], [y] en crudo) el gesto de deslizar a otra
      * pestaña? MainActivity lo pregunta al apoyar el dedo. En todas partes menos sobre el
      * reproductor mientras suena algo: la barra de Spotify y la del fragmento se arrastran de lado.
+     * El reproductor de Spotify es la caja entera de su tarjeta (`pub_spotify`), no el hueco.
      */
     fun dejaDeslizarDesde(x: Int, y: Int): Boolean {
         if (reproductorFeed.sonando() == null) return true
         val rv = raiz.findViewById<RecyclerView>(R.id.musica_feed)
         for (i in 0 until rv.childCount) {
-            val hueco = rv.getChildAt(i).findViewById<View>(R.id.pub_hueco) ?: continue
-            if (dentro(hueco, x, y)) return false
+            val fila = rv.getChildAt(i)
+            for (id in intArrayOf(R.id.pub_hueco, R.id.pub_spotify)) {
+                val v = fila.findViewById<View>(id) ?: continue
+                if (dentro(v, x, y)) return false
+            }
         }
         return true
     }

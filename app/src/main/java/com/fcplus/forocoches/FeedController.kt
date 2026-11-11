@@ -59,7 +59,9 @@ class FeedController(
         alPlay = { item, hueco -> reproductor.tocar(item, hueco) },
         alMenu = { item, ancla -> menu(item, ancla) },
         alAutorCorazones = { quienes(it) },
-        alSalirDePantalla = { reproductor.pararSi(it) }
+        alSalirDePantalla = { reproductor.pararSi(it) },
+        montarSpotify = { item, contenedor, alListo -> reproductor.montarSpotify(item, contenedor, alListo) },
+        soltarSpotify = { reproductor.soltarSpotify(it) }
     )
 
     private var mostrado = false

@@ -20,13 +20,21 @@ import androidx.recyclerview.widget.RecyclerView
  *
  * [alSalirDePantalla] avisa con el id de la publicación cuando su fila sale de la ventana; no
  * toques vistas desde ahí (es para que A5 pare el reproductor).
+ *
+ * Con Spotify ([ReproductorFeed.tarjeta]) la caja ES el reproductor de Spotify (A9): sin nuestro
+ * play, [montarSpotify] lo pone en `pub_spotify`, encima de la fila de la canción, que hace de
+ * marcador con su mismo alto hasta que el reproductor avisa de que ya se ve. Se monta en el bind
+ * completo de una publicación nueva para la fila y se suelta ([soltarSpotify]) al reciclarla o al
+ * pasarle otra; como el hueco, un repintado parcial no lo toca (seguiría sonando).
  */
 class FeedAdapter(
     private val alCorazon: (ItemFeed) -> Unit,
     private val alPlay: (ItemFeed, hueco: FrameLayout) -> Unit,
     private val alMenu: (ItemFeed, View) -> Unit,
     private val alAutorCorazones: (ItemFeed) -> Unit,
-    private val alSalirDePantalla: (id: String) -> Unit = {}
+    private val alSalirDePantalla: (id: String) -> Unit = {},
+    private val montarSpotify: (ItemFeed, FrameLayout, alListo: () -> Unit) -> Unit = { _, _, _ -> },
+    private val soltarSpotify: (FrameLayout) -> Unit = {}
 ) : RecyclerView.Adapter<FeedAdapter.Fila>() {
 
     private var items: List<ItemFeed> = emptyList()
@@ -85,7 +93,8 @@ class FeedAdapter(
     override fun onBindViewHolder(h: Fila, position: Int) {
         val pub = items[position]
         val ctx = h.itemView.context
-        if (h.idPintado != pub.id) {
+        val nueva = h.idPintado != pub.id
+        if (nueva) {
             h.hueco.removeAllViews()
             h.hueco.visibility = View.GONE
         }
@@ -96,6 +105,7 @@ class FeedAdapter(
         h.artista.text = pub.cancion.artista.orEmpty()
         h.artista.visibility = if (pub.cancion.artista.isNullOrBlank()) View.GONE else View.VISIBLE
         PortadasMusica.pintar(ctx, h.portada, pub.cancion.portada)
+        if (nueva || h.conSpotify != esSpotify(pub)) pintarCaja(h, pub)
         pintarVivo(h, pub)
     }
 
@@ -103,10 +113,46 @@ class FeedAdapter(
         if (payloads.isEmpty()) return onBindViewHolder(h, position)
         val pub = items[position]
         if (payloads.all { it == PAYLOAD_CORAZON }) pintarCorazon(h, pub) else {
-            // Cambio de datos de una fila que ya estaba: solo textos. El hueco no se toca.
+            // Cambio de datos de una fila que ya estaba: solo textos. El hueco no se toca, y el
+            // reproductor de Spotify tampoco... salvo que la canción acabe de GANAR (o perder) su
+            // Spotify: el conversor del servidor la completa unos segundos después de publicarla.
             h.texto.text = pub.texto
+            if (h.conSpotify != esSpotify(pub)) pintarCaja(h, pub)
             pintarVivo(h, pub)
         }
+    }
+
+    private fun esSpotify(pub: ItemFeed) = ReproductorFeed.tarjeta(pub) == ReproductorFeed.TarjetaFeed.SPOTIFY_EMBED
+
+    /**
+     * La caja de la canción según [ReproductorFeed.tarjeta]: con Spotify, el reproductor de Spotify
+     * encima del marcador (sin nuestro play, y el marcador con el alto del reproductor para que la
+     * lista no salte al cargar); si no, nuestra caja con play, como siempre.
+     */
+    private fun pintarCaja(h: Fila, pub: ItemFeed) {
+        soltarCaja(h)
+        val spotify = esSpotify(pub)
+        h.conSpotify = spotify
+        val d = h.itemView.resources.displayMetrics.density
+        h.marcador.minimumHeight = ((if (spotify) ReproductorFeed.ALTO_TARJETA_SPOTIFY else ALTO_CAJA_DP) * d).toInt()
+        h.play.visibility = if (spotify) View.GONE else View.VISIBLE
+        if (!spotify) return
+        val id = pub.id
+        h.spotify.visibility = View.VISIBLE
+        montarSpotify(pub, h.spotify) {
+            // Ya se ve el reproductor: el marcador se esconde SIN soltar su sitio (INVISIBLE, no
+            // GONE), así que la fila no cambia de alto.
+            if (h.idPintado == id) h.marcador.visibility = View.INVISIBLE
+        }
+    }
+
+    /** Suelta el reproductor de Spotify de la fila (si lo hay) y deja la caja como recién inflada. */
+    private fun soltarCaja(h: Fila) {
+        if (h.spotify.childCount > 0) soltarSpotify(h.spotify)
+        h.spotify.removeAllViews()
+        h.spotify.visibility = View.GONE
+        h.marcador.visibility = View.VISIBLE
+        h.conSpotify = false
     }
 
     /** Lo que cambia con el tiempo o con los corazones: hace, lo que queda, número y corazón. */
@@ -145,6 +191,7 @@ class FeedAdapter(
     }
 
     override fun onViewRecycled(h: Fila) {
+        soltarCaja(h)
         h.hueco.removeAllViews()
         h.hueco.visibility = View.GONE
         h.idPintado = null
@@ -157,6 +204,10 @@ class FeedAdapter(
 
     class Fila(v: View) : RecyclerView.ViewHolder(v) {
         var idPintado: String? = null
+        /** ¿La caja está pintada como reproductor de Spotify? */
+        var conSpotify = false
+        val marcador: View = v.findViewById(R.id.pub_marcador)
+        val spotify: FrameLayout = v.findViewById(R.id.pub_spotify)
         val autor: TextView = v.findViewById(R.id.pub_autor)
         val hace: TextView = v.findViewById(R.id.pub_hace)
         val queda: TextView = v.findViewById(R.id.pub_queda)
@@ -175,5 +226,7 @@ class FeedAdapter(
     private companion object {
         const val PAYLOAD_CORAZON = "corazon"
         const val PAYLOAD_DATOS = "datos"
+        /** El minHeight de la fila de la canción en item_publicacion.xml (sin Spotify). */
+        const val ALTO_CAJA_DP = 64
     }
 }

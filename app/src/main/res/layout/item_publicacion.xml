@@ -97,7 +97,16 @@
             android:orientation="vertical"
             android:background="@drawable/bg_caja_cancion">
 
+            <!-- Con Spotify (A9) la caja ES el reproductor de Spotify: pub_spotify va ENCIMA de la
+                 fila y la fila (sin play) hace de marcador mientras carga, con el alto del
+                 reproductor para que la lista no salte. Encima y no al revés: un WebView tapado por
+                 una vista opaca se queda sin pintar (gotcha "WebView OCLUIDO"). -->
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
             <LinearLayout
+                android:id="@+id/pub_marcador"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:minHeight="64dp"
@@ -151,6 +160,13 @@
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:contentDescription="@string/pub_escuchar" />
             </LinearLayout>
+
+            <FrameLayout
+                android:id="@+id/pub_spotify"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:visibility="gone" />
+            </FrameLayout>
 
             <FrameLayout
                 android:id="@+id/pub_hueco"

@@ -133,6 +133,26 @@ class EmbedView(context: Context) : FrameLayout(context) {
     var deMusica = false
 
     /**
+     * Es la tarjeta de una canción de Spotify en el feed de Música (A9): el reproductor de Spotify
+     * ocupa el sitio de nuestra caja y un toque en SU play suena. Se pone ANTES de [bind] y cambia:
+     * - La página monta el reproductor con la **Embed iFrame API** de Spotify (no un iframe a
+     *   pelo): es la única forma de saber cuándo empieza a sonar ([alSonar], para callar los
+     *   demás) y de pausarlo desde fuera ([pausarSpotify]). El iframe es de otro dominio; sin la
+     *   API no nos habla.
+     * - Sin "Cargando contenido…" y con fondo TRANSPARENTE: debajo está la fila de la canción
+     *   (portada, título, artista) haciendo de marcador hasta [alListo]; se ve a través del
+     *   WebView mientras el reproductor carga, y así nada lo tapa (gotcha "WebView OCLUIDO").
+     * - Ocupa el contenedor que le den (el puente de altura no manda): el alto es el del marcador.
+     */
+    var tarjetaSpotify = false
+
+    /** Solo con [tarjetaSpotify]: el reproductor de Spotify empieza (true) o deja (false) de sonar. */
+    var alSonar: ((Boolean) -> Unit)? = null
+
+    /** Solo con [tarjetaSpotify]: el reproductor de Spotify ya está pintado (evento `ready` de la API). */
+    var alListo: (() -> Unit)? = null
+
+    /**
      * ¿Ha hablado ya el reproductor de YouTube por postMessage? Hasta entonces sus órdenes
      * ([cargarVideo]) se pierden, así que Música lo vuelve a montar en vez de mandárselas.
      */
@@ -158,7 +178,7 @@ class EmbedView(context: Context) : FrameLayout(context) {
         enUso = false
         release()
         removeAllViews()
-        addView(buildLoading())
+        if (!tarjetaSpotify) addView(buildLoading())
         // Auto-carga diferida: si el post se recicla antes de los 300 ms (fling), el WebView
         // no llega a crearse (release() cancela el Runnable).
         pendingLoad = Runnable { load(spec) }.also { postDelayed(it, 300) }
@@ -192,6 +212,24 @@ class EmbedView(context: Context) : FrameLayout(context) {
         web?.onPause()
     }
 
+    /**
+     * Pausa el reproductor de Spotify de una [tarjetaSpotify] con la iFrame API (`controller.pause()`),
+     * sin destruir nada: la tarjeta sigue ahí y otro toque en su play vuelve a sonar. No es
+     * [pausar]: `onPause()` congela el WebView entero, y luego habría que despertarlo a mano.
+     */
+    fun pausarSpotify() {
+        // `pausado=true` a mano: con el panel escondido (cambio de pestaña) el reproductor se calla
+        // pero su playback_update de "pausado" no llega, y la página se quedaba creyendo que sonaba.
+        // Medido por CDP: entonces el siguiente play no cambiaba nada, no se avisaba, y no se
+        // callaba a los demás.
+        // Y `loadUri` después: también medido, tras un pause() de la API el play del propio
+        // reproductor se queda MUERTO (tocarlo no suena ni manda nada); recargar la misma pista lo
+        // rearma (vuelve al principio, que en un fragmento de 30 s no se echa de menos).
+        web?.evaluateJavascript(
+            "try{if(window.ctl){ctl.pause();pausado=true;rearmado=true;ctl.loadUri(uri);}}catch(e){}", null
+        )
+    }
+
     /** Lo contrario de [pausar]. NO vuelve a dar al play: solo deja el reproductor operativo. */
     fun despertar() {
         web?.onResume()
@@ -218,7 +256,7 @@ class EmbedView(context: Context) : FrameLayout(context) {
             // 220dp a 60dp delante del usuario.
             layoutParams = LayoutParams(
                 LayoutParams.MATCH_PARENT,
-                if (deMusica) LayoutParams.MATCH_PARENT else altoInicial(spec)
+                if (deMusica || tarjetaSpotify) LayoutParams.MATCH_PARENT else altoInicial(spec)
             )
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
@@ -242,7 +280,7 @@ class EmbedView(context: Context) : FrameLayout(context) {
                     androidx.webkit.WebViewFeature.ALGORITHMIC_DARKENING)) {
                 androidx.webkit.WebSettingsCompat.setAlgorithmicDarkeningAllowed(settings, false)
             }
-            setBackgroundColor(fondoEmbed(spec.kind))
+            setBackgroundColor(if (tarjetaSpotify) Color.TRANSPARENT else fondoEmbed(spec.kind))
             // Tocar el embed = darle al play (o interactuar con el tweet). A partir de ahí este
             // reproductor no se destruye al salir de pantalla: ver [enUso] y PostAdapter.
             //
@@ -422,7 +460,13 @@ class EmbedView(context: Context) : FrameLayout(context) {
         /** La página avisa de si el vídeo está sonando. Ver [reproduciendo]. */
         @JavascriptInterface
         fun onEstado(activo: Boolean) {
-            post { reproduciendo = activo; respondio = true }
+            post { reproduciendo = activo; respondio = true; alSonar?.invoke(activo) }
+        }
+
+        /** El reproductor de Spotify de una [tarjetaSpotify] ya se ve (evento `ready`). */
+        @JavascriptInterface
+        fun onListo() {
+            post { alListo?.invoke() }
         }
 
         /** El vídeo de YouTube ha llegado al final (la página ya evita avisar dos veces). */
@@ -448,7 +492,7 @@ class EmbedView(context: Context) : FrameLayout(context) {
             if (cssPx <= 0) return
             // Flotando manda el marco de la ventanita, no el contenido: ver [flotando]. En Música,
             // el hueco de 16:9 ([deMusica]).
-            if (flotando || deMusica) return
+            if (flotando || deMusica || tarjetaSpotify) return
             post {
                 val w = web ?: return@post
                 // El suelo de 120dp evita que un embed que aún está montándose se quede
@@ -525,7 +569,36 @@ class EmbedView(context: Context) : FrameLayout(context) {
             "spotify" -> {
                 // Solo con un id de 22 caracteres base62: se monta una URL, no se copia texto libre.
                 val id = spec.id.takeIf { EstadoYoutube.idSpotifyValido(it) } ?: ""
-                """<iframe src="https://open.spotify.com/embed/track/$id" frameborder="0"
+                // La tarjeta del feed (ver [tarjetaSpotify]): el mismo reproductor, pero montado por
+                // la iFrame API para poder oír cuándo suena y pausarlo. Solo se avisa al CAMBIAR de
+                // pausado a sonando o al revés: playback_update llega varias veces por segundo.
+                // Fin del fragmento: medido por CDP en el móvil, al llegar al final (29 de 29 s)
+                // Spotify NO dice isPaused (sigue en false) y el reproductor se queda MUERTO: tocar
+                // su play ya no hace nada, ni seek(0) lo revive. Solo loadUri de la misma pista lo
+                // rearma (con eso el siguiente toque suena desde el principio). Así que el final
+                // cuenta como pausa (para que la app no crea que sigue sonando) y se recarga una vez.
+                if (tarjetaSpotify) """<div id="sp"></div>
+                   <script>
+                     var ctl=null, pausado=true, rearmado=false, uri='spotify:track:$id';
+                     window.onSpotifyIframeApiReady=function(api){
+                       api.createController(document.getElementById('sp'),
+                         {uri:uri, width:'100%', height:${ReproductorFeed.ALTO_TARJETA_SPOTIFY}},
+                         function(c){
+                           ctl=c;
+                           c.addListener('ready',function(){try{AndroidEmbed.onListo();}catch(e){}});
+                           c.addListener('playback_update',function(e){
+                             var d=(e&&e.data)||{};
+                             var fin=d.duration>0&&d.position>=d.duration-500;
+                             var p=!!d.isPaused||fin||!(e&&e.data);
+                             if(p!==pausado){pausado=p;try{AndroidEmbed.onEstado(!p);}catch(err){}}
+                             if(fin&&!rearmado){rearmado=true;try{ctl.loadUri(uri);}catch(err){}}
+                             else if(!fin)rearmado=false;
+                           });
+                         });
+                     };
+                   </script>
+                   <script src="https://open.spotify.com/embed/iframe-api/v1" async></script>"""
+                else """<iframe src="https://open.spotify.com/embed/track/$id" frameborder="0"
                    allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
                    style="width:100%;height:${ALTO_SPOTIFY}px;border:0"></iframe>"""
             }
@@ -542,7 +615,7 @@ class EmbedView(context: Context) : FrameLayout(context) {
         return """<!doctype html><html><head><meta charset="utf-8">
             <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
             <style>
-              html,body{margin:0;padding:0;background:${hex(fondoEmbed(spec.kind))};overflow-x:hidden}
+              html,body{margin:0;padding:0;background:${if (tarjetaSpotify) "transparent;overflow:hidden" else hex(fondoEmbed(spec.kind))};overflow-x:hidden}
               .yt{position:relative;width:100%;padding-bottom:56.25%;height:0}
               .yt iframe{position:absolute;top:0;left:0;width:100%;height:100%}
               iframe,video{max-width:100%}
