@@ -9,7 +9,7 @@ import spOembed from "./fixtures/sp_oembed.json";
 import ytEstopa from "./fixtures/yt_estopa_oembed.json";
 import ytOembed from "./fixtures/yt_oembed.json";
 import { claveCancion, type RefCancion } from "../src/normalizar";
-import { leerMetas, metasDe, tarjetaDe, tarjetaDeDeezer, USER_AGENT } from "../src/tarjeta";
+import { leerMetas, metasDe, REINTENTAR, tarjetaDe, tarjetaDeDeezer, USER_AGENT, type TarjetaDeezer } from "../src/tarjeta";
 
 const YT_ESTOPA: RefCancion = { fuente: "youtube", id: "aaaaaaaaaaa" };
 const SP_ESTOPA: RefCancion = { fuente: "spotify", id: "0aaaaaaaaaaaaaaaaaaaaa" };
@@ -264,7 +264,7 @@ describe("tarjetaDeDeezer", () => {
   const PISTA = "https://api.deezer.com/track/92719900";
   it("tarjetaDeDeezer lee título, artista, portada e isrc del fixture", async () => {
     const { red, vistas } = redFalsa({ [PISTA]: json(deezerTrack) });
-    const t = await tarjetaDeDeezer(92719900, red);
+    const t = (await tarjetaDeDeezer(92719900, red)) as TarjetaDeezer;
     expect(vistas).toEqual([PISTA]);
     expect(t).toEqual({
       titulo: "Highway to Hell",
@@ -280,21 +280,40 @@ describe("tarjetaDeDeezer", () => {
   });
   it("une los contribuidores al artista, sin repetir el principal", async () => {
     const o = { ...deezerTrack, contributors: [{ name: "AC/DC" }, { name: "Otro" }, { name: "ac/dc" }] };
-    const t = await tarjetaDeDeezer(92719900, redFalsa({ [PISTA]: json(o) }).red);
+    const t = (await tarjetaDeDeezer(92719900, redFalsa({ [PISTA]: json(o) }).red)) as TarjetaDeezer;
     expect(t!.artista).toBe("AC/DC, Otro");
   });
   it("sin isrc guarda null", async () => {
     const { isrc: _, ...sin } = deezerTrack;
-    const t = await tarjetaDeDeezer(92719900, redFalsa({ [PISTA]: json(sin) }).red);
+    const t = (await tarjetaDeDeezer(92719900, redFalsa({ [PISTA]: json(sin) }).red)) as TarjetaDeezer;
     expect(t!.isrc).toBeNull();
   });
   it("id que Deezer no tiene → null", async () => {
     const e = { error: { type: "DataException", message: "no data", code: 800 } };
     expect(await tarjetaDeDeezer(1, redFalsa({ "https://api.deezer.com/track/1": json(e) }).red)).toBeNull();
   });
+  it("cuota, servicio ocupado, 429, 5xx, no-JSON o red caída → REINTENTAR (no es 'no encontrada')", async () => {
+    const cuota = { error: { type: "Exception", message: "Quota limit exceeded", code: 4 } };
+    const ocupado = { error: { type: "Exception", message: "Service busy", code: 700 } };
+    const casos: Respuesta[] = [
+      json(cuota),
+      json(ocupado),
+      new Response("demasiadas", { status: 429 }),
+      new Response("caído", { status: 502 }),
+      new Response("<html>error</html>", { headers: { "content-type": "text/html" } }),
+      () => {
+        throw new TypeError("network");
+      },
+    ];
+    for (const r of casos) expect(await tarjetaDeDeezer(92719900, redFalsa({ [PISTA]: r }).red)).toBe(REINTENTAR);
+  });
+  it("tarjetaDe de un enlace de Deezer sigue dando null si Deezer falla", async () => {
+    const red = redFalsa({ [PISTA]: new Response("caído", { status: 503 }) }).red;
+    expect(await tarjetaDe({ fuente: "deezer", id: "92719900" }, red)).toBeNull();
+  });
   it("portada de host no permitido → null en portada", async () => {
     const o = { ...deezerTrack, album: { ...deezerTrack.album, cover_xl: "https://malo.example/x.jpg" } };
-    const t = await tarjetaDeDeezer(92719900, redFalsa({ [PISTA]: json(o) }).red);
+    const t = (await tarjetaDeDeezer(92719900, redFalsa({ [PISTA]: json(o) }).red)) as TarjetaDeezer;
     expect(t!.portada).toBeNull();
     expect(t!.titulo).toBe("Highway to Hell");
   });

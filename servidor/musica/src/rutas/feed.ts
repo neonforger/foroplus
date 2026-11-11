@@ -6,8 +6,8 @@ import { cuentaDe, permisoVoto, yo } from "../auth";
 import { cancionDeOrigen, cancionPub, type FilaCancion } from "../canciones";
 import { nuevoId } from "../cripto";
 import {
-  claveTope, codificar, decodificar, ESPERA_CONVERSION_MS, itemFeed, POR_PAGINA, PUBLICACIONES_DIA, RE_ENLACE,
-  SELECT_FEED, TEXTO_MAX, VENTANA_TOPE_S, VIDA_MS, VISIBLE, type FilaFeed, type ItemFeed, type MasQuerida,
+  claveCorazones, claveTope, codificar, CORAZONES_DIA, decodificar, ESPERA_CONVERSION_MS, itemFeed, POR_PAGINA, PUBLICACIONES_DIA, RE_ENLACE,
+  SELECT_FEED, TEXTO_MAX, VENTANA_TOPE_S, VIDA_MS, VISIBLE, VISIBLE_FEED, type FilaFeed, type ItemFeed, type MasQuerida,
 } from "../feed";
 import { cuerpoJson, error, json } from "../http";
 import { permitido, puedeMontarTarjeta } from "../limites";
@@ -38,7 +38,8 @@ async function publicar(c: Contexto, o: OpcionesApp): Promise<Response> {
   const r = await cancionDeOrigen(d, conDeezer ? { deezer: deezer as number } : { enlace: enlace as string }, () =>
     puedeMontarTarjeta(d.db, cuenta.id, ahora, o.tarjetasHora),
   );
-  if ("error" in r) return error(r.error, r.error === "limite" ? 429 : 422);
+  // "deezer" = Deezer no contesta (cuota, caído): 503, la app puede reintentar; no es que la canción no exista.
+  if ("error" in r) return error(r.error, r.error === "limite" ? 429 : r.error === "deezer" ? 503 : 422);
   // Una canción que el dueño ocultó no se puede publicar.
   if (await d.db.prepare("SELECT 1 AS x FROM canciones WHERE id = ? AND oculta = 1").bind(r.cancion.id).first()) {
     return error("oculta", 422);
@@ -92,7 +93,7 @@ async function leerFeed(c: Contexto): Promise<Response> {
   const quien = c.req.headers.has("Authorization") ? await cuentaDe(c.req, d) : null;
   const cuenta = quien instanceof Response ? null : quien;
   const ahora = d.ahora().getTime();
-  const base = SELECT_FEED + `WHERE ${VISIBLE} `;
+  const base = SELECT_FEED + `WHERE ${VISIBLE_FEED} `;
   const comunes = [ahora, ahora - ESPERA_CONVERSION_MS, POR_PAGINA + 1, cuenta?.id ?? null, cursor?.p ?? null, cursor?.i ?? null];
   const sentencia =
     orden === "recientes"
@@ -171,6 +172,7 @@ async function corazon(c: Contexto, dar: boolean): Promise<Response> {
   const pub = await publicacionVisible(c, id);
   if (!pub) return error("no_existe", 404);
   if (pub.cuenta === cuenta.id) return error("propia", 422);
+  if (!(await permitido(d.db, claveCorazones(cuenta.id), VENTANA_TOPE_S, CORAZONES_DIA, d.ahora()))) return error("limite", 429);
   const db = d.db;
   // El contador se RECUENTA en el mismo batch (nunca +1/-1): dos peticiones a la vez o quitar uno que
   // no existe no lo desvían. El INSERT lleva el EXISTS para no dejar un corazón huérfano si el autor

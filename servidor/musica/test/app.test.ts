@@ -13,7 +13,6 @@ function deps(): Deps {
     adminSecreto: "a",
     lectorSecreto: "l",
     conversorSecreto: "c",
-    dormir: async () => {},
     diasMinVoto: 90,
     lectorEnVps: false,
   };

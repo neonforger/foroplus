@@ -16,8 +16,6 @@ export interface Deps {
   adminSecreto: string;
   lectorSecreto: string;
   conversorSecreto: string;
-  /** Espera `ms` milisegundos (la petición larga del conversor); los tests la hacen instantánea. */
-  dormir: (ms: number) => Promise<void>;
   diasMinVoto: number;
   lectorEnVps: boolean;
 }

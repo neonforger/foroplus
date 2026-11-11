@@ -2,9 +2,9 @@
 // La cuenta sale SIEMPRE del token y entra en cada consulta de datos propios.
 import type { Contexto, OpcionesApp, Ruta } from "../app";
 import { yo } from "../auth";
-import { nuevoId } from "../cripto";
+import { nuevoId, RE_ULID } from "../cripto";
 import { cuerpoJson, error, json } from "../http";
-import { AUTO_OCULTAR } from "../feed";
+import { AUTO_OCULTAR, borrarMasQuerida } from "../feed";
 import { permitido } from "../limites";
 
 const MAX_CUERPO = 4096;
@@ -24,6 +24,8 @@ async function denunciar(c: Contexto): Promise<Response> {
   const motivo = cuerpo?.motivo;
   if (tipo !== "publicacion" && tipo !== "cancion") return error("tipo", 400);
   if (typeof objetivo !== "string") return error("objetivo", 400);
+  // Los dos tipos de objetivo son ULID: lo demás no llega a la base (ni a la tabla de denuncias).
+  if (!RE_ULID.test(objetivo)) return error("cuerpo", 400);
   if (typeof motivo !== "string" || [...motivo].length > MAX_MOTIVO) return error("motivo", 400);
   const ahora = d.ahora();
   // Una publicación caducada u oculta responde 404 como una que no existe: no se confirma que estuvo.
@@ -87,9 +89,10 @@ async function borrarCuenta(c: Contexto): Promise<Response> {
     db.prepare(`DELETE FROM denuncias WHERE tipo = 'publicacion' AND objetivo IN (${suyas})`).bind(yoId),
     db.prepare("DELETE FROM publicaciones WHERE cuenta = ?1").bind(yoId),
     db.prepare("DELETE FROM denuncias WHERE cuenta = ?1").bind(yoId),
+    borrarMasQuerida(db, yoId),
     // Retos vivos de su uid (guardan el uid en claro): fuera.
     db.prepare("DELETE FROM retos WHERE uid_hmac = (SELECT uid_hmac FROM cuentas WHERE id = ?1)").bind(yoId),
-    db.prepare("DELETE FROM limites WHERE clave IN ('tarjeta:' || ?1, 'denuncia:' || ?1, 'pub:' || ?1)").bind(yoId),
+    db.prepare("DELETE FROM limites WHERE clave IN ('tarjeta:' || ?1, 'denuncia:' || ?1, 'pub:' || ?1, 'corazon:' || ?1)").bind(yoId),
     db.prepare("DELETE FROM tokens WHERE cuenta = ?1").bind(yoId),
     // Una cuenta baneada NO desaparece del todo: queda una LÁPIDA con solo id, uid_hmac y baneada = 1
     // (sin nombre, registro ni fechas) para que volver a verificar la misma cuenta de FC siga dando

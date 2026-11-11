@@ -12,15 +12,6 @@ const EN_CURSO_PERDIDA_MS = 60_000;
 /** Tras un error se espera esto antes de reintentar, y como mucho este número de intentos. */
 const ERROR_ESPERA_MS = 3_600_000;
 const INTENTOS_MAX = 24;
-/**
- * Petición larga: una consulta a D1 cada 2 s durante como mucho 20 s (11 consultas, 10 pausas).
- * Con una consulta cada 1 s se medieron 13 ms de CPU en producción en espera ociosa, y el plan
- * gratis tiene un tope de 10 ms por petición: por eso se espacia. Cada consulta a D1 es una
- * subpetición (tope gratis: 50) y casi todo el tiempo es esperar, no CPU.
- */
-const ESPERA_MAX_MS = 20_000;
-const PAUSA_MS = 2000;
-const CONSULTAS_MAX = ESPERA_MAX_MS / PAUSA_MS + 1;
 const RE_SPOTIFY = /^[A-Za-z0-9]{22}$/;
 const DETALLE_MAX = 200;
 
@@ -28,27 +19,30 @@ const DETALLE_MAX = 200;
  * Reclama hasta 10 canciones en UNA sentencia (UPDATE ... RETURNING): dos conversores a la vez no pueden
  * llevarse la misma, porque D1 ejecuta la sentencia entera sin intercalar otra.
  */
-const RECLAMAR =
+export const RECLAMAR =
   "UPDATE canciones SET conversion = 'en_curso', conversion_en = ?1, conversion_intentos = conversion_intentos + 1 " +
-  "WHERE id IN (SELECT id FROM canciones WHERE conversion = 'pendiente' " +
+  // El primer IN repite la condición del índice parcial idx_canciones_conv (0006): sin él SQLite no sabe
+  // que puede usarlo y recorre todas las canciones (casi todas 'hecha') en cada sondeo del VPS.
+  "WHERE id IN (SELECT id FROM canciones WHERE conversion IN ('pendiente', 'en_curso', 'error') AND (conversion = 'pendiente' " +
   "OR (conversion = 'en_curso' AND conversion_en < ?1 - ?2 AND conversion_intentos < ?4) " +
-  "OR (conversion = 'error' AND conversion_en < ?1 - ?3 AND conversion_intentos < ?4) " +
+  "OR (conversion = 'error' AND conversion_en < ?1 - ?3 AND conversion_intentos < ?4)) " +
   "ORDER BY COALESCE(conversion_en, 0), id LIMIT ?5) " +
   "RETURNING id, titulo, artista, isrc";
 
+/**
+ * Respuesta INMEDIATA: una sola consulta de reclamo, haya trabajo o no; el VPS vuelve a preguntar a los
+ * 5 s si vino vacía. Antes era una petición larga (una consulta cada 2 s durante 20 s, con un `dormir`
+ * entre medias): con una consulta por segundo se midieron 13 ms de CPU en espera ociosa (tope gratis:
+ * 10 ms), y cada espera tenía el Worker ocupado sin hacer nada. Sondear desde el VPS cuesta lo mismo en
+ * consultas y deja cada petición en una sola.
+ */
 async function pendientes(c: Contexto): Promise<Response> {
-  const { db, ahora, dormir } = c.deps;
-  for (let i = 0; i < CONSULTAS_MAX; i++) {
-    if (i > 0) await dormir(PAUSA_MS);
-    const { results } = await db
-      .prepare(RECLAMAR)
-      .bind(ahora().getTime(), EN_CURSO_PERDIDA_MS, ERROR_ESPERA_MS, INTENTOS_MAX, POR_TANDA)
-      .all<{ id: string; titulo: string; artista: string; isrc: string | null }>();
-    if (results.length) {
-      return json({ canciones: results.map((f) => ({ id: f.id, titulo: f.titulo, artista: f.artista, isrc: f.isrc })) }, 200, SIN_CACHE);
-    }
-  }
-  return json({ canciones: [] }, 200, SIN_CACHE);
+  const { db, ahora } = c.deps;
+  const { results } = await db
+    .prepare(RECLAMAR)
+    .bind(ahora().getTime(), EN_CURSO_PERDIDA_MS, ERROR_ESPERA_MS, INTENTOS_MAX, POR_TANDA)
+    .all<{ id: string; titulo: string; artista: string; isrc: string | null }>();
+  return json({ canciones: results.map((f) => ({ id: f.id, titulo: f.titulo, artista: f.artista, isrc: f.isrc })) }, 200, SIN_CACHE);
 }
 
 /** Ese Spotify es de otra canción: esta se queda sin conversión (y su publicación sale con la tarjeta nativa). */

@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   admin, cancion, en, filas, HORA, llamar, MIN, peticion, publicacionDirecta, reiniciarCuentas, shur, T0, TABLAS, type Json,
 } from "./ayudas-admin";
+import { RECLAMAR } from "../src/rutas/conversor";
 
 beforeEach(async () => {
   reiniciarCuentas();
@@ -87,25 +88,25 @@ describe("GET /v1/conversor/pendientes", () => {
     expect(await fila(agotada)).toMatchObject({ conversion: "en_curso", conversion_intentos: 24 });
   });
 
-  it("espera y devuelve [] sin trabajo", async () => {
-    const pausas: number[] = [];
-    const r = await pendientes(en(0, { dormir: async (ms) => void pausas.push(ms) }));
-    expect(r.status).toBe(200);
-    expect(r.cuerpo).toEqual({ canciones: [] });
-    expect(pausas).toHaveLength(10);
-    expect(new Set(pausas)).toEqual(new Set([2000]));
-  });
-
-  it("sale en cuanto aparece trabajo mientras espera", async () => {
+  it("sin trabajo responde [] al instante (sin petición larga: el VPS vuelve a preguntar)", async () => {
     const id = await cancion(1);
     await estado(id, "hecha");
-    let pausas = 0;
-    const dormir = async () => {
-      if (++pausas === 3) await estado(id, "pendiente");
-    };
-    const r = await pendientes(en(0, { dormir }));
-    expect(r.cuerpo.canciones.map((c: Json) => c.id)).toEqual([id]);
-    expect(pausas).toBe(3);
+    const r = await pendientes();
+    expect(r.status).toBe(200);
+    expect(r.cuerpo).toEqual({ canciones: [] });
+    expect(r.cabeceras.get("Cache-Control")).toBe("no-store");
+    // Lo que llegue después sale en el siguiente sondeo.
+    await estado(id, "pendiente");
+    expect((await pendientes()).cuerpo.canciones.map((c: Json) => c.id)).toEqual([id]);
+  });
+
+  it("el reclamo usa el índice parcial de la cola, no un recorrido de todas las canciones", async () => {
+    // La subconsulta de RECLAMAR, como SELECT (EXPLAIN de un UPDATE ... RETURNING no enseña su plan).
+    const sub = RECLAMAR.slice(RECLAMAR.indexOf("SELECT id FROM canciones"), RECLAMAR.lastIndexOf(")"));
+    const plan = await filas("EXPLAIN QUERY PLAN " + sub, T0, 60_000, HORA, 24, 10);
+    const detalle = plan.map((f) => String(f.detail)).join(" | ");
+    expect(detalle).toContain("idx_canciones_conv");
+    expect(detalle).not.toMatch(/SCAN canciones(?! USING)/);
   });
 });
 

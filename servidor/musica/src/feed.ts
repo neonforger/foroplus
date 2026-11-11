@@ -47,9 +47,18 @@ export const RE_ENLACE = /(https?:\/\/|www\.|\b[a-z0-9-]+\.(com|es|net|org|io|me
  * Lo que sale en el feed. ?1 = ahora (ms), ?2 = ahora - ESPERA_CONVERSION_MS. Una publicación cuya
  * canción aún no se ha convertido espera ESPERA_CONVERSION_MS y sale igualmente (tarjeta nativa).
  */
-export const VISIBLE =
-  "p.caduca > ?1 AND p.oculta = 0 AND COALESCE(u.baneada, 0) = 0 AND COALESCE(c.oculta, 0) = 0 " +
-  "AND (c.conversion IN ('hecha', 'no_esta') OR p.creada <= ?2)";
+const VIVA =
+  // `p.creada > ?1 - VIDA_MS` dice lo mismo que `p.caduca > ?1` (caduca = creada + VIDA_MS), pero acota
+  // por `creada`, que es la columna de los índices del feed (0006): así la página se lee por el índice.
+  `p.caduca > ?1 AND p.creada > ?1 - ${VIDA_MS} AND p.oculta = 0 AND COALESCE(u.baneada, 0) = 0 AND COALESCE(c.oculta, 0) = 0 `;
+export const VISIBLE = VIVA + "AND (c.conversion IN ('hecha', 'no_esta') OR p.creada <= ?2)";
+
+/**
+ * VISIBLE para quien lee el feed. ?4 = la cuenta que mira (null = invitado, y `p.cuenta = NULL` no casa):
+ * el autor ve su propia publicación aunque aún se esté convirtiendo (si no, al publicar no la veía
+ * hasta pasados los 8 s de espera).
+ */
+export const VISIBLE_FEED = VIVA + "AND (c.conversion IN ('hecha', 'no_esta') OR p.creada <= ?2 OR p.cuenta = ?4)";
 
 /** ?4 = la cuenta que mira (null = invitado: `mia` y `corazon` salen nulos y no se enseñan). */
 export const SELECT_FEED =
@@ -125,4 +134,23 @@ export async function publicacionesRestantes(db: D1Database, cuentaId: string, a
     .bind(claveTope(cuentaId), inicio)
     .first<{ n: number }>();
   return Math.max(0, PUBLICACIONES_DIA - (fila?.n ?? 0));
+}
+
+/**
+ * Corazones (dar y quitar cuentan igual) por cuenta en 24 h. Cada uno recuenta el contador de la
+ * publicación en un batch: sin tope, una cuenta podría martillear dar/quitar sin coste. Nadie que use
+ * la app normal llega a 300; no se anuncia en la app (solo lo ve quien lo alcanza).
+ */
+export const CORAZONES_DIA = 300;
+export const claveCorazones = (cuentaId: string): string => "corazon:" + cuentaId;
+
+/**
+ * Quita del cartel de "la más querida" lo de una cuenta (al borrarla o banearla): por la columna
+ * `cuenta` (desde 0006) o, en las filas de antes, por el nombre del autor. Va en el batch ANTES de
+ * borrar o vaciar la fila de `cuentas`, que es de donde sale el nombre.
+ */
+export function borrarMasQuerida(db: D1Database, cuentaId: string): D1PreparedStatement {
+  return db
+    .prepare("DELETE FROM mas_querida WHERE cuenta = ?1 OR autor = (SELECT nombre FROM cuentas WHERE id = ?1 AND nombre <> '')")
+    .bind(cuentaId);
 }

@@ -78,14 +78,14 @@ describe("programado: feed cada 15 minutos", () => {
     expect((await filas("SELECT publicacion FROM corazones")).map((f) => f.publicacion)).toEqual([viva]);
   });
 
-  it("guarda la más querida de su semana con el nombre del autor", async () => {
+  it("guarda la más querida de su semana con el nombre del autor y su cuenta", async () => {
     const [a, b] = [await shur(), await shur()]; const c = await cancion(1);
     const creada = T0 - DIA - HORA;
     await publicacionDirecta(a.id, c, { creada, corazones: 2, texto: "menos" });
     await publicacionDirecta(b.id, c, { creada: creada + 1000, corazones: 5, texto: "la mejor" });
     await enT(T0).programado(CRON_FEED);
     expect(await filas("SELECT * FROM mas_querida")).toEqual([
-      { semana: SEMANA(creada), cancion: c, autor: "YoMismo2", texto: "la mejor", corazones: 5 },
+      { semana: SEMANA(creada), cancion: c, autor: "YoMismo2", texto: "la mejor", corazones: 5, cuenta: b.id },
     ]);
   });
 

@@ -49,14 +49,14 @@ export async function limpiarFeed(d: Deps, limite = LOTE_FEED): Promise<void> {
   const ahora = d.ahora().getTime();
   const { results } = await d.db
     .prepare(
-      `SELECT p.id, p.cancion, p.texto, p.creada, p.corazones, c.nombre AS autor,
+      `SELECT p.id, p.cuenta, p.cancion, p.texto, p.creada, p.corazones, c.nombre AS autor,
               (p.oculta = 0 AND c.baneada = 0 AND p.corazones > 0) AS compite
          FROM publicaciones p LEFT JOIN cuentas c ON c.id = p.cuenta
         WHERE p.caduca <= ?
         ORDER BY p.caduca ASC, p.id ASC LIMIT ?`,
     )
     .bind(ahora, limite)
-    .all<{ id: string; cancion: string; texto: string; creada: number; corazones: number; autor: string; compite: number }>();
+    .all<{ id: string; cuenta: string; cancion: string; texto: string; creada: number; corazones: number; autor: string; compite: number }>();
   if (results.length === 0) return;
   const ganadoras = new Map<string, (typeof results)[number]>();
   for (const p of results) {
@@ -77,12 +77,12 @@ export async function limpiarFeed(d: Deps, limite = LOTE_FEED): Promise<void> {
     ...[...ganadoras].map(([semana, p]) =>
       d.db
         .prepare(
-          `INSERT INTO mas_querida (semana, cancion, autor, texto, corazones) VALUES (?, ?, ?, ?, ?)
+          `INSERT INTO mas_querida (semana, cancion, autor, texto, corazones, cuenta) VALUES (?, ?, ?, ?, ?, ?)
            ON CONFLICT (semana) DO UPDATE SET cancion = excluded.cancion, autor = excluded.autor,
-             texto = excluded.texto, corazones = excluded.corazones
+             texto = excluded.texto, corazones = excluded.corazones, cuenta = excluded.cuenta
            WHERE excluded.corazones > mas_querida.corazones`,
         )
-        .bind(semana, p.cancion, p.autor, p.texto, p.corazones),
+        .bind(semana, p.cancion, p.autor, p.texto, p.corazones, p.cuenta),
     ),
     ...borrar,
   ]);

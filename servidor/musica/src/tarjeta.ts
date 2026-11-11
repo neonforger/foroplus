@@ -166,7 +166,10 @@ async function deLaDeezer(
  * busca en Deezer (sin artista no habría con qué casar).
  */
 export async function tarjetaDe(ref: RefCancion, red: Deps["red"]): Promise<Tarjeta | null> {
-  if (ref.fuente === "deezer") return tarjetaDeDeezer(Number(ref.id), red);
+  if (ref.fuente === "deezer") {
+    const t = await tarjetaDeDeezer(Number(ref.id), red);
+    return t === REINTENTAR ? null : t;
+  }
   const enlace = enlaceDe(ref);
   let titulo: string;
   let artista: string | null;
@@ -203,13 +206,49 @@ export async function tarjetaDe(ref: RefCancion, red: Deps["red"]): Promise<Tarj
 export type TarjetaDeezer = Tarjeta & { deezer: number; isrc: string | null };
 
 /**
+ * Deezer no ha podido contestar (caído, cuota, 429, una respuesta que no es JSON): no es que la pista
+ * no exista, así que quien pide debe poder reintentar (503) en vez de oír "no encontrada".
+ */
+export const REINTENTAR = "reintentar" as const;
+
+/**
+ * Códigos de `{"error":{"code":N}}` que son de Deezer y no de la pista: 4 = cuota ("Quota limit
+ * exceeded", 50 peticiones cada 5 s por IP, y el Worker comparte IP con más gente) y 700 = servicio
+ * ocupado. Los demás (800 = "no data") son que el id no existe.
+ */
+const DEEZER_PASAJEROS = new Set([4, 700]);
+
+/** El JSON de `/track/<id>`, o REINTENTAR si el fallo es de Deezer y no del id. */
+async function pistaDeezer(red: Deps["red"], id: number): Promise<Record<string, unknown> | null | typeof REINTENTAR> {
+  let j: unknown;
+  try {
+    const r = await red(`https://api.deezer.com/track/${id}`, CABECERAS);
+    if (r.status === 429 || r.status >= 500) return REINTENTAR;
+    if (!r.ok) return null;
+    j = await r.json();
+  } catch {
+    // Red caída o un cuerpo que no es JSON (una página de error de un proxy): fallo de Deezer.
+    return REINTENTAR;
+  }
+  if (!j || typeof j !== "object") return REINTENTAR;
+  const e = (j as { error?: unknown }).error;
+  if (e && typeof e === "object") {
+    const codigo = (e as { code?: unknown }).code;
+    return typeof codigo === "number" && DEEZER_PASAJEROS.has(codigo) ? REINTENTAR : null;
+  }
+  return j as Record<string, unknown>;
+}
+
+/**
  * La tarjeta de una pista de Deezer: UNA subpetición (`/track/<id>`, sin clave). Deezer contesta 200
  * con `{"error":{…}}` cuando el id no existe, así que se exige `title`. El artista lleva a los
  * contribuidores si los hay ("AC/DC, Otro"), sin repetir al principal; la clave los ordena igual.
  * El `preview` (URL firmada y con caducidad) NO se guarda nunca: la app pide una fresca por id.
+ * REINTENTAR si el fallo es de Deezer (ver `pistaDeezer`), null si la pista no existe.
  */
-export async function tarjetaDeDeezer(id: number, red: Deps["red"]): Promise<TarjetaDeezer | null> {
-  const j = await jsonDe(red, `https://api.deezer.com/track/${id}`);
+export async function tarjetaDeDeezer(id: number, red: Deps["red"]): Promise<TarjetaDeezer | null | typeof REINTENTAR> {
+  const j = await pistaDeezer(red, id);
+  if (j === REINTENTAR) return REINTENTAR;
   if (!j || typeof j.title !== "string" || !j.title.trim()) return null;
   const nombres: string[] = [];
   const poner = (n: unknown) => {

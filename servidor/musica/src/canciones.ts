@@ -4,7 +4,7 @@
 import type { Deps } from "./app";
 import { nuevoId } from "./cripto";
 import { refDe, type RefCancion } from "./normalizar";
-import { tarjetaDe, type Tarjeta } from "./tarjeta";
+import { REINTENTAR, tarjetaDe, tarjetaDeDeezer, type Tarjeta } from "./tarjeta";
 
 /** Lo que se enseña de una canción: los enlaces canónicos de cada fuente que tiene. */
 export interface CancionPub {
@@ -118,7 +118,7 @@ export async function guardarCancion(d: Deps, t: Tarjeta & ExtrasCancion): Promi
 
 export type ResultadoEnlace =
   | { cancion: FilaCancion }
-  | { error: "no_es_cancion" | "no_encontrada" | "limite" };
+  | { error: "no_es_cancion" | "no_encontrada" | "limite" | "deezer" };
 
 /**
  * La canción de un enlace: primero por su ref (sin red); si no se conoce, se monta la tarjeta (≤ 3
@@ -154,7 +154,10 @@ export async function cancionDeOrigen(
   const conocida = await cancionPorRef(d.db, ref);
   if (conocida) return { cancion: conocida };
   if (!(await antesDeLaRed())) return { error: "limite" };
-  const t = await tarjetaDe(ref, d.red);
+  // Deezer distingue "esa pista no existe" (no_encontrada) de "Deezer no contesta ahora" (cuota, 5xx: se
+  // reintenta). Las otras fuentes siguen como siempre: un oEmbed que falla es no_encontrada.
+  const t = ref.fuente === "deezer" ? await tarjetaDeDeezer(Number(ref.id), d.red) : await tarjetaDe(ref, d.red);
+  if (t === REINTENTAR) return { error: "deezer" };
   if (!t) return { error: "no_encontrada" };
   const extras: ExtrasCancion =
     ref.fuente === "spotify" ? { spotify: ref.id, conversion: "hecha" } : { conversion: "pendiente" };

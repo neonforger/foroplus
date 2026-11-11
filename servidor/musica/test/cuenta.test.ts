@@ -82,6 +82,12 @@ describe("POST /v1/denuncias", () => {
     expect((await denunciar(a, { tipo: "playlist", objetivo: c, motivo: "x" })).status).toBe(400);
     expect((await denunciar(a, { tipo: "usuario", objetivo: c, motivo: "x" })).status).toBe(400);
     expect((await denunciar(a, { tipo: "cancion", objetivo: 5, motivo: "x" })).status).toBe(400);
+    // Un objetivo que no es un ULID ni llega a la base.
+    for (const objetivo of ["", "x", c.toLowerCase(), c + "0", "' OR 1=1 --"]) {
+      const r = await denunciar(a, { tipo: "cancion", objetivo, motivo: "x" });
+      expect([r.status, r.cuerpo], objetivo).toEqual([400, { error: "cuerpo" }]);
+    }
+    expect(await filas("SELECT 1 FROM denuncias")).toHaveLength(0);
     expect((await denunciar(a, { tipo: "cancion", objetivo: c, motivo: "x".repeat(301) })).status).toBe(400);
     expect((await denunciar(a, { tipo: "cancion", objetivo: c })).status).toBe(400);
     expect((await denunciar(a, { tipo: "cancion", objetivo: c, motivo: "x".repeat(300) })).status).toBe(200);
@@ -231,5 +237,41 @@ describe("GET /v1/yo", () => {
     const a = await shur();
     await env.DB.prepare("UPDATE cuentas SET registro_fc = ? WHERE id = ?").bind("01-oct-2026", a.id).run();
     expect((await yo(a)).cuerpo).toMatchObject({ puedePublicar: false });
+  });
+});
+
+describe("la más querida al borrar o banear la cuenta", () => {
+  const SEM = (n: number) => `2026-W${String(n).padStart(2, "0")}`;
+  const ponerMasQuerida = (semana: string, autor: string, cuenta: string | null) =>
+    env.DB.prepare("INSERT INTO mas_querida (semana, cancion, autor, texto, corazones, cuenta) VALUES (?, 'x', ?, 't', 3, ?)")
+      .bind(semana, autor, cuenta).run();
+
+  it("borrar la cuenta quita sus filas (por cuenta y, en las viejas sin cuenta, por nombre) y deja las demás", async () => {
+    const a = await shur();
+    const b = await shur();
+    await ponerMasQuerida(SEM(40), "YoMismo1", a.id);
+    await ponerMasQuerida(SEM(41), "YoMismo1", null); // fila de antes de 0006
+    await ponerMasQuerida(SEM(42), "YoMismo2", b.id);
+    await ponerMasQuerida(SEM(43), "YoMismo2", null);
+    expect((await borrarCuenta(a)).status).toBe(200);
+    expect((await filas("SELECT semana FROM mas_querida ORDER BY semana")).map((f) => f.semana)).toEqual([SEM(42), SEM(43)]);
+  });
+
+  it("banear también la quita", async () => {
+    const a = await shur();
+    const b = await shur();
+    await ponerMasQuerida(SEM(40), "YoMismo1", a.id);
+    await ponerMasQuerida(SEM(41), "YoMismo1", null);
+    await ponerMasQuerida(SEM(42), "YoMismo2", b.id);
+    const r = await llamar(en(), peticion("POST", "/v1/admin/banear", { cuenta: a.id, baneada: true }, { "X-Admin": "admin" }));
+    expect(r.status).toBe(200);
+    expect((await filas("SELECT semana FROM mas_querida")).map((f) => f.semana)).toEqual([SEM(42)]);
+  });
+
+  it("borrar la cuenta limpia también su contador de corazones", async () => {
+    const a = await shur();
+    await env.DB.prepare("INSERT INTO limites (clave, ventana, n) VALUES (?, 0, 7)").bind("corazon:" + a.id).run();
+    expect((await borrarCuenta(a)).status).toBe(200);
+    expect(await filas("SELECT 1 FROM limites WHERE clave = ?", "corazon:" + a.id)).toHaveLength(0);
   });
 });

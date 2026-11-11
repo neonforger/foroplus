@@ -64,7 +64,6 @@ function deps(o: Partial<Deps> = {}): Deps {
     adminSecreto: "admin",
     lectorSecreto: LECTOR,
     conversorSecreto: "conversor",
-    dormir: async () => {},
     diasMinVoto: 90,
     lectorEnVps: false,
     ...o,

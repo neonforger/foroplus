@@ -274,6 +274,27 @@ describe("GET /v1/feed", () => {
     expect(ids(await feed("", en(8001)))).toEqual([p]);
   });
 
+  it("el autor ve su publicación aunque aún se convierta; los demás esperan los 8 s", async () => {
+    const a = await shur();
+    const b = await shur();
+    const c = await cancion(1);
+    await env.DB.prepare("UPDATE canciones SET conversion = 'pendiente'").run();
+    const p = await publicacionDirecta(a.id, c);
+    expect(ids(await feed("", en(1000), a))).toEqual([p]);
+    expect(ids(await feed("?orden=queridas", en(1000), a))).toEqual([p]);
+    expect(ids(await feed("", en(1000), b))).toEqual([]);
+    expect(ids(await feed("", en(1000)))).toEqual([]);
+  });
+
+  it("las dos ordenaciones leen por sus índices", async () => {
+    const plan = async (orden: string) =>
+      (await filas("EXPLAIN QUERY PLAN SELECT p.id FROM publicaciones p WHERE p.caduca > ?1 AND p.creada > ?1 - 86400000 " + orden, T0))
+        .map((f) => String(f.detail))
+        .join(" | ");
+    expect(await plan("ORDER BY p.creada DESC, p.id DESC LIMIT 21")).toContain("idx_publicaciones_creada");
+    expect(await plan("ORDER BY p.corazones DESC, p.creada DESC, p.id DESC LIMIT 21")).toContain("idx_publicaciones_corazones");
+  });
+
   it("una canción sin conversión posible (no_esta) sale enseguida", async () => {
     const a = await shur();
     const c = await cancion(1);
@@ -413,5 +434,50 @@ describe("GET /v1/publicaciones/mias", () => {
     expect(ids(r)).toEqual([propia]);
     expect(r.cuerpo.items[0]).toMatchObject({ mia: true, corazon: false, autor: "YoMismo1" });
     expect(r.cabeceras.get("Cache-Control")).toBe("no-store");
+  });
+});
+
+describe("revisión final del feed", () => {
+  const dar = (s: Shur, id: string, a: App = en()) =>
+    llamar(a, peticion("POST", `/v1/publicaciones/${id}/corazon`, undefined, conToken(s)));
+  const quitar = (s: Shur, id: string, a: App = en()) =>
+    llamar(a, peticion("DELETE", `/v1/publicaciones/${id}/corazon`, undefined, conToken(s)));
+
+  it("tope de corazones por cuenta y día: dar y quitar cuentan; el 301 da 429 limite", async () => {
+    const a = await shur();
+    const b = await shur();
+    const p = await publicacionDirecta(a.id, await cancion(1));
+    // 299 movimientos ya hechos hoy (dar y quitar suman igual).
+    const ventana = Math.floor(T0 / 1000 / 86_400) * 86_400;
+    await env.DB.prepare("INSERT INTO limites (clave, ventana, n) VALUES (?, ?, 299)").bind("corazon:" + b.id, ventana).run();
+    expect((await dar(b, p)).status).toBe(200);
+    const r = await quitar(b, p);
+    expect([r.status, r.cuerpo]).toEqual([429, { error: "limite" }]);
+    // El rechazado no tocó el corazón ni el contador.
+    expect((await filas("SELECT corazones FROM publicaciones WHERE id = ?", p))[0].corazones).toBe(1);
+    // Otra cuenta no se ve afectada, y al día siguiente se puede otra vez.
+    const c = await shur();
+    expect((await dar(c, p)).status).toBe(200);
+    const manana = await publicacionDirecta(a.id, await cancion(2), { creada: T0 + DIA - HORA });
+    expect((await dar(b, manana, en(DIA))).status).toBe(200);
+  });
+
+  it("Deezer sin cuota o caído al publicar → 503 deezer (reintentable), nada guardado", async () => {
+    const a = await shur();
+    const cuota = JSON.stringify({ error: { type: "Exception", message: "Quota limit exceeded", code: 4 } });
+    for (const resp of [
+      () => new Response(cuota, { headers: { "content-type": "application/json" } }),
+      () => new Response("caído", { status: 502 }),
+      () => new Response("<html></html>", { headers: { "content-type": "text/html" } }),
+    ]) {
+      const r = await publicar(a, { texto: "Hola", deezer: 92719900 }, en(0, { red: async () => resp() }));
+      expect([r.status, r.cuerpo]).toEqual([503, { error: "deezer" }]);
+    }
+    expect(await filas("SELECT id FROM publicaciones")).toEqual([]);
+    expect(await filas("SELECT id FROM canciones")).toEqual([]);
+    // Una pista que no existe sigue siendo no_encontrada.
+    const noData = JSON.stringify({ error: { type: "DataException", message: "no data", code: 800 } });
+    const r = await publicar(a, { texto: "Hola", deezer: 1 }, en(0, { red: async () => new Response(noData) }));
+    expect([r.status, r.cuerpo]).toEqual([422, { error: "no_encontrada" }]);
   });
 });

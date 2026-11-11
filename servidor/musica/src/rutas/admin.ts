@@ -3,6 +3,7 @@
 // lo que cambia más de una tabla va en UN batch (una transacción): o se hace entero o no se hace.
 import type { Contexto, Ruta } from "../app";
 import { RE_ULID } from "../cripto";
+import { borrarMasQuerida } from "../feed";
 import { cuerpoJson, error, json } from "../http";
 
 const MAX_CUERPO = 1024;
@@ -56,6 +57,8 @@ async function banear(c: Contexto): Promise<Response> {
       )
       .bind(cuenta),
     db.prepare("DELETE FROM corazones WHERE cuenta = ?1").bind(cuenta),
+    // Una baneada tampoco sigue en el cartel de la más querida.
+    borrarMasQuerida(db, cuenta),
     db.prepare("UPDATE cuentas SET baneada = 1 WHERE id = ?").bind(cuenta),
   ]);
   return json({ ok: true }, 200, SIN_CACHE);
