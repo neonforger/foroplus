@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Círculo rojo del botón de reproducir del reproductor de Música en reposo. El triángulo va en
-     fc_sobre_rojo, el mismo par que el de los botones principales (≥ 4,5:1 en los dos modos). -->
-<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
-    <solid android:color="@color/fc_rojo" />
-</shape>

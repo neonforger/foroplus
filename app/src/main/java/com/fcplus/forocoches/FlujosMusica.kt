@@ -15,7 +15,6 @@ import java.util.concurrent.Executors
 class FlujosMusica(
     private val act: AppCompatActivity,
     private val enganches: EnganchesMusica,
-    private val almacen: AlmacenMusica,
     private val abrirVerificacion: () -> Unit,
     private val alCambiar: () -> Unit
 ) {
@@ -29,7 +28,7 @@ class FlujosMusica(
             .setTitle("Borrar mi cuenta de Música")
             .setMessage(
                 "Se borran del servidor tu cuenta de Música, tus publicaciones y tus corazones. " +
-                    "Tus playlists de este móvil no se tocan. Podrás verificarte otra vez cuando quieras."
+                    "Podrás verificarte otra vez cuando quieras."
             )
             .setPositiveButton("Borrar") { _, _ -> borrando() }
             .setNegativeButton("Cancelar", null)
@@ -43,7 +42,6 @@ class FlujosMusica(
             val res = try {
                 BorrarCuentaMusica.borrar(enganches.api(), uid) { enganches.tokens.borrar(it) }
             } catch (_: Exception) { BorrarCuentaMusica.Resultado.FALLO }
-            if (res == BorrarCuentaMusica.Resultado.HECHO) try { BorrarCuentaMusica.quitarMarcas(almacen, uid) } catch (_: Exception) { }
             act.runOnUiThread {
                 ocupado = false
                 when (res) {

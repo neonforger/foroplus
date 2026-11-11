@@ -7,10 +7,9 @@ import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.os.Bundle
 import android.util.Log
-import android.widget.Toast
 
 /**
- * "Guardar en Música" en el menú de compartir de Android: una actividad SOLO de paso, sin pantalla
+ * "Compartir en Música" en el menú de compartir de Android: una actividad SOLO de paso, sin pantalla
  * (`Theme.NoDisplay`), que se cierra en el mismo `onCreate`.
  *
  * Ruling 30: nunca una segunda MainActivity. Antes era un `activity-alias` de MainActivity y cada
@@ -42,11 +41,7 @@ class GuardarEnMusica : Activity() {
                 "asunto=[$asunto] texto=[$crudo]")
         }
         val texto = EntradaCompartida.texto(intent.action, intent.type, crudo, asunto)
-        when {
-            texto == null -> {}
-            !EntradaCompartida.traeCanciones(texto) -> avisarSinCanciones(applicationContext)
-            else -> startActivity(paraMainActivity(this, texto))
-        }
+        if (texto != null) startActivity(paraMainActivity(this, texto))
         finish()
     }
 
@@ -55,12 +50,5 @@ class GuardarEnMusica : Activity() {
             Intent.makeMainActivity(ComponentName(ctx, MainActivity::class.java))
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
                 .putExtra(EntradaCompartida.EXTRA, texto)
-
-        /** Con el contexto de la app: quien lo pide se cierra justo después. */
-        fun avisarSinCanciones(ctx: Context) {
-            Toast.makeText(ctx.applicationContext,
-                "No he encontrado ninguna canción de YouTube o Spotify en lo que has compartido",
-                Toast.LENGTH_LONG).show()
-        }
     }
 }

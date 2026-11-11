@@ -126,4 +126,49 @@ class OptionsControllerTest {
         prefs.edit().putBoolean(OptionsController.PREF_MAS18, true).commit()
         assertTrue(OptionsController.mas18Activa(prefs))
     }
+
+    // ── "Borrar mi cuenta de Música" (2026-11-11: pasó de la portada de Música a Opciones) ──
+
+    /** Opciones tal como vive en activity_main.xml, con lo de Música contestado por [tiene]. */
+    private fun opciones(tiene: ((Boolean) -> Unit) -> Unit, alBorrar: () -> Unit = {}): android.view.View {
+        val act = org.robolectric.Robolectric.buildActivity(androidx.appcompat.app.AppCompatActivity::class.java).get()
+        act.setTheme(R.style.Theme_FCForocoches)
+        act.setContentView(R.layout.activity_main)
+        val panel = act.findViewById<android.view.View>(R.id.options_panel)
+        val c = OptionsController(
+            panel = panel, ignoreRepo = IgnoreListRepository(ctx), keywordRepo = KeywordRepository(ctx),
+            prefs = shellPrefs, onFontChanged = {}, onListsChanged = {},
+            tieneCuentaMusica = tiene, onBorrarCuentaMusica = alBorrar
+        )
+        c.bind()
+        return panel
+    }
+
+    @Test
+    fun `Opciones enseña Borrar mi cuenta de Musica solo con token`() {
+        val sin = opciones({ it(false) })
+        assertEquals(android.view.View.GONE, sin.findViewById<android.view.View>(R.id.opt_musica_borrar).visibility)
+
+        var borrados = 0
+        val con = opciones({ it(true) }, { borrados++ })
+        val fila = con.findViewById<android.view.View>(R.id.opt_musica_borrar)
+        assertEquals(android.view.View.VISIBLE, fila.visibility)
+        assertEquals(
+            "Borrar mi cuenta de Música",
+            fila.findViewById<android.widget.TextView>(R.id.cat_titulo).text.toString()
+        )
+        fila.performClick()
+        assertEquals(1, borrados)
+    }
+
+    @Test
+    fun `la fila de borrar Musica se esconde mientras se mira y no queda la de otra cuenta`() {
+        // La respuesta tarda (keystore): hasta que llega, la fila no se ve.
+        var pendiente: ((Boolean) -> Unit)? = null
+        val panel = opciones({ pendiente = it })
+        val fila = panel.findViewById<android.view.View>(R.id.opt_musica_borrar)
+        assertEquals(android.view.View.GONE, fila.visibility)
+        pendiente!!(true)
+        assertEquals(android.view.View.VISIBLE, fila.visibility)
+    }
 }

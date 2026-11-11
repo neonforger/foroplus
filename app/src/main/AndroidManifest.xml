@@ -55,10 +55,10 @@
         </activity>
 
         <!--
-            "Guardar en Música": lo que se comparte desde otra app (YouTube, Spotify…) abre Música
-            con la hoja "Añadir" rellena. Una actividad propia, con su nombre en el menú de
+            "Compartir en Música": lo que se comparte desde otra app (YouTube, Spotify…) abre Música
+            con la pantalla de compartir y el enlace puesto. Una actividad propia, con su nombre en el menú de
             compartir; Android no deja filtrar por dominio: sale para cualquier texto, y lo que no
-            trae canciones se dice y ya.
+            trae canciones llega al buscador de la pantalla de compartir tal cual.
 
             Es SOLO de paso (GuardarEnMusica.kt): sin pantalla, se cierra en el acto y le pasa el
             texto a la MainActivity que ya hubiera. Antes era un activity-alias de MainActivity, y
@@ -69,7 +69,7 @@
         -->
         <activity
             android:name=".GuardarEnMusica"
-            android:label="Guardar en Música"
+            android:label="Compartir en Música"
             android:exported="true"
             android:theme="@android:style/Theme.NoDisplay"
             android:excludeFromRecents="true"

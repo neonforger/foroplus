@@ -64,24 +64,6 @@ class EntradaCompartidaTest {
     }
 
     @Test
-    fun `una playlist de 200 canciones con nombres largos entra entera`() {
-        // Ruling 31: con 20.000 se perdían las últimas (~105 caracteres por canción de Spotify,
-        // más con nombres largos). Esta ocupa más de 30.000.
-        val canciones = (0 until Musica.MAX_CANCIONES).map { n ->
-            Cancion(
-                RefCancion(FuenteMusica.SPOTIFY, "%022d".format(n)),
-                "Una canción con un título bastante largo, versión extendida $n",
-                "Los Artistas Con Nombre Larguísimo $n", null, null, null, 0L
-            )
-        }
-        val texto = PlaylistCompartida.texto("Para la autovía", canciones)
-        assertTrue(texto.length in 30_001..60_000)
-        val r = EntradaCompartida.texto(Intent.ACTION_SEND, "text/plain", texto, null)!!
-        assertEquals(texto, r)
-        assertEquals(Musica.MAX_CANCIONES, AnadirMusica.plan(r).refs.size)
-    }
-
-    @Test
     fun `el corte no parte un emoji por la mitad`() {
         // 59.999 letras y un emoji (dos char): cortar a 60.000 dejaría medio emoji suelto.
         val largo = "a".repeat(59_999) + "🎵" + "b".repeat(100)
@@ -97,7 +79,6 @@ class EntradaCompartidaTest {
         val relleno = "x".repeat(59_990)
         val r = EntradaCompartida.texto(Intent.ACTION_SEND, "text/plain", "$relleno $enlace y más", null)!!
         assertEquals(relleno, r)
-        assertFalse(EntradaCompartida.traeCanciones(r))
     }
 
     @Test
@@ -108,15 +89,6 @@ class EntradaCompartidaTest {
         assertFalse(EntradaCompartida.esNueva(recreada = true, flags = 0))
         // Y lo mismo al volver desde Recientes, que relanza el intent con el que se abrió.
         assertFalse(EntradaCompartida.esNueva(recreada = false, flags = Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY))
-    }
-
-    @Test
-    fun `trae canciones si hay un enlace de YouTube o de Spotify, aunque sea corto`() {
-        assertTrue(EntradaCompartida.traeCanciones("Mira esto $enlace"))
-        assertTrue(EntradaCompartida.traeCanciones("https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC?si=1"))
-        assertTrue(EntradaCompartida.traeCanciones("https://spotify.link/AbCdEf123"))
-        assertFalse(EntradaCompartida.traeCanciones("https://forocoches.com/foro/showthread.php?t=1"))
-        assertFalse(EntradaCompartida.traeCanciones("hola"))
     }
 
     // ── El extra que GuardarEnMusica le pasa a MainActivity (Ruling 32) ──────

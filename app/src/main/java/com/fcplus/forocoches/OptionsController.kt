@@ -54,7 +54,15 @@ class OptionsController(
      * Si la sección +18 puede abrirse ahora mismo (la config remota la ofrece). Si no, con el
      * interruptor encendido se avisa debajo: encendido y sin pestaña parecería un fallo.
      */
-    private val mas18Disponible: () -> Boolean = { true }
+    private val mas18Disponible: () -> Boolean = { true },
+    /**
+     * ¿Hay token de Música para la cuenta activa? Se contesta por callback porque mirarlo abre las
+     * preferencias cifradas (keystore) y eso no va en el hilo de la interfaz. La fila "Borrar mi
+     * cuenta de Música" solo se enseña con un sí.
+     */
+    private val tieneCuentaMusica: ((Boolean) -> Unit) -> Unit = { it(false) },
+    /** Tocar "Borrar mi cuenta de Música": lanza el flujo de Música (pregunta y borra). */
+    private val onBorrarCuentaMusica: () -> Unit = {}
 ) {
     companion object {
         /**
@@ -162,6 +170,7 @@ class OptionsController(
     private val catPersonalizar: View = panel.findViewById(R.id.opt_cat_personalizar)
     private val catPublicar: View = panel.findViewById(R.id.opt_cat_publicar)
     private val catAcerca: View = panel.findViewById(R.id.opt_novedades)
+    private val catMusicaBorrar: View = panel.findViewById(R.id.opt_musica_borrar)
     /** Subpantalla abierta, o null si se está en la de categorías. */
     private var seccion: View? = null
 
@@ -227,6 +236,9 @@ class OptionsController(
         categoria(panel.findViewById(R.id.opt_coffee), R.drawable.ic_opt_cafe,
             "Invítame a un café", "ForoPlus es gratis y sin publicidad", flecha = false)
         categoria(catAcerca, R.drawable.ic_opt_acerca, "Acerca de", "Novedades de cada versión")
+        categoria(catMusicaBorrar, R.drawable.ic_musica, panel.context.getString(R.string.opt_musica_borrar),
+            "Tu cuenta, tus canciones y tus corazones del servidor", flecha = false)
+        catMusicaBorrar.setOnClickListener { onBorrarCuentaMusica() }
 
         catApariencia.setOnClickListener { abrir(R.id.opt_sec_apariencia, "Apariencia") }
         catFiltros.setOnClickListener { abrir(R.id.opt_sec_filtros, "Filtros") }
@@ -299,6 +311,16 @@ class OptionsController(
         return true
     }
 
+    /**
+     * "Borrar mi cuenta de Música": solo con token de Música para la cuenta activa (y servidor
+     * encendido, que lo mira quien contesta [tieneCuentaMusica]). Se esconde mientras se mira para
+     * que, con otra cuenta activa, no quede la fila de la anterior.
+     */
+    private fun pintarMusicaBorrar() {
+        catMusicaBorrar.visibility = View.GONE
+        tieneCuentaMusica { tiene -> catMusicaBorrar.visibility = if (tiene) View.VISIBLE else View.GONE }
+    }
+
     /** Refresca todo el panel con el estado actual (llamar al abrirlo). */
     fun bind() {
         alInicio()   // abrir Opciones es entrar por las categorías, no por la última subpantalla
@@ -318,6 +340,7 @@ class OptionsController(
         renderHilos()
         renderIgnored()
         pintarPopurri()
+        pintarMusicaBorrar()
     }
 
     /**

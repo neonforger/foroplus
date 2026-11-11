@@ -2,7 +2,6 @@ package com.fcplus.forocoches
 
 import android.content.ComponentName
 import android.content.Intent
-import android.os.Looper
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -11,13 +10,13 @@ import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
-import org.robolectric.shadows.ShadowToast
 
 /**
- * "Guardar en Música" (Ruling 30): una actividad de paso que nunca es una segunda MainActivity.
+ * "Compartir en Música" (Ruling 30): una actividad de paso que nunca es una segunda MainActivity.
  * Lo que se fija: pasa el texto a LA MainActivity que haya (NEW_TASK + CLEAR_TOP + SINGLE_TOP:
  * sin SINGLE_TOP, CLEAR_TOP la destruiría y la volvería a crear, borrador incluido) con un extra
- * propio y un intent de launcher, nunca un SEND; y sin canciones ni siquiera la abre.
+ * propio y un intent de launcher, nunca un SEND. Aunque lo compartido no traiga canciones pasa igual:
+ * la pantalla de compartir sale con el texto en el buscador (lo decide MusicaController).
  */
 @RunWith(RobolectricTestRunner::class)
 class GuardarEnMusicaTest {
@@ -49,19 +48,6 @@ class GuardarEnMusicaTest {
         // Nada que IntentRouter pueda tomar por un enlace de FC.
         assertNull(abre.getStringExtra("url"))
         assertNull(abre.data)
-        assertTrue(paso.isFinishing)
-    }
-
-    @Test
-    fun `sin canciones avisa y no abre MainActivity`() {
-        val paso = compartir("hola, esto no es una canción https://forocoches.com/foro/showthread.php?t=1")
-        shadowOf(Looper.getMainLooper()).idle()
-
-        assertNull(shadowOf(paso).nextStartedActivity)
-        assertEquals(
-            "No he encontrado ninguna canción de YouTube o Spotify en lo que has compartido",
-            ShadowToast.getTextOfLatestToast()
-        )
         assertTrue(paso.isFinishing)
     }
 

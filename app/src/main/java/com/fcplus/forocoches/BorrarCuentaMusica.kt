@@ -1,14 +1,14 @@
 package com.fcplus.forocoches
 
-/** Borrar la cuenta de Música: el servidor, el token de este móvil y las marcas de "publicada" que dejaron las versiones viejas. */
+/** Borrar la cuenta de Música: el servidor y el token de este móvil. */
 object BorrarCuentaMusica {
     enum class Resultado {
         /** La cuenta ya no existe en el servidor y el token de este móvil se ha tirado. */
         HECHO,
 
         /**
-         * 401 `token`: el token no vale (caducó al año, o lo purgó el servidor), pero la cuenta y sus playlists
-         * públicas PUEDEN seguir ahí: no se da por borrada. Se tira el token muerto y hay que verificarse otra vez.
+         * 401 `token`: el token no vale (caducó al año, o lo purgó el servidor), pero la cuenta y sus publicaciones
+         * PUEDEN seguir ahí: no se da por borrada. Se tira el token muerto y hay que verificarse otra vez.
          */
         VERIFICAR,
 
@@ -27,13 +27,4 @@ object BorrarCuentaMusica {
         if (res != Resultado.FALLO) borrarToken(uid)
         return res
     }
-
-    /**
-     * Quita la marca de "publicada" de las playlists que publicó [uid] (ya no existen en el servidor).
-     * Las de otras cuentas de este móvil siguen publicadas, y las marcas antiguas sin dueña no se tocan a ciegas.
-     */
-    fun quitarMarcas(almacen: AlmacenMusica, uid: String) {
-        for (p in almacen.estado().playlists) if (p.publicadaId != null && p.publicadaPor == uid) almacen.marcarPublicada(p.id, null)
-    }
 }
-

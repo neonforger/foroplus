@@ -1626,6 +1626,8 @@
                         <include android:id="@+id/opt_telegram" layout="@layout/item_opt_categoria" />
                         <include android:id="@+id/opt_coffee" layout="@layout/item_opt_categoria" />
                         <include android:id="@+id/opt_novedades" layout="@layout/item_opt_categoria" />
+                        <!-- Solo con una cuenta de Música verificada en este móvil: lo enciende OptionsController. -->
+                        <include android:id="@+id/opt_musica_borrar" layout="@layout/item_opt_categoria" android:visibility="gone" />
                         </LinearLayout>
                     </LinearLayout>
 

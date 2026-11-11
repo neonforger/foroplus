@@ -1,11 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Música (pestaña tras el Popurrí, listSource = "musica"). Va incluido DENTRO del FrameLayout
-     de la lista, el último para quedar encima de list_refresh: la cabecera y la tira de
-     pestañas de arriba siguen siendo las del listado, así que se desliza entre pestañas igual
+<!-- Música (pestaña tras el Popurrí, listSource = "musica"): SOLO el feed. Va incluido DENTRO del
+     FrameLayout de la lista, el último para quedar encima de list_refresh: la cabecera y la tira
+     de pestañas de arriba siguen siendo las del listado, así que se desliza entre pestañas igual
      que en el Popurrí o en +18. Lo enciende y lo apaga MusicaController.
 
      El fondo de la raíz es OPACO (fc_fondo) aunque el de la Compacta sea transparente: si una
-     lista que llega tarde enciende list_empty o el aro de carga por debajo, no se trasluce. -->
+     lista que llega tarde enciende list_empty o el aro de carga por debajo, no se trasluce.
+
+     Sin cabecera propia ("ForoPlus · Música"): la de la app ya dice dónde estás; los chips quedan
+     arriba del todo. Sin playlists, ni "Lo tuyo", ni "+" (decisión del dueño, 2026-11-11: que solo
+     se puedan compartir canciones). -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/panel_musica"
@@ -14,134 +18,8 @@
     android:background="@color/fc_fondo"
     android:visibility="gone">
 
-    <!-- La portada: la lista de tus playlists (y, con el servidor encendido, verificar y borrar la cuenta). -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:orientation="vertical">
-
-    <ScrollView
-        android:id="@+id/musica_portada"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:fillViewport="true"
-        android:background="?attr/fcFondoLista">
-
-        <!-- wrap_content: con fillViewport, ScrollView lo vuelve a medir al alto de la pantalla
-             si se queda corto, y entonces el peso del bloque de vacío lo centra. -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:paddingTop="?attr/fcListaPaddingV"
-            android:paddingBottom="88dp">
-
-            <!-- Verificarse con la cuenta de FC (C2): solo con el servidor encendido en la config y
-                 la cuenta activa aún sin verificar. Lo enciende MusicaController. -->
-            <TextView
-                android:id="@+id/musica_verificar"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:minHeight="48dp"
-                android:gravity="center_vertical"
-                android:paddingStart="16dp"
-                android:paddingEnd="16dp"
-                android:text="Verifica tu cuenta de ForoCoches"
-                android:textSize="15sp"
-                android:textStyle="bold"
-                android:textColor="@color/fc_rojo"
-                android:drawableEnd="@drawable/ic_fila"
-                android:background="?attr/selectableItemBackground"
-                android:visibility="gone" />
-
-            <!-- Título del grupo, con el mismo aire que las etiquetas del panel del avatar.
-                 fc_texto_2 y no fc_texto_3: sobre el gris de Tarjetas el 3 no llega a 4,5:1. -->
-            <TextView
-                android:id="@+id/musica_tuyas"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:paddingStart="16dp"
-                android:paddingEnd="16dp"
-                android:paddingTop="12dp"
-                android:paddingBottom="6dp"
-                android:text="TUS PLAYLISTS"
-                android:contentDescription="Tus playlists"
-                android:textSize="12sp"
-                android:textStyle="bold"
-                android:letterSpacing="0.06"
-                android:textColor="@color/fc_texto_2"
-                android:visibility="gone" />
-
-            <LinearLayout
-                android:id="@+id/musica_playlists"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical" />
-
-            <!-- Sin nada guardado: qué es esto y cómo entran las canciones. -->
-            <LinearLayout
-                android:id="@+id/musica_vacio"
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="1"
-                android:orientation="vertical"
-                android:gravity="center"
-                android:paddingStart="32dp"
-                android:paddingEnd="32dp"
-                android:visibility="gone">
-
-                <ImageView
-                    android:layout_width="56dp"
-                    android:layout_height="56dp"
-                    android:src="@drawable/ic_musica"
-                    app:tint="@color/fc_texto_off"
-                    android:contentDescription="@null" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:text="Aún no tienes música"
-                    android:textSize="17sp"
-                    android:textStyle="bold"
-                    android:textColor="@color/fc_texto" />
-
-                <TextView
-                    android:id="@+id/musica_vacio_texto"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:gravity="center"
-                    android:text="Toca + y pega el enlace de una canción de YouTube o de Spotify.\n\nTambién puedes compartirla desde la app de YouTube o de Spotify y elegir «Guardar en Música»."
-                    android:textSize="14sp"
-                    android:lineSpacingExtra="3dp"
-                    android:textColor="@color/fc_texto_2" />
-            </LinearLayout>
-
-            <!-- Borrar la cuenta de Música (C4): solo con una cuenta verificada (token en este móvil). -->
-            <TextView
-                android:id="@+id/musica_borrar_cuenta"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:minHeight="48dp"
-                android:gravity="center_vertical"
-                android:paddingStart="16dp"
-                android:paddingEnd="16dp"
-                android:layout_marginTop="12dp"
-                android:text="Borrar mi cuenta de Música"
-                android:textSize="13.5sp"
-                android:textColor="@color/fc_texto_2"
-                android:background="?attr/selectableItemBackground"
-                android:visibility="gone" />
-        </LinearLayout>
-    </ScrollView>
-    </LinearLayout>
-
-    <!-- El feed (A4): la portada cuando el servidor de Música está encendido. Cabecera con el
-         botón de "Lo tuyo" (de momento lleva a tus playlists; A7 lo rehará), los dos chips de
-         orden, la lista de publicaciones y, si no hay filas, el estado con su reintento. Lo
-         enciende y lo apaga FeedController; con el servidor apagado no existe (gone). -->
+    <!-- El feed: los dos chips de orden, la lista de publicaciones y, si no hay filas, el estado con
+         su reintento. Lo enciende y lo apaga FeedController. -->
     <LinearLayout
         android:id="@+id/musica_feed_panel"
         android:layout_width="match_parent"
@@ -154,58 +32,9 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:paddingStart="16dp"
-            android:paddingEnd="4dp"
-            android:paddingTop="8dp">
-
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:orientation="vertical">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="ForoPlus"
-                    android:textSize="12sp"
-                    android:textStyle="bold"
-                    android:letterSpacing="0.06"
-                    android:textColor="@color/fc_texto_2" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Música"
-                    android:textSize="22sp"
-                    android:textStyle="bold"
-                    android:textColor="@color/fc_texto" />
-            </LinearLayout>
-
-            <TextView
-                android:id="@+id/musica_ir_lo_tuyo"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:minHeight="48dp"
-                android:minWidth="48dp"
-                android:gravity="center"
-                android:paddingStart="12dp"
-                android:paddingEnd="12dp"
-                android:text="Lo tuyo"
-                android:textSize="15sp"
-                android:textStyle="bold"
-                android:textColor="@color/fc_rojo"
-                android:background="?attr/selectableItemBackground" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
             android:paddingStart="14dp"
             android:paddingEnd="14dp"
-            android:paddingTop="6dp"
+            android:paddingTop="10dp"
             android:paddingBottom="8dp">
 
             <TextView
@@ -218,12 +47,12 @@
                 android:gravity="center"
                 android:paddingStart="14dp"
                 android:paddingEnd="14dp"
-                android:text="Recientes"
+                android:text="@string/feed_chip_recientes"
                 android:textColor="@color/chip_mas18_texto"
                 android:textSize="13sp" />
 
             <TextView
-                android:id="@+id/musica_chip_queridas"
+                android:id="@+id/musica_chip_top"
                 android:layout_width="wrap_content"
                 android:layout_height="40dp"
                 android:background="@drawable/bg_chip_mas18"
@@ -231,7 +60,7 @@
                 android:gravity="center"
                 android:paddingStart="14dp"
                 android:paddingEnd="14dp"
-                android:text="Más queridas"
+                android:text="@string/feed_chip_top"
                 android:textColor="@color/chip_mas18_texto"
                 android:textSize="13sp" />
         </LinearLayout>
@@ -302,46 +131,6 @@
                 android:visibility="gone" />
         </FrameLayout>
     </LinearLayout>
-
-    <!-- La pantalla de una playlist (A11): el reproductor arriba, a todo el ancho y 16:9, y la
-         lista debajo con la cabecera como primera fila. El reproductor va FUERA de la lista
-         para que no se desplace ni lo tape nada mientras suena (YouTube visible, gotcha del
-         WebView ocluido). El hueco lo llena ReproductorMusica. -->
-    <LinearLayout
-        android:id="@+id/musica_playlist"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:orientation="vertical"
-        android:background="?attr/fcFondoLista"
-        android:visibility="gone">
-
-        <FrameLayout
-            android:id="@+id/musica_reproductor"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content" />
-
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/musica_canciones"
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"
-            android:clipToPadding="false"
-            android:paddingTop="?attr/fcListaPaddingV"
-            android:paddingBottom="24dp" />
-    </LinearLayout>
-
-    <!-- Añadir canciones (la hoja de A10). Mismo botón que el de crear hilo en un subforo. Solo
-         en la portada: en una playlist taparía el ⋮ y el asa de la última canción. -->
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/musica_anadir"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom|end"
-        android:layout_margin="18dp"
-        android:src="@drawable/ic_add"
-        android:contentDescription="Añadir canciones"
-        app:backgroundTint="@color/fc_rojo"
-        app:tint="@color/fc_sobre_rojo" />
 
     <!-- Compartir una canción (A6): el mismo botón extendido que "Nuevo hilo". Solo en el feed. -->
     <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton

@@ -34,4 +34,13 @@ class ConfigMusicaTest {
         assertTrue(ConfigMusica.servidorActivo(JSONObject("""{"musica":{"servidor":true}}""")))
         assertFalse(ConfigMusica.servidorActivo(JSONObject("{}")))
     }
+
+    @Test fun `servidor apagado no hay pestana Musica`() {
+        // MainActivity pinta la pestaña "Música" SOLO si servidorActivo() (pintarPestanas): Música es solo el
+        // feed y sin servidor no hay nada que enseñar. Estos son todos los modos de "apagado".
+        assertFalse(ConfigMusica.servidorActivo(null))
+        assertFalse(ConfigMusica.servidorActivo(JSONObject("""{"musica":{"servidor":false}}""")))
+        assertFalse(ConfigMusica.servidorActivo(JSONObject("""{"musica":{}}""")))
+        assertFalse(ConfigMusica.servidorActivo(JSONObject("""{"musica":{"servidor":true}}"""), "https://x.PENDIENTE.dev"))
+    }
 }

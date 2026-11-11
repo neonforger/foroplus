@@ -11,7 +11,7 @@ import androidx.recyclerview.widget.RecyclerView
 
 /**
  * La lista del feed de Música: una tarjeta por publicación (item_publicacion). Solo pinta y avisa;
- * quien la usa decide qué hacer con cada toque (corazón, play, guardar, ⋮, ver quién dio corazón).
+ * quien la usa decide qué hacer con cada toque (corazón, play, ⋮, ver quién dio corazón).
  *
  * [alPlay] entrega el `pub_hueco` de la tarjeta, que es donde se monta el reproductor. Ese hueco
  * NO se toca en un repintado parcial (corazón nuevo, otra hora, refresco de la lista): el
@@ -24,7 +24,6 @@ import androidx.recyclerview.widget.RecyclerView
 class FeedAdapter(
     private val alCorazon: (ItemFeed) -> Unit,
     private val alPlay: (ItemFeed, hueco: FrameLayout) -> Unit,
-    private val alGuardar: (ItemFeed) -> Unit,
     private val alMenu: (ItemFeed, View) -> Unit,
     private val alAutorCorazones: (ItemFeed) -> Unit,
     private val alSalirDePantalla: (id: String) -> Unit = {}
@@ -73,13 +72,13 @@ class FeedAdapter(
         // Los avisos leen la publicación ACTUAL de la fila, no la de cuando se pintó.
         fun actual(): ItemFeed? =
             h.bindingAdapterPosition.takeIf { it != RecyclerView.NO_POSITION }?.let { items.getOrNull(it) }
-        h.corazonIco.setOnClickListener { actual()?.let(alCorazon) }
+        // La destacada ("Top de la semana pasada") es histórica: ni corazón, ni menú, ni "quién".
+        h.corazonIco.setOnClickListener { actual()?.takeIf { !it.destacada }?.let(alCorazon) }
         // El número de MI publicación abre quién dio corazón (solo lo ve el autor); en las demás
         // es otra zona de toque del corazón.
-        h.corazones.setOnClickListener { actual()?.let { if (it.mia) alAutorCorazones(it) else alCorazon(it) } }
+        h.corazones.setOnClickListener { actual()?.takeIf { !it.destacada }?.let { if (it.mia) alAutorCorazones(it) else alCorazon(it) } }
         h.play.setOnClickListener { actual()?.let { alPlay(it, h.hueco) } }
-        h.guardar.setOnClickListener { actual()?.let(alGuardar) }
-        h.menu.setOnClickListener { v -> actual()?.let { alMenu(it, v) } }
+        h.menu.setOnClickListener { v -> actual()?.takeIf { !it.destacada }?.let { alMenu(it, v) } }
         return h
     }
 
@@ -97,8 +96,6 @@ class FeedAdapter(
         h.artista.text = pub.cancion.artista.orEmpty()
         h.artista.visibility = if (pub.cancion.artista.isNullOrBlank()) View.GONE else View.VISIBLE
         PortadasMusica.pintar(ctx, h.portada, pub.cancion.portada)
-        h.guardar.visibility =
-            if (pub.cancion.spotify == null && pub.cancion.youtube == null) View.GONE else View.VISIBLE
         pintarVivo(h, pub)
     }
 
@@ -115,6 +112,13 @@ class FeedAdapter(
     /** Lo que cambia con el tiempo o con los corazones: hace, lo que queda, número y corazón. */
     private fun pintarVivo(h: Fila, pub: ItemFeed) {
         val ctx = h.itemView.context
+        // La destacada es de la semana pasada: sin "hace", sin "se va en", sin menú, con su etiqueta.
+        // Se pone en cada pintado (no solo en el completo): una fila reciclada no arrastra lo de otra.
+        val d = pub.destacada
+        h.etiqueta.visibility = if (d) View.VISIBLE else View.GONE
+        h.hace.visibility = if (d) View.GONE else View.VISIBLE
+        h.queda.visibility = if (d) View.GONE else View.VISIBLE
+        h.menu.visibility = if (d) View.GONE else View.VISIBLE
         h.hace.text = VistaFeed.hace(pub.creada, ahora)
         val q = VistaFeed.queda(pub.caduca, ahora)
         h.queda.text = q.texto
@@ -133,6 +137,11 @@ class FeedAdapter(
             if (pub.corazon) R.string.pub_quitar_corazon else R.string.pub_dar_corazon
         )
         h.corazones.text = pub.corazones.toString()
+        if (pub.destacada) {
+            // Solo el número: el corazón de una fila histórica no se toca ni se lee como botón.
+            h.corazonIco.contentDescription = null
+            h.corazonIco.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+        } else h.corazonIco.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_AUTO
     }
 
     override fun onViewRecycled(h: Fila) {
@@ -159,8 +168,8 @@ class FeedAdapter(
         val hueco: FrameLayout = v.findViewById(R.id.pub_hueco)
         val corazonIco: ImageView = v.findViewById(R.id.pub_corazon_ico)
         val corazones: TextView = v.findViewById(R.id.pub_corazones)
-        val guardar: TextView = v.findViewById(R.id.pub_guardar)
         val menu: ImageView = v.findViewById(R.id.pub_menu)
+        val etiqueta: TextView = v.findViewById(R.id.pub_etiqueta)
     }
 
     private companion object {

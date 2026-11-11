@@ -120,12 +120,12 @@ class EmbedView(context: Context) : FrameLayout(context) {
     var alFallar: ((codigo: Int, video: String) -> Unit)? = null
 
     /**
-     * Es el reproductor de la sección Música ([ReproductorMusica]), no un embed de un mensaje.
+     * Es el reproductor de la sección Música ([ReproductorFeed]), no un embed de un mensaje.
      * Se pone ANTES de [bind] y cambia tres cosas:
      * - **Arranca a sonar solo** (`autoplay=1` y sin gesto obligatorio). El toque fue en nuestro
      *   "Reproducir" o en la canción, y un toque FUERA del WebView no cuenta como gesto para
      *   Chromium: con el gesto obligatorio hacía falta tocar otra vez dentro del reproductor.
-     * - **Ocupa el hueco que le den** (16:9 a todo el ancho, lo mide ReproductorMusica): el
+     * - **Ocupa el hueco que le den** (16:9 a todo el ancho, lo mide ReproductorFeed): el
      *   puente de altura no manda y el iframe llena la página.
      * - **Sin pantalla completa** (`fs=0`): esa vista la pinta MainActivity encima de todo y
      *   Música no la engancha, así que el botón se quedaría muerto.

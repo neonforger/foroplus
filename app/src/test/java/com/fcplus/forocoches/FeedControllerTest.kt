@@ -11,9 +11,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Assert.assertFalse
 import org.junit.Before
-import org.junit.Rule
 import org.junit.Test
-import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
@@ -21,7 +19,6 @@ import org.robolectric.RobolectricTestRunner
 /** El feed de la portada de Música, con una red falsa y los hilos en línea (sin esperas). */
 @RunWith(RobolectricTestRunner::class)
 class FeedControllerTest {
-    @get:Rule val carpeta = TemporaryFolder()
 
     private val llamadas = ArrayList<String>()
     private var responder: (String, String) -> Respuesta = { _, _ -> Respuesta(404, "{}") }
@@ -32,7 +29,6 @@ class FeedControllerTest {
     private lateinit var raiz: View
     private lateinit var tokens: TokensMusica
     private lateinit var bloqueados: BloqueadosMusica
-    private lateinit var almacen: AlmacenMusica
     private lateinit var enganches: EnganchesMusica
     private var servidor = true
 
@@ -49,7 +45,6 @@ class FeedControllerTest {
         for (f in listOf("t_tokens", "t_pend", "t_bloq")) ctx.getSharedPreferences(f, Context.MODE_PRIVATE).edit().clear().commit()
         tokens = TokensMusica(ctx.getSharedPreferences("t_tokens", Context.MODE_PRIVATE))
         bloqueados = BloqueadosMusica(ctx.getSharedPreferences("t_bloq", Context.MODE_PRIVATE))
-        almacen = AlmacenMusica(carpeta.root)
         enganches = EnganchesMusica(
             servidorActivo = { servidor }, uidActivo = { "123456" }, cambiandoDeCuenta = { false },
             motorCoche = MotorCocheFC({ }), tokens = lazy { tokens },
@@ -72,9 +67,9 @@ class FeedControllerTest {
     private fun controlador(): FeedController {
         val api = ApiMusica({ tokens.de("123456") }, red = { m, u, _, _ -> llamadas.add("$m $u"); responder(m, u) })
         return FeedController(
-            act, raiz, enganches, almacen, ReproductorFeed(act, {}),
-            abrirVerificacion = { verificaciones++ }, abrirCompartir = {}, abrirLoTuyo = {},
-            bloqueados = bloqueados, api = { api }, segundoPlano = { it() }, reloj = { ahora }, disco = { it() }
+            act, raiz, enganches, ReproductorFeed(act, {}),
+            abrirVerificacion = { verificaciones++ }, abrirCompartir = {},
+            bloqueados = bloqueados, api = { api }, segundoPlano = { it() }, reloj = { ahora }
         )
     }
 
@@ -103,12 +98,12 @@ class FeedControllerTest {
         assertEquals(View.VISIBLE, raiz.findViewById<View>(R.id.musica_feed_panel).visibility)
     }
 
-    @Test fun `chip queridas pide orden queridas`() {
+    @Test fun `chip Top pide orden queridas al servidor`() {
         val f = controlador()
         f.mostrar()
-        raiz.findViewById<View>(R.id.musica_chip_queridas).performClick()
+        raiz.findViewById<View>(R.id.musica_chip_top).performClick()
         assertTrue(llamadas.last(), llamadas.last().contains("orden=queridas"))
-        assertTrue(raiz.findViewById<View>(R.id.musica_chip_queridas).isSelected)
+        assertTrue(raiz.findViewById<View>(R.id.musica_chip_top).isSelected)
         assertFalse(raiz.findViewById<View>(R.id.musica_chip_recientes).isSelected)
     }
 
@@ -210,15 +205,6 @@ class FeedControllerTest {
         assertEquals(2, llamadas.count { it.contains("cursor=") })
     }
 
-    @Test fun `guardar una cancion que no se reconoce avisa`() {
-        responder = { _, _ -> feed("""{"id":"P9","autor":"Ana","texto":"x","creada":1,"caduca":9999999999,"corazones":0,"cancion":{"id":"c9","titulo":"T","artista":null,"portada":null,"youtube":"https://raro.example/x","spotify":null,"deezer":null}}""") }
-        val f = controlador()
-        f.mostrar()
-        fila(0).findViewById<View>(R.id.pub_guardar).performClick()
-        assertEquals(0, almacen.estado().playlists.size)
-        assertEquals(act.getString(R.string.feed_guardar_no), org.robolectric.shadows.ShadowToast.getTextOfLatestToast())
-    }
-
     @Test fun `bloqueado no sale`() {
         bloqueados.bloquear("pepe")
         val f = controlador()
@@ -236,18 +222,6 @@ class FeedControllerTest {
         assertEquals(View.GONE, raiz.findViewById<View>(R.id.musica_compartir).visibility)
     }
 
-    @Test fun `guardar crea Guardadas del feed una sola vez`() {
-        val f = controlador()
-        f.mostrar()
-        fila(0).findViewById<View>(R.id.pub_guardar).performClick()
-        fila(1).findViewById<View>(R.id.pub_guardar).performClick()
-        fila(1).findViewById<View>(R.id.pub_guardar).performClick()  // repetida: no duplica
-        val e = almacen.estado()
-        val g = e.playlists.filter { it.nombre == Musica.GUARDADAS_FEED }
-        assertEquals(1, g.size)
-        assertEquals(2, g[0].claves.size)
-    }
-
     @Test fun `sin red y sin filas ensena el estado con reintento`() {
         responder = { _, _ -> throw java.io.IOException("sin red") }
         val f = controlador()
@@ -259,5 +233,64 @@ class FeedControllerTest {
         raiz.findViewById<View>(R.id.musica_feed_reintentar).performClick()
         assertEquals(View.GONE, raiz.findViewById<View>(R.id.musica_feed_estado).visibility)
         assertEquals(1, filas())
+    }
+
+    // ── Top de la semana pasada ──────────────────────────────────────────────
+
+    private val masQuerida =
+        """{"semana":"2026-W45","autor":"Lola","texto":"la de la semana","corazones":12,"cancion":${cancion("T")}}"""
+
+    private fun feedConTop(top: String?) = Respuesta(
+        200, """{"items":[${item("P1", "Pepe")},${item("P2", "Ana")}],"cursor":null${if (top != null) ""","masQuerida":$top""" else ""}}"""
+    )
+
+    private fun texto(i: Int) = fila(i).findViewById<TextView>(R.id.pub_texto).text.toString()
+
+    @Test fun `chip Top pinta la destacada primero`() {
+        responder = { _, u -> if (u.contains("orden=queridas")) feedConTop(masQuerida) else feedConTop(null) }
+        val f = controlador()
+        f.mostrar()
+        raiz.findViewById<View>(R.id.musica_chip_top).performClick()
+        assertEquals(3, filas())
+        assertEquals("la de la semana", texto(0))
+        assertEquals(View.VISIBLE, fila(0).findViewById<View>(R.id.pub_etiqueta).visibility)
+        assertEquals("Top de la semana pasada", fila(0).findViewById<TextView>(R.id.pub_etiqueta).text.toString())
+        assertEquals(View.GONE, fila(0).findViewById<View>(R.id.pub_menu).visibility)
+        // Las de verdad van debajo y sin etiqueta.
+        assertEquals("frase", texto(1))
+        assertEquals(View.GONE, fila(1).findViewById<View>(R.id.pub_etiqueta).visibility)
+    }
+
+    @Test fun `Recientes no pinta la destacada`() {
+        // Aunque el servidor la mandara, con Recientes no existe.
+        responder = { _, _ -> feedConTop(masQuerida) }
+        val f = controlador()
+        f.mostrar()
+        assertEquals(2, filas())
+        assertEquals("frase", texto(0))
+        assertEquals(View.GONE, fila(0).findViewById<View>(R.id.pub_etiqueta).visibility)
+        // Y al volver de Top a Recientes se quita.
+        raiz.findViewById<View>(R.id.musica_chip_top).performClick()
+        assertEquals(3, filas())
+        raiz.findViewById<View>(R.id.musica_chip_recientes).performClick()
+        assertEquals(2, filas())
+    }
+
+    @Test fun `sin masQuerida no hay destacada`() {
+        responder = { _, _ -> feedConTop(null) }
+        val f = controlador()
+        f.mostrar()
+        raiz.findViewById<View>(R.id.musica_chip_top).performClick()
+        assertEquals(2, filas())
+        assertEquals(View.GONE, fila(0).findViewById<View>(R.id.pub_etiqueta).visibility)
+    }
+
+    @Test fun `la destacada de un autor bloqueado no sale`() {
+        responder = { _, _ -> feedConTop(masQuerida) }
+        bloqueados.bloquear("lola")
+        val f = controlador()
+        f.mostrar()
+        raiz.findViewById<View>(R.id.musica_chip_top).performClick()
+        assertEquals(2, filas())
     }
 }

@@ -399,7 +399,7 @@ class MainActivity : AppCompatActivity() {
     /** Música: el panel que sustituye a la lista con la pestaña "Música" (ver [showMusica]). */
     private lateinit var musica: MusicaController
     private lateinit var panelMusica: View
-    /** Lo llegado por "Guardar en Música" antes de que hubiera pestaña de Música (ver [recibirCompartido]). */
+    /** Lo llegado por "Compartir en Música" antes de que hubiera pestaña de Música (ver [recibirCompartido]). */
     private var compartidoPendiente: String? = null
     /** Sección +18: lo ya pintado, sin filtrar por chips (para refiltrar sin volver a bajar). */
     private var mas18Hilos: List<HiloMas18> = emptyList()
@@ -1253,7 +1253,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * El texto de "Guardar en Música" que trae [i] ([GuardarEnMusica] lo pone en
+     * El texto de "Compartir en Música" que trae [i] ([GuardarEnMusica] lo pone en
      * [EntradaCompartida.EXTRA]), o null. Solo en el intent de launcher que manda ella y con el
      * mismo tope ([EntradaCompartida.extraAceptado]): pegado a un enlace de FC no cuenta y el
      * enlace sigue a IntentRouter. Se quita del intent al leerlo, además de lo que para
@@ -1273,11 +1273,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * Lo que llega por "Guardar en Música": Música con la hoja "Añadir" rellena. Siempre a ESTA
-     * MainActivity, la única (Ruling 30): por onNewIntent si ya estaba, por onCreate si no.
+     * Lo que llega por "Compartir en Música": Música con la pantalla de compartir y el enlace ya
+     * puesto. Siempre a ESTA MainActivity, la única (Ruling 30): por onNewIntent si ya estaba, por
+     * onCreate si no.
      *
-     * - Sin canciones: se dice y ya (GuardarEnMusica ni siquiera abre MainActivity; aquí solo se
-     *   llega así si otra app manda el extra a mano).
+     * - Servidor apagado: se avisa "Música no está disponible" y no se hace nada más (la pestaña
+     *   ni existe).
      * - Sin pestaña de Música todavía (arranque en frío: sale con el índice del foro, como el
      *   Popurrí y +18) se aparta en [compartidoPendiente], se dice que no se ha perdido, y lo
      *   entrega [onForumListJson].
@@ -1285,7 +1286,11 @@ class MainActivity : AppCompatActivity() {
      *   raíz, Música en su sitio; sobre otra cosa, apilada).
      */
     private fun recibirCompartido(texto: String) {
-        if (!EntradaCompartida.traeCanciones(texto)) { GuardarEnMusica.avisarSinCanciones(this); return }
+        if (!enganchesMusica.servidorActivo()) {
+            compartidoPendiente = null
+            toast(getString(R.string.musica_no_disponible))
+            return
+        }
         if (!hayPestanaMusica()) {
             if (compartidoPendiente == null) toast("Abriendo Música en cuanto cargue el foro…")
             compartidoPendiente = texto
@@ -3606,7 +3611,7 @@ class MainActivity : AppCompatActivity() {
         panelMusica = findViewById(R.id.panel_musica)
         // Música abre fuera con su propio abridor: openExternal fija el navegador y las canciones
         // tienen que poder ir a la app de YouTube o de Spotify.
-        musica = MusicaController(this, panelMusica, AlmacenMusica(java.io.File(filesDir, "musica")), enganchesMusica) {
+        musica = MusicaController(this, panelMusica, enganchesMusica) {
             MusicaController.abrirEnSuApp(this, it)
         }
         bottomNav = findViewById(R.id.bottom_nav)
@@ -3679,7 +3684,7 @@ class MainActivity : AppCompatActivity() {
         // Destino centralizado en IntentRouter. En frío el motor aún no está listo, así que
         // hilo/MP se guardan como pendientes y se abren en NATIVO al arrancar; mientras, se
         // muestra la lista nativa. REGLA DE ORO: jamás la capa web.
-        // "Guardar en Música" (el extra de GuardarEnMusica) va ANTES y no pasa por IntentRouter:
+        // "Compartir en Música" (el extra de GuardarEnMusica) va ANTES y no pasa por IntentRouter:
         // no es un enlace de FC. Recreada (modo oscuro, estilo) o desde Recientes no se vuelve a
         // atender (EntradaCompartida.esNueva).
         val compartido = textoCompartido(intent, "onCreate")
@@ -3967,7 +3972,9 @@ class MainActivity : AppCompatActivity() {
                 listLoaded = false
                 pintarPestanas()
                 recargarListaPorFiltros()
-            }
+            },
+            tieneCuentaMusica = { alSaber -> musica.tieneCuenta(alSaber) },
+            onBorrarCuentaMusica = { musica.borrarMiCuenta() }
         )
         // Comunidad y apoyo: enlaces EXTERNOS (Telegram / navegador), nunca la capa web.
         optionsPanel.findViewById<View>(R.id.opt_telegram).setOnClickListener {
@@ -4145,7 +4152,7 @@ class MainActivity : AppCompatActivity() {
         val forums = parseForumListPayload(json)
         if (forums.isEmpty()) return
         pintarPestanas(forums)
-        // Lo de "Guardar en Música" que esperaba a la pestaña de Música (arranque en frío).
+        // Lo de "Compartir en Música" que esperaba a la pestaña de Música (arranque en frío).
         compartidoPendiente?.let { recibirCompartido(it) }
     }
 
@@ -4176,7 +4183,8 @@ class MainActivity : AppCompatActivity() {
         // enseñando los hilos de otro (medido en el dispositivo el 2026-08-28).
         // La sección +18 apagada (Opciones o config remota) estando dentro: no hay pestaña a la
         // que volver, así que la lista pasa a Inicio ANTES de pintar.
-        if (listSource == "mas18" && configMas18() == null) {
+        // Lo mismo con Música si el servidor se apaga (config remota nueva) estando dentro.
+        if ((listSource == "mas18" && configMas18() == null) || (listSource == "musica" && !enganchesMusica.servidorActivo())) {
             listSource = "home"
             refrescarTitulo()
             pintarBotonTop()
@@ -4223,10 +4231,14 @@ class MainActivity : AppCompatActivity() {
             idxPopurri = desplazamiento
             desplazamiento += 1
         }
-        // Música sale para todo el mundo, sin activarla en Opciones (spec).
-        val idxMusica = desplazamiento
-        forumTabs.addTab(forumTabs.newTab().setText("Música").also { it.tag = TAG_MUSICA }, false)
-        desplazamiento += 1
+        // Música sale para todo el mundo, sin activarla en Opciones (spec), mientras el servidor esté
+        // encendido en la config: Música es solo el feed y sin servidor no hay nada que enseñar.
+        val hayMusica = enganchesMusica.servidorActivo()
+        val idxMusica = if (hayMusica) desplazamiento else -1
+        if (hayMusica) {
+            forumTabs.addTab(forumTabs.newTab().setText("Música").also { it.tag = TAG_MUSICA }, false)
+            desplazamiento += 1
+        }
         val enSeccion = listSource == "popurri" || listSource == "mas18" || listSource == "musica"
         visibles.forEachIndexed { idx, f ->
             val tab = forumTabs.newTab().setText(f.name)
@@ -4242,7 +4254,7 @@ class MainActivity : AppCompatActivity() {
         }
         if (listSource == "mas18") selectIdx = 0
         if (listSource == "popurri" && idxPopurri >= 0) selectIdx = idxPopurri
-        if (listSource == "musica") selectIdx = idxMusica
+        if (listSource == "musica" && idxMusica >= 0) selectIdx = idxMusica
         forumTabs.getTabAt(selectIdx)?.select()
         populatingTabs = false
         // La lista se vació arriba (sección +18 apagada estando dentro): se pide la de Inicio. Va
@@ -7920,7 +7932,7 @@ class MainActivity : AppCompatActivity() {
                 // deslizar la barra inferior (que scrollea en horizontal) o las pestañas
                 // ya no cambia de subforo por accidente. En Música la lista está tapada: vale su
                 // panel, que ocupa el mismo sitio, salvo donde Música dice que no (el reproductor
-                // y las asas de arrastrar de una playlist).
+                // y la barra de lo que suena).
                 swipeStartedInList = if (listSource == "musica")
                     touchInside(panelMusica, ev) && musica.dejaDeslizarDesde(ev.rawX.toInt(), ev.rawY.toInt())
                     else touchInside(threadList, ev)
@@ -8276,7 +8288,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
-        // "Guardar en Música" primero, y sin pasar por IntentRouter (ver onCreate). Es el camino
+        // "Compartir en Música" primero, y sin pasar por IntentRouter (ver onCreate). Es el camino
         // normal con la app abierta: GuardarEnMusica llega aquí con CLEAR_TOP + SINGLE_TOP.
         textoCompartido(intent, "onNewIntent")?.let {
             if (EntradaCompartida.esNueva(recreada = false, flags = intent.flags)) recibirCompartido(it)
@@ -8774,10 +8786,6 @@ class MainActivity : AppCompatActivity() {
         // "Sus mensajes" no es una pantalla de la pila: es el MISMO hilo mirado de otra forma.
         // Atrás te devuelve al hilo donde estabas, no a la lista.
         if (vistaDerivada.isNotEmpty() && isThreadVisible) { salirDeSusMensajes(); return }
-
-        // Dentro de Música, sus pantallas van antes que la pila (de una playlist a la portada).
-        // En la portada no gestiona nada y el atrás sigue igual que desde el Popurrí.
-        if (listSource == "musica" && musica.visible && musica.atras()) return
 
         // Navegación de verdad: se deshace la pila, sea cual sea la pantalla.
         val destino = nav.pop()

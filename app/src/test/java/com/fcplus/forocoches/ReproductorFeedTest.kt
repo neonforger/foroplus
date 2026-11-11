@@ -99,7 +99,7 @@ class ReproductorFeedTest {
         assertEquals(1, embeds(h2).size)
         assertTrue(embeds(h2)[0].deMusica)
         val alto = embeds(h2)[0].layoutParams.height
-        assertTrue(alto >= (ReproductorMusica.MINIMO_DP * m.act.resources.displayMetrics.density).toInt())
+        assertTrue(alto >= (ReproductorFeed.MINIMO_DP * m.act.resources.displayMetrics.density).toInt())
     }
 
     @Test
@@ -214,5 +214,24 @@ class ReproductorFeedTest {
         assertTrue(m.r.pulsando())
         m.audios[0].alAcabar()
         assertTrue(!m.r.pulsando())
+    }
+
+    // ── La caja del vídeo de YouTube: 16:9 a todo el ancho y nunca menos de 200 dp (spec). ──
+    // Medido en el Samsung de pruebas: 1080 × 2340 a 480 dpi (3 px por dp); un WebView de 1008 px
+    // mide 336 px CSS y un px CSS es un dp (la página del embed usa width=device-width).
+
+    @Test fun `en vertical la caja es 16 a 9 del ancho`() {
+        assertEquals(607, ReproductorFeed.altoCaja(1080, 2340, 3.0f))
+        assertTrue(607 / 3.0f >= ReproductorFeed.MINIMO_DP)
+    }
+
+    @Test fun `en un movil estrecho el 16 a 9 no llega y manda el minimo de YouTube`() {
+        // 320 dp de ancho: el 16:9 serían 180 dp.
+        assertEquals(400, ReproductorFeed.altoCaja(640, 1280, 2.0f))
+    }
+
+    @Test fun `en horizontal sube a 200 dp si el 55 por ciento de la pantalla se queda corto`() {
+        // 594 px (198 dp) → 600 px = 200 dp.
+        assertEquals(600, ReproductorFeed.altoCaja(2340, 1080, 3.0f))
     }
 }

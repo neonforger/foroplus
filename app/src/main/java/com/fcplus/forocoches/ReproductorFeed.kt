@@ -86,11 +86,11 @@ class AudioMediaPlayer : AudioFragmento {
  * hueco (solo al reciclar), así que [parar] deja el hueco vacío y escondido.
  *
  * Qué suena ([fuente]): Spotify (reproductor oficial, 30 s dentro de la app) > YouTube (visible y
- * de al menos [ReproductorMusica.MINIMO_DP] mientras suena, como manda el spec) > fragmento de
+ * de al menos [MINIMO_DP] mientras suena, como manda el spec) > fragmento de
  * Deezer con un [MediaPlayer] propio. Siempre debajo, "Entera en Spotify" (la pista exacta si hay
  * id; si no, una búsqueda con título y artista).
  *
- * Reglas heredadas de [ReproductorMusica]: los WebView se sueltan con `release()` ANTES de sacarlos
+ * Reglas heredadas del antiguo reproductor de playlists (ya retirado): los WebView se sueltan con `release()` ANTES de sacarlos
  * de la vista (gotcha "Destruir un WebView antes de sacarlo..."), y quien saca la pantalla
  * (MusicaController: ocultar, pausar, atrás; hojas y diálogos) llama a [parar]; la tarjeta que sale
  * de la ventana, a [pararSi] (solo si es la que suena: gotcha "Apagar el reproductor aparcado no
@@ -151,7 +151,7 @@ class ReproductorFeed(
                 e.deMusica = true
                 val m = act.resources.displayMetrics
                 val ancho = hueco.width.takeIf { it > 0 } ?: m.widthPixels
-                val alto = ReproductorMusica.altoCaja(ancho, m.heightPixels, null, m.density)
+                val alto = altoCaja(ancho, m.heightPixels, m.density)
                 raiz.addView(e, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, alto))
                 e.bind(EmbedSpec("youtube", "https://www.youtube.com/watch?v=${f.id}", f.id))
                 embed = e
@@ -278,6 +278,23 @@ class ReproductorFeed(
     private fun dp(v: Int) = (v * act.resources.displayMetrics.density).toInt()
 
     companion object {
+        /**
+         * Alto mínimo del vídeo: los 200 px CSS que pide YouTube. La página del embed usa
+         * width=device-width, así que un px CSS es un dp (medido: 480 dpi, 3 px por dp, y un
+         * WebView de 1008 px mide 336 px CSS).
+         */
+        const val MINIMO_DP = 200
+
+        /**
+         * Alto de la caja del vídeo de YouTube, en px: 16:9 del ancho; en horizontal eso no cabe y
+         * se queda en el 55 % del alto de la pantalla (YouTube pone bandas a los lados). Pero NUNCA
+         * baja de [MINIMO_DP]: es requisito de YouTube.
+         */
+        fun altoCaja(ancho: Int, altoPantalla: Int, densidad: Float): Int {
+            val minimo = (MINIMO_DP * densidad).toInt()
+            return maxOf(minOf(ancho * 9 / 16, (altoPantalla * 0.55f).toInt()), minimo)
+        }
+
         private fun spotifyId(s: String): String? =
             EnlaceMusica.de(s)?.takeIf { it.fuente == FuenteMusica.SPOTIFY }?.id
                 ?: s.takeIf { EstadoYoutube.idSpotifyValido(it) }

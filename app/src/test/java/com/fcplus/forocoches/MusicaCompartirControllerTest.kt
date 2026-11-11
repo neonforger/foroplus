@@ -12,9 +12,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
-import org.junit.Rule
 import org.junit.Test
-import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
@@ -23,7 +21,6 @@ import org.robolectric.shadows.ShadowDialog
 /** Cómo abre MusicaController la pantalla de compartir (A6): una sola, con token, y por dónde entra lo compartido. */
 @RunWith(RobolectricTestRunner::class)
 class MusicaCompartirControllerTest {
-    @get:Rule val carpeta = TemporaryFolder()
 
     private lateinit var act: AppCompatActivity
     private lateinit var raiz: View
@@ -51,7 +48,7 @@ class MusicaCompartirControllerTest {
 
     private fun controlador(): MusicaController {
         val m = MusicaController(
-            act, raiz, AlmacenMusica(carpeta.root), enganches,
+            act, raiz, enganches,
             { ApiMusica({ null }, red = { _, _, _, _ -> Respuesta(404, "{}") }) }
         ) {}
         m.hiloToken = { enCola.add(it) }  // mirar el token queda en cola: cada test decide cuándo corre
@@ -95,13 +92,43 @@ class MusicaCompartirControllerTest {
         assertEquals(enlace, h.findViewById<EditText>(R.id.compartir_buscar).text.toString())
     }
 
-    @Test fun `compartido con el servidor apagado sigue por la hoja de anadir`() {
+
+    @Test fun `compartido con varias canciones abre la hoja con la primera`() {
+        tokens.guardar("123456", "tok")
+        val m = controlador()
+        val segunda = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+        m.recibirCompartido("mi lista: $enlace y también $segunda")
+        correrCola()
+        val h = hojasCompartir().single()
+        assertEquals(enlace, h.findViewById<EditText>(R.id.compartir_buscar).text.toString())
+    }
+
+    @Test fun `compartido sin ninguna cancion reconocible abre la hoja con el texto en el buscador`() {
+        tokens.guardar("123456", "tok")
+        val m = controlador()
+        m.recibirCompartido("  hola, esto no es una canción  ")
+        correrCola()
+        val h = hojasCompartir().single()
+        assertEquals("hola, esto no es una canción", h.findViewById<EditText>(R.id.compartir_buscar).text.toString())
+    }
+
+    @Test fun `compartido un spotify link corto va tal cual al buscador`() {
+        tokens.guardar("123456", "tok")
+        val m = controlador()
+        m.recibirCompartido("mira https://spotify.link/AbCdEf123 ¿eh?")
+        correrCola()
+        val h = hojasCompartir().single()
+        assertEquals("https://spotify.link/AbCdEf123", h.findViewById<EditText>(R.id.compartir_buscar).text.toString())
+    }
+
+    @Test fun `compartido con el servidor apagado avisa y no abre nada`() {
         servidor = false
         val m = controlador()
         m.recibirCompartido("escucha esto $enlace")
         correrCola()
         assertTrue(hojasCompartir().isEmpty())
+        assertTrue(hojasVerificar().isEmpty())
         assertTrue(enCola.isEmpty())
-        assertEquals(1, mostrados().filterIsInstance<BottomSheetDialog>().size)
+        assertEquals(act.getString(R.string.musica_no_disponible), org.robolectric.shadows.ShadowToast.getTextOfLatestToast())
     }
 }

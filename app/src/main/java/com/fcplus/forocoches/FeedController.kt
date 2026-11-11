@@ -15,10 +15,12 @@ import androidx.recyclerview.widget.RecyclerView
 import java.util.concurrent.Executors
 
 /**
- * El feed de canciones de 24 h en la portada de Música (A4): chips Recientes / Más queridas, la
- * lista de tarjetas ([FeedAdapter]), corazón, guardar, ⋮ (denunciar, no ver a, borrar) y el
- * estado vacío/error con su reintento. Quien lo monta es [MusicaController]; este controlador
- * solo conoce las vistas de `panel_musica.xml` que empiezan por `musica_feed`/`musica_chip`.
+ * El feed de canciones de 24 h, que es TODA la sección Música: chips Recientes / Top, la lista de
+ * tarjetas ([FeedAdapter]), corazón, ⋮ (denunciar, no ver a, borrar) y el estado vacío/error con su
+ * reintento. Con el chip Top y sin cursor, la primera fila es "Top de la semana pasada"
+ * ([PaginaFeed.masQuerida]): histórica, sin corazón ni menú. Quien lo monta es [MusicaController];
+ * este controlador solo conoce las vistas de `panel_musica.xml` que empiezan por
+ * `musica_feed`/`musica_chip`.
  *
  * Cuándo pide a la red: al [mostrar] (si lleva más de [REFRESCO_MS] sin cargar), al tocar un chip,
  * con "Reintentar" y cada [REFRESCO_MS] MIENTRAS está a la vista; nunca en segundo plano
@@ -34,27 +36,19 @@ class FeedController(
     private val act: AppCompatActivity,
     private val raiz: View,
     private val enganches: EnganchesMusica,
-    private val almacen: AlmacenMusica,
     private val reproductor: ReproductorFeed,
     private val abrirVerificacion: () -> Unit,
     private val abrirCompartir: () -> Unit,
-    private val abrirLoTuyo: () -> Unit,
     private val bloqueados: BloqueadosMusica =
         BloqueadosMusica(act.getSharedPreferences(BloqueadosMusica.FICHERO, Context.MODE_PRIVATE)),
     private val api: () -> ApiMusica = { enganches.api() },
     private val segundoPlano: (() -> Unit) -> Unit = { red.execute(it) },
     private val reloj: () -> Long = System::currentTimeMillis,
-    /** Se guardó algo en el almacén local: la portada de "Lo tuyo" tiene que repintarse al volver. */
-    private val alCambiarAlmacen: () -> Unit = {},
-    /** Justo antes de que suene una tarjeta (para callar el reproductor de las playlists). */
-    private val antesDeSonar: () -> Unit = {},
-    /** Donde se escribe en el almacén: el hilo único de MusicaController, para que dos guardados seguidos no creen dos veces "Guardadas del feed". */
-    private val disco: (() -> Unit) -> Unit = { discoPropio.execute(it) }
 ) {
     private val panel: View = raiz.findViewById(R.id.musica_feed_panel)
     private val fab: View = raiz.findViewById(R.id.musica_compartir)
     private val chipRecientes: View = raiz.findViewById(R.id.musica_chip_recientes)
-    private val chipQueridas: View = raiz.findViewById(R.id.musica_chip_queridas)
+    private val chipTop: View = raiz.findViewById(R.id.musica_chip_top)
     private val lista: RecyclerView = raiz.findViewById(R.id.musica_feed)
     private val estado: View = raiz.findViewById(R.id.musica_feed_estado)
     private val estadoTexto: TextView = raiz.findViewById(R.id.musica_feed_estado_texto)
@@ -62,8 +56,7 @@ class FeedController(
 
     private val adaptador = FeedAdapter(
         alCorazon = { corazon(it) },
-        alPlay = { item, hueco -> antesDeSonar(); reproductor.tocar(item, hueco) },
-        alGuardar = { guardar(it) },
+        alPlay = { item, hueco -> reproductor.tocar(item, hueco) },
         alMenu = { item, ancla -> menu(item, ancla) },
         alAutorCorazones = { quienes(it) },
         alSalirDePantalla = { reproductor.pararSi(it) }
@@ -75,6 +68,12 @@ class FeedController(
     /** Todo lo cargado, sin filtrar; lo bloqueado se quita al pintar (desbloquear lo recuperaría). */
     private var items: List<ItemFeed> = emptyList()
     private var cursor: String? = null
+
+    /**
+     * La más querida de la semana pasada: la fila de arriba del chip Top. Solo viene con la primera
+     * página (sin cursor) y solo se enseña con Top; con Recientes no existe.
+     */
+    private var destacada: MasQuerida? = null
     private var paginas = 0
     private var ultima = 0L
     private var cargando = false
@@ -113,9 +112,8 @@ class FeedController(
             }
         })
         chipRecientes.setOnClickListener { elegir(OrdenFeed.RECIENTES) }
-        chipQueridas.setOnClickListener { elegir(OrdenFeed.QUERIDAS) }
+        chipTop.setOnClickListener { elegir(OrdenFeed.QUERIDAS) }
         raiz.findViewById<View>(R.id.musica_feed_reintentar).setOnClickListener { refrescar(true) }
-        raiz.findViewById<View>(R.id.musica_ir_lo_tuyo).setOnClickListener { abrirLoTuyo() }
         fab.setOnClickListener { abrirCompartir() }
         marcarChips()
     }
@@ -190,6 +188,7 @@ class FeedController(
         marcarChips()
         items = emptyList()
         cursor = null
+        destacada = null
         paginas = 0
         adaptador.poner(emptyList(), reloj())
         refrescar(true)
@@ -197,7 +196,7 @@ class FeedController(
 
     private fun marcarChips() {
         chipRecientes.isSelected = orden == OrdenFeed.RECIENTES
-        chipQueridas.isSelected = orden == OrdenFeed.QUERIDAS
+        chipTop.isSelected = orden == OrdenFeed.QUERIDAS
     }
 
     private fun pedirMas() {
@@ -241,6 +240,7 @@ class FeedController(
                 val p = r.v
                 items = if (reiniciar) p.items else items + p.items.filter { n -> items.none { it.id == n.id } }
                 cursor = p.cursor
+                if (reiniciar) destacada = if (orden == OrdenFeed.QUERIDAS) p.masQuerida else null
                 paginas = if (reiniciar) 1 else paginas + 1
                 if (reiniciar) ultima = reloj()
                 pintar(null)
@@ -249,15 +249,18 @@ class FeedController(
         }
     }
 
-    /** Pinta lo cargado sin lo bloqueado; sin filas, el estado (con el error si [fallo] es uno). */
-    /** Lo cargado sin lo bloqueado; los nombres se leen UNA vez por pintado (son prefs + JSON). */
-    private fun filtradas(): List<ItemFeed> {
-        val fuera = bloqueados.nombres().map { it.lowercase() }.toSet()
-        return items.filter { it.mia || it.autor.lowercase() !in fuera }
+    private fun nombresBloqueados(): Set<String> = bloqueados.nombres().map { it.lowercase() }.toSet()
+
+    /** Lo que se pinta: la destacada (solo con Top) y, debajo, lo cargado sin lo bloqueado. */
+    private fun filas(): List<ItemFeed> {
+        val fuera = nombresBloqueados()
+        val top = destacada?.takeIf { orden == OrdenFeed.QUERIDAS && it.autor.lowercase() !in fuera }?.comoItem()
+        return listOfNotNull(top) + items.filter { it.mia || it.autor.lowercase() !in fuera }
     }
 
+    /** Pinta lo cargado sin lo bloqueado; sin filas, el estado (con el error si [fallo] es uno). */
     private fun pintar(fallo: ApiMusica.R.Error?) {
-        val visibles = filtradas()
+        val visibles = filas()
         adaptador.poner(visibles, reloj())
         if (visibles.isEmpty()) {
             estadoTexto.text = when {
@@ -345,28 +348,7 @@ class FeedController(
         items = items.filterNot { it.id == id }
         adaptador.quitar(id)
         reproductor.pararSi(id)
-        if (filtradas().isEmpty()) pintar(null)
-    }
-
-    // ── Guardar ──────────────────────────────────────────────────────────────
-
-    private fun guardar(item: ItemFeed) {
-        val c = item.cancion
-        // El servidor manda ENLACES completos, no ids: se reconocen con EnlaceMusica.
-        val ref = c.spotify?.let { EnlaceMusica.de(it) } ?: c.youtube?.let { EnlaceMusica.de(it) } ?: run { aviso(act.getString(R.string.feed_guardar_no)); return }
-        val cancion = Cancion(ref, c.titulo, c.artista, null, null, c.portada, reloj())
-        disco {
-            val ok = try {
-                val e = almacen.estado()
-                val destino = e.playlists.firstOrNull { it.nombre == Musica.GUARDADAS_FEED }
-                    ?: almacen.crearPlaylist(Musica.GUARDADAS_FEED)
-                destino != null && almacen.guardar(cancion, listOf(destino.id))
-            } catch (_: Exception) { false }
-            act.runOnUiThread {
-                aviso(act.getString(if (ok) R.string.feed_guardada else R.string.feed_guardar_fallo))
-                if (ok) alCambiarAlmacen()
-            }
-        }
+        if (filas().isEmpty()) pintar(null)
     }
 
     // ── ⋮, denunciar, borrar, quién dio corazón ──────────────────────────────
@@ -484,7 +466,6 @@ class FeedController(
 
         /** Un par de hilos para la red del feed: un corazón no espera a una carga lenta. */
         private val red = Executors.newFixedThreadPool(3)
-        private val discoPropio = Executors.newSingleThreadExecutor()
         private const val ESPERA_TRAS_FALLO_MS = 5_000L
     }
 }

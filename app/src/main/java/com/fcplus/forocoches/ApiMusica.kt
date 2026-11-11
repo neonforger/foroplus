@@ -23,9 +23,14 @@ data class CancionFeed(
 )
 data class ItemFeed(
     val id: String, val autor: String, val texto: String, val creada: Long, val caduca: Long,
-    val corazones: Int, val corazon: Boolean, val mia: Boolean, val cancion: CancionFeed
+    val corazones: Int, val corazon: Boolean, val mia: Boolean, val cancion: CancionFeed,
+    /** La fila "Top de la semana pasada" ([MasQuerida]): histórica, sin corazón ni menú. No viene del servidor. */
+    val destacada: Boolean = false
 )
-data class MasQuerida(val semana: String, val autor: String, val texto: String, val corazones: Int, val cancion: CancionFeed)
+data class MasQuerida(val semana: String, val autor: String, val texto: String, val corazones: Int, val cancion: CancionFeed) {
+    /** Como una fila más del feed (la tarjeta es la misma), marcada como histórica: ver [ItemFeed.destacada]. */
+    fun comoItem() = ItemFeed("top-$semana", autor, texto, 0, 0, corazones, false, false, cancion, destacada = true)
+}
 data class PaginaFeed(val items: List<ItemFeed>, val cursor: String?, val masQuerida: MasQuerida?)
 data class EstadoCorazon(val corazones: Int, val corazon: Boolean)
 

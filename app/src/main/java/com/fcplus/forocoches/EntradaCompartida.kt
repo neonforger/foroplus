@@ -5,16 +5,16 @@ import android.content.Intent
 enum class DestinoCompartido { SOLO_HOJA, MUSICA_EN_SU_SITIO, MUSICA_APILADA }
 
 /**
- * "Guardar en Música": lo que otra app (YouTube, Spotify, WhatsApp…) comparte con ForoPlus por el
+ * "Compartir en Música": lo que otra app (YouTube, Spotify, WhatsApp…) comparte con ForoPlus por el
  * menú de Android. Lo recibe [GuardarEnMusica], que solo declara `SEND` de `text/plain`, lo acota
  * aquí ([texto]) y se lo pasa a MainActivity en [EXTRA]. MainActivity mira ese extra ANTES que a
  * [IntentRouter]: lo compartido nunca se toma por un enlace de FC, y lo que no lo lleva (el
  * launcher, un enlace de hilo) sigue su camino de siempre.
  *
- * Es dato de otra app: aquí solo se acota (tipo y tamaño); de lo que llega, la hoja "Añadir" usa
- * únicamente las URLs que reconoce [EnlaceMusica]. Android no deja filtrar el menú por dominio,
- * así que "Guardar en Música" sale para cualquier texto (spec, llamada 11): lo que no trae
- * canciones se dice y ya ([traeCanciones]).
+ * Es dato de otra app: aquí solo se acota (tipo y tamaño); de lo que llega, la pantalla de
+ * compartir ([HojaCompartirCancion]) usa la primera URL que reconoce [EnlaceMusica] y, si no hay
+ * ninguna, deja el texto en el buscador. Android no deja filtrar el menú por dominio, así que
+ * "Compartir en Música" sale para cualquier texto (spec, llamada 11).
  */
 object EntradaCompartida {
 
@@ -22,9 +22,9 @@ object EntradaCompartida {
     const val EXTRA = "com.fcplus.forocoches.extra.MUSICA_COMPARTIDA"
 
     /**
-     * Tope de lo que se acepta (Ruling 31). Una playlist compartida con [PlaylistCompartida] gasta
-     * ~95 caracteres por canción de YouTube, ~105 por una de Spotify y más con nombres largos: con
-     * 20.000 una de 200 (el tope) perdía las últimas. 60.000 caben de sobra en un Intent.
+     * Tope de lo que se acepta (Ruling 31): una página o una conversación entera compartida puede
+     * traer miles de enlaces. 60.000 caben de sobra en un Intent y la pantalla de compartir solo
+     * mira la primera canción.
      */
     const val MAX_CARACTERES = 60_000
 
@@ -76,7 +76,7 @@ object EntradaCompartida {
     /**
      * Como mucho [MAX_CARACTERES]. Si el corte cae dentro de una palabra se retrocede hasta el
      * espacio anterior: un enlace de YouTube cortado a medias sigue pareciendo uno ([YoutubeId]
-     * acepta ids desde 6 caracteres) y se guardaría OTRO vídeo. Sin ningún espacio, a pelo, pero
+     * acepta ids desde 6 caracteres) y se publicaría OTRO vídeo. Sin ningún espacio, a pelo, pero
      * sin dejar medio emoji al final.
      */
     fun recortar(t: String): String {
@@ -92,14 +92,8 @@ object EntradaCompartida {
      * ¿Hay que atender el [EXTRA] con el que llega MainActivity? No si se está recreando (el modo
      * oscuro, el estilo de Opciones o el tamaño de letra del sistema la recrean) ni si viene de
      * Recientes, que relanza el intent de la tarea: el texto sería el de antes y la hoja volvería
-     * a salir con lo que ya se guardó. [recreada] es "hay `savedInstanceState`".
+     * a salir con lo que ya se compartió. [recreada] es "hay `savedInstanceState`".
      */
     fun esNueva(recreada: Boolean, flags: Int): Boolean =
         !recreada && (flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY) == 0
-
-    /** ¿Trae alguna canción que la hoja "Añadir" sepa leer (también un `spotify.link`, que se resuelve allí)? */
-    fun traeCanciones(texto: String): Boolean {
-        val p = AnadirMusica.plan(texto)
-        return p.refs.isNotEmpty() || p.cortos.isNotEmpty()
-    }
 }

@@ -39,7 +39,7 @@ class FeedAdapterTest {
         val cor = ArrayList<String>()
         val aut = ArrayList<String>()
         val ad = FeedAdapter(
-            alCorazon = { cor.add(it.id) }, alPlay = { _, _ -> }, alGuardar = {}, alMenu = { _, _ -> },
+            alCorazon = { cor.add(it.id) }, alPlay = { _, _ -> }, alMenu = { _, _ -> },
             alAutorCorazones = { aut.add(it.id) }
         )
         val rv = RecyclerView(a)
@@ -94,12 +94,48 @@ class FeedAdapterTest {
         assertEquals(R.drawable.ic_corazon_on, f.findViewById<ImageView>(R.id.pub_corazon_ico).tag)
     }
 
-    @Test fun `guardar oculto sin spotify ni youtube`() {
+    private fun destacada() = MasQuerida(
+        "2026-W45", "Pepe", "La de la semana", 12,
+        CancionFeed("top", "Titulo top", "Artista", null, "https://open.spotify.com/track/x", null, 1L)
+    ).comoItem()
+
+    @Test fun `la destacada lleva su etiqueta y no enseña hace, caduca ni menu`() {
         val m = montar()
-        m.ad.poner(listOf(item("1", spotify = null, youtube = null), item("2")), ahora)
+        m.ad.poner(listOf(destacada(), item("2")), ahora)
         m.medir()
-        assertEquals(View.GONE, m.fila(0).findViewById<View>(R.id.pub_guardar).visibility)
-        assertEquals(View.VISIBLE, m.fila(1).findViewById<View>(R.id.pub_guardar).visibility)
+        val d = m.fila(0)
+        assertEquals(View.VISIBLE, d.findViewById<View>(R.id.pub_etiqueta).visibility)
+        assertEquals("Top de la semana pasada", d.findViewById<TextView>(R.id.pub_etiqueta).text.toString())
+        assertEquals(View.GONE, d.findViewById<View>(R.id.pub_hace).visibility)
+        assertEquals(View.GONE, d.findViewById<View>(R.id.pub_queda).visibility)
+        assertEquals(View.GONE, d.findViewById<View>(R.id.pub_menu).visibility)
+        assertEquals("12", d.findViewById<TextView>(R.id.pub_corazones).text.toString())
+        // Una normal no arrastra nada de lo de la destacada.
+        val n = m.fila(1)
+        assertEquals(View.GONE, n.findViewById<View>(R.id.pub_etiqueta).visibility)
+        assertEquals(View.VISIBLE, n.findViewById<View>(R.id.pub_menu).visibility)
+        assertEquals(View.VISIBLE, n.findViewById<View>(R.id.pub_queda).visibility)
+    }
+
+    @Test fun `la destacada no da corazon ni abre quien ni menu`() {
+        val menus = ArrayList<String>()
+        val ctrl = Robolectric.buildActivity(AppCompatActivity::class.java)
+        ctrl.get().setTheme(R.style.Theme_FCForocoches)
+        ctrl.setup()
+        val cor = ArrayList<String>(); val aut = ArrayList<String>()
+        val ad = FeedAdapter({ cor.add(it.id) }, { _, _ -> }, { it, _ -> menus.add(it.id) }, { aut.add(it.id) })
+        val rv = RecyclerView(ctrl.get())
+        rv.layoutManager = LinearLayoutManager(ctrl.get())
+        rv.adapter = ad
+        ctrl.get().setContentView(rv)
+        ad.poner(listOf(destacada()), ahora)
+        rv.measure(View.MeasureSpec.makeMeasureSpec(1080, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(4000, View.MeasureSpec.EXACTLY))
+        rv.layout(0, 0, 1080, 4000)
+        val f = rv.findViewHolderForAdapterPosition(0)!!.itemView
+        f.findViewById<View>(R.id.pub_corazon_ico).performClick()
+        f.findViewById<View>(R.id.pub_corazones).performClick()
+        f.findViewById<View>(R.id.pub_menu).performClick()
+        assertTrue(cor.isEmpty() && aut.isEmpty() && menus.isEmpty())
     }
 
     @Test fun `quitar elimina la fila`() {
@@ -164,7 +200,7 @@ class FeedAdapterTest {
         val ctrl = Robolectric.buildActivity(AppCompatActivity::class.java)
         ctrl.get().setTheme(R.style.Theme_FCForocoches)
         ctrl.setup()
-        val ad = FeedAdapter({}, { _, _ -> }, {}, { _, _ -> }, {}, alSalirDePantalla = { salidas.add(it) })
+        val ad = FeedAdapter({}, { _, _ -> }, { _, _ -> }, {}, alSalirDePantalla = { salidas.add(it) })
         val rv = RecyclerView(ctrl.get())
         rv.layoutManager = LinearLayoutManager(ctrl.get())
         rv.adapter = ad
