@@ -92,8 +92,8 @@ describe("GET /v1/conversor/pendientes", () => {
     const r = await pendientes(en(0, { dormir: async (ms) => void pausas.push(ms) }));
     expect(r.status).toBe(200);
     expect(r.cuerpo).toEqual({ canciones: [] });
-    expect(pausas).toHaveLength(20);
-    expect(new Set(pausas)).toEqual(new Set([1000]));
+    expect(pausas).toHaveLength(10);
+    expect(new Set(pausas)).toEqual(new Set([2000]));
   });
 
   it("sale en cuanto aparece trabajo mientras espera", async () => {

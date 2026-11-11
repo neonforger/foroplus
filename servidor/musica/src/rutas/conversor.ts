@@ -13,11 +13,14 @@ const EN_CURSO_PERDIDA_MS = 60_000;
 const ERROR_ESPERA_MS = 3_600_000;
 const INTENTOS_MAX = 24;
 /**
- * Petición larga: 21 consultas con 20 pausas de 1 s = 20 s de espera. Cada consulta a D1 es una
- * subpetición (tope gratis: 50) y casi todo el tiempo es esperar, no CPU (tope: 10 ms).
+ * Petición larga: una consulta a D1 cada 2 s durante como mucho 20 s (11 consultas, 10 pausas).
+ * Con una consulta cada 1 s se medieron 13 ms de CPU en producción en espera ociosa, y el plan
+ * gratis tiene un tope de 10 ms por petición: por eso se espacia. Cada consulta a D1 es una
+ * subpetición (tope gratis: 50) y casi todo el tiempo es esperar, no CPU.
  */
-const CONSULTAS_MAX = 21;
-const PAUSA_MS = 1000;
+const ESPERA_MAX_MS = 20_000;
+const PAUSA_MS = 2000;
+const CONSULTAS_MAX = ESPERA_MAX_MS / PAUSA_MS + 1;
 const RE_SPOTIFY = /^[A-Za-z0-9]{22}$/;
 const DETALLE_MAX = 200;
 
