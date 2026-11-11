@@ -8254,12 +8254,13 @@ class MainActivity : AppCompatActivity() {
         // Música: un coche de prueba que no se pudo devolver antes (challenge, sin red). Barato:
         // sin nada guardado para la cuenta activa es una lectura de preferencias y ya.
         enganchesMusica.restaurarCoche(uidActivo)
+        if (::musica.isInitialized) musica.reanudar()
     }
 
     override fun onPause() {
         super.onPause()
         // Música: "La música se para al salir de la app" (nada suena en segundo plano).
-        if (::musica.isInitialized) musica.pausar()
+        if (::musica.isInitialized) musica.alSegundoPlano()
         // Persiste las cookies de sesión a disco para que el NotificationWorker en
         // background no haga el fetch deslogueado.
         CookieManager.getInstance().flush()

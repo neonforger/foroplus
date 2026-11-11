@@ -95,7 +95,8 @@ class MusicaController(
         abrirCompartir = { alCompartir() },
         abrirLoTuyo = { irALoTuyo() },
         alCambiarAlmacen = { if (visible && enLoTuyo) recargar() else recargarSilencioso() },
-        antesDeSonar = { reproductor.parar() }
+        antesDeSonar = { reproductor.parar() },
+        disco = { disco.execute(it) }
     )
 
     /**
@@ -183,6 +184,17 @@ class MusicaController(
     fun pausar() {
         reproductor.parar()
         reproductorFeed?.parar()
+    }
+
+    /** `onPause` de la actividad (no las hojas: esas solo callan lo que suena): además el reloj del feed se apaga. */
+    fun alSegundoPlano() {
+        pausar()
+        feed?.pausar()
+    }
+
+    /** `onResume` de la actividad: el reloj del feed vuelve solo si el feed sigue a la vista. */
+    fun reanudar() {
+        if (visible) feed?.reanudar()
     }
 
     /**

@@ -47,7 +47,9 @@ class FeedController(
     /** Se guardó algo en el almacén local: la portada de "Lo tuyo" tiene que repintarse al volver. */
     private val alCambiarAlmacen: () -> Unit = {},
     /** Justo antes de que suene una tarjeta (para callar el reproductor de las playlists). */
-    private val antesDeSonar: () -> Unit = {}
+    private val antesDeSonar: () -> Unit = {},
+    /** Donde se escribe en el almacén: el hilo único de MusicaController, para que dos guardados seguidos no creen dos veces "Guardadas del feed". */
+    private val disco: (() -> Unit) -> Unit = { discoPropio.execute(it) }
 ) {
     private val panel: View = raiz.findViewById(R.id.musica_feed_panel)
     private val fab: View = raiz.findViewById(R.id.musica_compartir)
@@ -78,17 +80,23 @@ class FeedController(
     private var cargando = false
     private var uidCarga = ""
 
+    /** App en segundo plano (onPause): ni reloj ni cargas hasta [reanudar]. */
+    private var pausado = false
+
+    /** Cuándo falló la última página que se pidió al paginar (0 = no ha fallado): no se reintenta sola en bucle. */
+    private var falloPagina = 0L
+
     /** Sube con cada carga que reinicia: lo que llegue de una anterior no se pinta. */
     private var gen = 0
     private val enVuelo = HashSet<String>()
 
     /** `puedePublicar` por cuenta, de `/yo`: una vez por sesión, no en cada corazón. */
-    private val puede = HashMap<String, Boolean>()
+    private val puede = java.util.concurrent.ConcurrentHashMap<String, Boolean>()
 
     private val handler = Handler(Looper.getMainLooper())
     private val tic = object : Runnable {
         override fun run() {
-            if (!mostrado) return
+            if (!mostrado || pausado) return
             refrescar(false)
             handler.postDelayed(this, REFRESCO_MS)
         }
@@ -120,12 +128,31 @@ class FeedController(
             return
         }
         mostrado = true
+        pausado = false
         panel.visibility = View.VISIBLE
         fab.visibility = View.VISIBLE
         handler.removeCallbacks(tic)
         handler.postDelayed(tic, REFRESCO_MS)
         refrescar(false)
     }
+
+    /** `onPause`: el reloj se apaga y no se pide nada más hasta [reanudar] (nada en segundo plano). */
+    fun pausar() {
+        pausado = true
+        handler.removeCallbacks(tic)
+    }
+
+    /** `onResume`: si el feed estaba a la vista, vuelve el reloj y se refresca si toca. */
+    fun reanudar() {
+        if (!mostrado || !pausado) return
+        pausado = false
+        handler.removeCallbacks(tic)
+        handler.postDelayed(tic, REFRESCO_MS)
+        refrescar(false)
+    }
+
+    /** ¿Sigue a la vista y con la actividad viva? Lo que llega tarde no pinta ni abre diálogos si no. */
+    private fun viva() = mostrado && !act.isFinishing && !act.isDestroyed
 
     /** Quita el feed: se calla lo que suena y se apaga el reloj (nada en segundo plano). */
     fun ocultar() {
@@ -146,7 +173,7 @@ class FeedController(
      * reinicia si ya se paginó. Fuera de pantalla no hace nada.
      */
     fun refrescar(forzar: Boolean) {
-        if (!mostrado || !enganches.servidorActivo()) return
+        if (!mostrado || pausado || !enganches.servidorActivo()) return
         val t = reloj()
         // Otra cuenta activa: lo pintado (corazones, "mías") era de la anterior.
         val sinMiramientos = forzar || enganches.uidActivo() != uidCarga
@@ -175,7 +202,9 @@ class FeedController(
 
     private fun pedirMas() {
         val c = cursor ?: return
-        if (cargando || !mostrado) return
+        if (cargando || !mostrado || pausado) return
+        // Una página que falló no se reintenta sola en bucle: hasta 5 s después y con otro gesto.
+        if (falloPagina != 0L && reloj() - falloPagina < ESPERA_TRAS_FALLO_MS) return
         val ultimo = (lista.layoutManager as? LinearLayoutManager)?.findLastVisibleItemPosition() ?: return
         if (ultimo >= adaptador.itemCount - 3) pedir(c, reiniciar = false)
     }
@@ -197,7 +226,16 @@ class FeedController(
     private fun llego(mi: Int, r: ApiMusica.R<PaginaFeed>, reiniciar: Boolean) {
         if (mi != gen) return  // de una carga anterior (otro chip, otro reinicio)
         cargando = false
+        if (!viva()) return  // llegó con el feed ya fuera de pantalla
         cargandoVista.visibility = View.GONE
+        if (!reiniciar) {
+            if (r is ApiMusica.R.Error) {
+                falloPagina = reloj()
+                aviso(act.getString(R.string.feed_mas_fallo))
+                return
+            }
+            falloPagina = 0L
+        }
         when (r) {
             is ApiMusica.R.Ok -> {
                 val p = r.v
@@ -212,8 +250,14 @@ class FeedController(
     }
 
     /** Pinta lo cargado sin lo bloqueado; sin filas, el estado (con el error si [fallo] es uno). */
+    /** Lo cargado sin lo bloqueado; los nombres se leen UNA vez por pintado (son prefs + JSON). */
+    private fun filtradas(): List<ItemFeed> {
+        val fuera = bloqueados.nombres().map { it.lowercase() }.toSet()
+        return items.filter { it.mia || it.autor.lowercase() !in fuera }
+    }
+
     private fun pintar(fallo: ApiMusica.R.Error?) {
-        val visibles = items.filter { it.mia || !bloqueados.contiene(it.autor) }
+        val visibles = filtradas()
         adaptador.poner(visibles, reloj())
         if (visibles.isEmpty()) {
             estadoTexto.text = when {
@@ -301,7 +345,7 @@ class FeedController(
         items = items.filterNot { it.id == id }
         adaptador.quitar(id)
         reproductor.pararSi(id)
-        if (items.none { it.mia || !bloqueados.contiene(it.autor) }) pintar(null)
+        if (filtradas().isEmpty()) pintar(null)
     }
 
     // ── Guardar ──────────────────────────────────────────────────────────────
@@ -309,9 +353,9 @@ class FeedController(
     private fun guardar(item: ItemFeed) {
         val c = item.cancion
         // El servidor manda ENLACES completos, no ids: se reconocen con EnlaceMusica.
-        val ref = c.spotify?.let { EnlaceMusica.de(it) } ?: c.youtube?.let { EnlaceMusica.de(it) } ?: return
+        val ref = c.spotify?.let { EnlaceMusica.de(it) } ?: c.youtube?.let { EnlaceMusica.de(it) } ?: run { aviso(act.getString(R.string.feed_guardar_no)); return }
         val cancion = Cancion(ref, c.titulo, c.artista, null, null, c.portada, reloj())
-        segundoPlano {
+        disco {
             val ok = try {
                 val e = almacen.estado()
                 val destino = e.playlists.firstOrNull { it.nombre == Musica.GUARDADAS_FEED }
@@ -376,6 +420,7 @@ class FeedController(
             val tiene = try { enganches.tokens.de(uid) != null } catch (_: Exception) { false }
             act.runOnUiThread {
                 if (!tiene) { abrirVerificacion(); return@runOnUiThread }
+                if (!viva()) return@runOnUiThread
                 reproductor.parar()
                 val campo = EditText(act).apply {
                     hint = act.getString(R.string.feed_denunciar_pista)
@@ -415,6 +460,7 @@ class FeedController(
                 when (r) {
                     is ApiMusica.R.Error -> aviso(VistaFeed.textoError(r))
                     is ApiMusica.R.Ok -> {
+                        if (!viva()) return@runOnUiThread
                         reproductor.parar()
                         val b = AlertDialog.Builder(act).setTitle(R.string.feed_quienes_titulo)
                             .setPositiveButton(R.string.feed_cerrar, null)
@@ -438,5 +484,7 @@ class FeedController(
 
         /** Un par de hilos para la red del feed: un corazón no espera a una carga lenta. */
         private val red = Executors.newFixedThreadPool(3)
+        private val discoPropio = Executors.newSingleThreadExecutor()
+        private const val ESPERA_TRAS_FALLO_MS = 5_000L
     }
 }

@@ -74,12 +74,19 @@ class FeedControllerTest {
         return FeedController(
             act, raiz, enganches, almacen, ReproductorFeed(act, {}),
             abrirVerificacion = { verificaciones++ }, abrirCompartir = {}, abrirLoTuyo = {},
-            bloqueados = bloqueados, api = { api }, segundoPlano = { it() }, reloj = { ahora }
+            bloqueados = bloqueados, api = { api }, segundoPlano = { it() }, reloj = { ahora }, disco = { it() }
         )
     }
 
     private val lista get() = raiz.findViewById<RecyclerView>(R.id.musica_feed)
     private fun filas(): Int = lista.adapter!!.itemCount
+
+    /** El desplazamiento se para: avisa a los oyentes como lo haría la lista (el método es privado). */
+    private fun parado() {
+        val m = RecyclerView::class.java.getDeclaredMethod("dispatchOnScrollStateChanged", Int::class.javaPrimitiveType)
+        m.isAccessible = true
+        m.invoke(lista, RecyclerView.SCROLL_STATE_IDLE)
+    }
 
     /** Mide la lista para que haya filas de verdad y se puedan tocar sus botones. */
     private fun fila(i: Int): View {
@@ -174,6 +181,42 @@ class FeedControllerTest {
         responder = { m, u -> if (u.endsWith("/corazon")) Respuesta(404, """{"error":"no_existe"}""") else base(m, u) }
         fila(0).findViewById<View>(R.id.pub_corazon_ico).performClick()
         assertEquals(1, filas())
+    }
+
+    @Test fun `en segundo plano el reloj no pide nada`() {
+        val f = controlador()
+        f.mostrar()
+        f.pausar()
+        ahora += 60_000
+        org.robolectric.shadows.ShadowLooper.idleMainLooper(60, java.util.concurrent.TimeUnit.SECONDS)
+        f.refrescar(false)
+        assertEquals(1, llamadas.count { it.contains("/v1/feed") })
+        f.reanudar()
+        assertEquals(2, llamadas.count { it.contains("/v1/feed") })
+    }
+
+    @Test fun `una pagina que falla se pide una sola vez hasta que pasa el tiempo`() {
+        responder = { _, u ->
+            if (u.contains("cursor=")) Respuesta(503, "{}")
+            else Respuesta(200, """{"items":[${item("P1", "Pepe")},${item("P2", "Ana")}],"cursor":"c1"}""")
+        }
+        val f = controlador()
+        f.mostrar()
+        fila(0)
+        repeat(3) { parado() }
+        assertEquals(1, llamadas.count { it.contains("cursor=") })
+        ahora += 6_000
+        parado()
+        assertEquals(2, llamadas.count { it.contains("cursor=") })
+    }
+
+    @Test fun `guardar una cancion que no se reconoce avisa`() {
+        responder = { _, _ -> feed("""{"id":"P9","autor":"Ana","texto":"x","creada":1,"caduca":9999999999,"corazones":0,"cancion":{"id":"c9","titulo":"T","artista":null,"portada":null,"youtube":"https://raro.example/x","spotify":null,"deezer":null}}""") }
+        val f = controlador()
+        f.mostrar()
+        fila(0).findViewById<View>(R.id.pub_guardar).performClick()
+        assertEquals(0, almacen.estado().playlists.size)
+        assertEquals(act.getString(R.string.feed_guardar_no), org.robolectric.shadows.ShadowToast.getTextOfLatestToast())
     }
 
     @Test fun `bloqueado no sale`() {
