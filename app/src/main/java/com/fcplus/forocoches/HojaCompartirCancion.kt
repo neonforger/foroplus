@@ -199,7 +199,8 @@ class HojaCompartirCancion(
         vista!!.findViewById<TextView>(R.id.compartir_elegida_titulo).text = e.titulo
         vista!!.findViewById<TextView>(R.id.compartir_elegida_artista).text = e.artista
         PortadasMusica.pintar(act, vista!!.findViewById(R.id.compartir_elegida_portada), e.portada)
-        actualizarBoton()
+        // Borra el error de arriba, pero la frase puede seguir llevando un enlace: se explica otra vez.
+        actualizarMotivo()
     }
 
     private fun alEscribirMotivo() {

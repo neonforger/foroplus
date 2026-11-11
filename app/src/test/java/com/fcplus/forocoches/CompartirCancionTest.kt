@@ -198,6 +198,53 @@ class CompartirCancionTest {
         assertEquals(null, HojaCompartirCancion.enlaceDe("despacito luis fonsi"))
     }
 
+    @Test fun `si la publicacion falla por red el boton vuelve con el texto de red`() {
+        responder = { _, _ -> throw java.io.IOException("sin red") }
+        val h = hoja(); h.mostrar(enlaceSpotify)
+        h.motivo().setText("buena")
+        h.boton().performClick()
+        assertEquals("Publicando…", h.boton().text.toString())
+        correrFondo()
+        val error = h.vista!!.findViewById<TextView>(R.id.compartir_error)
+        assertEquals("Sin conexión. Comprueba tu red e inténtalo de nuevo.", error.text.toString())
+        assertEquals("Compartir", h.boton().text.toString())
+        assertTrue(h.boton().isEnabled)
+        assertTrue(h.abierta)
+    }
+
+    @Test fun `un fallo inesperado al publicar tampoco deja el boton en Publicando`() {
+        val h = HojaCompartirCancion(
+            act, enganches, { publicadas.add(it) },
+            api = { throw IllegalStateException("roto") },
+            segundoPlano = { fondo.add(it) }, esperar = { ms, r -> esperas.add(ms to r) }
+        )
+        h.mostrar(enlaceSpotify)
+        h.motivo().setText("buena")
+        h.boton().performClick(); correrFondo()
+        assertEquals("Compartir", h.boton().text.toString())
+        assertTrue(h.boton().isEnabled)
+    }
+
+    @Test fun `el servidor devuelve la publicacion aun sin convertir y la hoja cierra`() {
+        // La conversión la espera el servidor (8 s) y contesta igualmente: la app solo cierra y avisa al feed.
+        val h = hoja(); h.mostrar(enlaceSpotify)
+        h.motivo().setText("buena")
+        h.boton().performClick(); correrFondo()
+        assertEquals(1, publicadas.size)
+        assertFalse(h.abierta)
+    }
+
+    @Test fun `elegir otra cancion con un enlace en la frase sigue explicando por que no se puede`() {
+        val h = hoja(); h.mostrar()
+        resultadosDe = { listOf(res(7, "Tema")) }
+        h.escribir("tema"); pasarEspera(); correrFondo()
+        h.motivo().setText("mira http://x.com")
+        h.filas().getChildAt(0).performClick()
+        val error = h.vista!!.findViewById<TextView>(R.id.compartir_error)
+        assertEquals(View.VISIBLE, error.visibility)
+        assertFalse(h.boton().isEnabled)
+    }
+
     @Test fun `sin resultados sale el texto de que no hay nada`() {
         val h = hoja(); h.mostrar()
         h.escribir("nadaquebuscar"); pasarEspera(); correrFondo()

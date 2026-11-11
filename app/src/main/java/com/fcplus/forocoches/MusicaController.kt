@@ -285,22 +285,35 @@ class MusicaController(
     fun abrirCompartir(enlace: String?) {
         val e = enganches ?: return
         if (!e.servidorActivo()) return
+        // Dos toques seguidos (o dos compartidos) no abren dos pantallas: las dos podrían publicar.
+        if (hojaCompartir?.abierta == true || abriendoCompartir) return
+        abriendoCompartir = true
         pausar()
         val uid = e.uidActivo()
-        disco.execute {
+        hiloToken {
             val tiene = uid.isNotEmpty() && try { e.tokens.de(uid) != null } catch (_: Exception) { false }
             act.runOnUiThread {
+                abriendoCompartir = false
                 if (act.isFinishing || act.isDestroyed) return@runOnUiThread
                 if (tiene) mostrarCompartir(e, enlace) else abrirVerificacion { mostrarCompartir(e, enlace) }
             }
         }
     }
 
+    /** La pantalla de compartir viva (si la hay) y si se está abriendo (mirando el token). */
+    internal var hojaCompartir: HojaCompartirCancion? = null
+    private var abriendoCompartir = false
+
+    /** Dónde se mira el token (keystore): el hilo del disco; los tests lo cambian. */
+    internal var hiloToken: (() -> Unit) -> Unit = { disco.execute(it) }
+
     private fun mostrarCompartir(e: EnganchesMusica, enlace: String?) {
+        // Único sitio por donde se abre: con la verificación de por medio también pueden llegar dos.
+        if (hojaCompartir?.abierta == true) return
         // Publicada: el feed se pide de nuevo (forzado) y la nueva sale arriba, con su sitio entre
         // las recientes. Es la vía más corta y la misma que usa tras verificarse; evita meter a mano
         // en la lista una tarjeta que el servidor puede tener ya con otra hora de caducidad.
-        HojaCompartirCancion(act, e, { feed?.refrescar(true) }).mostrar(enlace)
+        hojaCompartir = HojaCompartirCancion(act, e, { feed?.refrescar(true) }).also { it.mostrar(enlace) }
     }
 
     /**
