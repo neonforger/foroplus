@@ -47,6 +47,8 @@ class MusicaController(
     private val raiz: View,
     private val almacen: AlmacenMusica,
     private val enganches: EnganchesMusica? = null,
+    /** Solo los tests lo cambian: el cliente del feed (por defecto, el de [enganches]). */
+    apiFeed: (() -> ApiMusica)? = null,
     private val abrirFuera: (String) -> Unit
 ) {
 
@@ -79,9 +81,38 @@ class MusicaController(
             this@MusicaController.escribir(trabajo, siFalla, siVa)
     })
 
+    /**
+     * El feed (A4): la portada cuando el servidor está encendido. Solo existe con [enganches]: sin
+     * ellos (los tests de la parte local) no hay servidor ni feed. El reproductor de sus tarjetas
+     * es OTRO que el de las playlists: nunca suenan a la vez (cada uno calla al otro al empezar,
+     * y además viven en pantallas distintas).
+     */
+    private val reproductorFeed: ReproductorFeed? = enganches?.let { ReproductorFeed(act, abrirFuera) }
+    private val feed: FeedController? = if (enganches == null || reproductorFeed == null) null else FeedController(
+        act, raiz, enganches, almacen, reproductorFeed,
+        api = apiFeed ?: { enganches.api() },
+        abrirVerificacion = { abrirVerificacion() },
+        abrirCompartir = { alCompartir() },
+        abrirLoTuyo = { irALoTuyo() },
+        alCambiarAlmacen = { if (visible && enLoTuyo) recargar() else recargarSilencioso() },
+        antesDeSonar = { reproductor.parar() }
+    )
+
+    /**
+     * "Compartir canción" (A6 lo sustituye por la hoja de publicar). Hasta entonces el botón avisa
+     * en vez de estar muerto.
+     */
+    var alCompartir: () -> Unit = { aviso("Compartir canciones llega muy pronto.") }
+
+    /**
+     * Estando el feed encendido, ¿se está viendo "Lo tuyo" (tus playlists) en vez del feed? Es el
+     * paso provisional de A4: A7 rehace "Lo tuyo" y este botón lo abrirá desde ahí.
+     */
+    private var enLoTuyo = false
+
     /** Borrar la cuenta de Música. Tras borrarla la portada se repinta. */
     private val flujos: FlujosMusica? = enganches?.let {
-        FlujosMusica(act, it, almacen, abrirVerificacion = { abrirVerificacion() }, alCambiar = { recargar() })
+        FlujosMusica(act, it, almacen, abrirVerificacion = { abrirVerificacion() }, alCambiar = { feed?.olvidarCuenta(); recargar(); feed?.refrescar(true) })
     }
 
     private val adaptador = PlaylistAdapter(
@@ -89,7 +120,7 @@ class MusicaController(
         alMenu = { i, ancla -> menus.menuCancion(i, ancla) },
         alMover = { desde, hasta -> mover(desde, hasta) },
         alVolver = { cerrarPlaylist() },
-        alReproducir = { if (canciones.isNotEmpty()) reproductor.reproducir(canciones, 0) },
+        alReproducir = { if (canciones.isNotEmpty()) { reproductorFeed?.parar(); reproductor.reproducir(canciones, 0) } },
         alMenuPlaylist = { ancla -> menus.menuPlaylist(ancla) },
         alCompartir = { menus.compartir() }
     )
@@ -137,11 +168,21 @@ class MusicaController(
         visible = false
         raiz.visibility = View.GONE
         reproductor.parar()
+        feed?.ocultar()
+        // La playlist abierta se queda; el feed, en cambio, es lo primero que se ve al volver.
+        if (abierta == null) enLoTuyo = false
+    }
+
+    /** `onDestroy` de la actividad: el reloj del feed y lo que suene, fuera. */
+    fun destruir() {
+        feed?.ocultar()
+        pausar()
     }
 
     /** `onPause` de la actividad: "La música se para al salir de la app". */
     fun pausar() {
         reproductor.parar()
+        reproductorFeed?.parar()
     }
 
     /**
@@ -150,7 +191,13 @@ class MusicaController(
      * Popurrí.
      */
     fun atras(): Boolean {
-        if (abierta == null) return false
+        if (abierta == null) {
+            // De "Lo tuyo" al feed (solo si el feed existe: sin él, "Lo tuyo" ES la portada).
+            if (!enLoTuyo || !usaFeed()) return false
+            enLoTuyo = false
+            pintar()
+            return true
+        }
         cerrarPlaylist()
         return true
     }
@@ -166,7 +213,17 @@ class MusicaController(
      * con el gesto, MainActivity manda un CANCEL a la fila y no se toca nada.
      */
     fun dejaDeslizarDesde(x: Int, y: Int): Boolean {
-        if (abierta == null) return true
+        if (abierta == null) {
+            // Feed: la barra de Spotify y la del fragmento se arrastran de lado, como en una playlist.
+            if (usaFeed() && !enLoTuyo && reproductorFeed?.sonando() != null) {
+                val rv = raiz.findViewById<RecyclerView>(R.id.musica_feed)
+                for (i in 0 until rv.childCount) {
+                    val hueco = rv.getChildAt(i).findViewById<View>(R.id.pub_hueco) ?: continue
+                    if (dentro(hueco, x, y)) return false
+                }
+            }
+            return true
+        }
         if (reproductor.enMarcha && dentro(huecoReproductor, x, y)) return false
         for (i in 0 until lista.childCount) {
             val asa = lista.getChildAt(i).findViewById<View>(R.id.cancion_asa) ?: continue
@@ -203,7 +260,9 @@ class MusicaController(
         if (!e.servidorActivo()) return
         pausar()  // la hoja tapa el reproductor, y YouTube no puede sonar tapado
         HojaVerificarMusica(act, e) {
+            feed?.olvidarCuenta()
             if (visible) recargar()
+            feed?.refrescar(true)  // ahora con token: trae los corazones y las publicaciones propias
         }.mostrar()
     }
 
@@ -260,13 +319,39 @@ class MusicaController(
         val p = id?.let { e.playlists.firstOrNull { it.id == id } }
         if (p == null) {
             if (id != null) volverAPortada()
-            pintarPortada(e.playlists)
+            if (usaFeed() && !enLoTuyo) pintarFeed() else pintarPortada(e.playlists)
         } else pintarPlaylist(p, e)
     }
 
     // ── Portada ──────────────────────────────────────────────────────────────
 
+    /** ¿Es el feed la portada? Con el servidor encendido en la config y los enganches puestos. */
+    private fun usaFeed(): Boolean = feed != null && enganches?.servidorActivo?.invoke() == true
+
+    /** La portada con el feed: ni "Lo tuyo", ni el "+" de añadir, ni una playlist. */
+    private fun pintarFeed() {
+        pantallaPlaylist.visibility = View.GONE
+        portada.visibility = View.GONE
+        anadir.visibility = View.GONE
+        feed?.mostrar()
+    }
+
+    /** "Lo tuyo": tus playlists (la portada de siempre). */
+    private fun irALoTuyo() {
+        enLoTuyo = true
+        pintar()
+    }
+
+    /** Releer lo guardado sin pintar nada si "Lo tuyo" no se ve (un guardado desde el feed). */
+    private fun recargarSilencioso() {
+        disco.execute {
+            val e = try { almacen.estado() } catch (_: Exception) { null } ?: return@execute
+            act.runOnUiThread { estado = e }
+        }
+    }
+
     private fun pintarPortada(playlists: List<Playlist>) {
+        feed?.ocultar()
         pantallaPlaylist.visibility = View.GONE
         portada.visibility = View.VISIBLE
         anadir.visibility = View.VISIBLE
@@ -302,6 +387,7 @@ class MusicaController(
     }
 
     private fun pintarPlaylist(p: Playlist, e: EstadoMusica) {
+        feed?.ocultar()
         portada.visibility = View.GONE
         anadir.visibility = View.GONE
         pantallaPlaylist.visibility = View.VISIBLE
@@ -328,7 +414,7 @@ class MusicaController(
         val c = canciones.getOrNull(i) ?: return
         // Aquí YouTube no la deja sonar: lo que queda es abrirla fuera.
         if (c.ref.clave in reproductor.fallidas) abrirFuera(c.ref.url())
-        else reproductor.reproducir(canciones, i)
+        else { reproductorFeed?.parar(); reproductor.reproducir(canciones, i) }
     }
 
     private fun mover(desde: Int, hasta: Int) {

@@ -42,6 +42,9 @@ object Musica {
     const val MAX_CANCIONES = 200
     const val FAVORITAS = "Mis favoritas"
 
+    /** La playlist local donde cae lo que se guarda desde el feed (se crea al primer guardado). */
+    const val GUARDADAS_FEED = "Guardadas del feed"
+
     private val ESPACIOS = Regex("\\s+")
 
     /** Recorta y colapsa espacios; null si queda vacío o pasa de [MAX_NOMBRE]. */

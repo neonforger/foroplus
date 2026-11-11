@@ -8269,6 +8269,7 @@ class MainActivity : AppCompatActivity() {
         // El respaldo del chequeo de diseño es un callback diferido: si la Activity se va
         // antes de que dispare, se queda apuntando a una pantalla que ya no existe.
         skinHandler.removeCallbacks(skinFallback)
+        if (::musica.isInitialized) musica.destruir()
         super.onDestroy()
     }
 

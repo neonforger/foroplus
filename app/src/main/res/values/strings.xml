@@ -15,4 +15,20 @@
     <string name="pub_pausar">Pausar</string>
     <string name="pub_entera_spotify">Entera en Spotify</string>
     <string name="pub_sin_fragmento">No se ha podido cargar el fragmento. Prueba otra vez en unos segundos.</string>
+    <string name="pub_sin_reproduccion">No se puede reproducir esta canción</string>
+    <string name="feed_borrar">Borrar</string>
+    <string name="feed_denunciar">Denunciar</string>
+    <string name="feed_no_ver">No ver a %1$s</string>
+    <string name="feed_no_ver_hecho">Ya no verás las canciones de %1$s</string>
+    <string name="feed_guardada">Guardada en «Guardadas del feed»</string>
+    <string name="feed_guardar_fallo">No se ha podido guardar. Mira que la playlist no esté llena.</string>
+    <string name="feed_borrar_titulo">¿Borrar esta publicación?</string>
+    <string name="feed_borrar_hecho">Publicación borrada</string>
+    <string name="feed_denunciar_titulo">Denunciar esta publicación</string>
+    <string name="feed_denunciar_pista">Cuéntanos qué pasa (opcional)</string>
+    <string name="feed_denunciar_hecho">Gracias, la revisaremos.</string>
+    <string name="feed_quienes_titulo">Han dado corazón</string>
+    <string name="feed_quienes_nadie">Todavía nadie ha dado corazón.</string>
+    <string name="feed_cancelar">Cancelar</string>
+    <string name="feed_cerrar">Cerrar</string>
 </resources>

@@ -121,10 +121,17 @@ class ReproductorFeed(
     /** El id de la publicación que suena (o está cargando), o null. */
     fun sonando(): String? = idActual
 
+    /** Solo para los tests: ¿sigue el pulso de 500 ms de la barra? */
+    internal fun pulsando(): Boolean = pulso != null
+
     fun tocar(item: ItemFeed, hueco: FrameLayout) {
         // Tocar la que ya suena la para (el play de la tarjeta hace de interruptor).
         if (idActual == item.id) { parar(); return }
         parar()
+        // Sin nada que reproducir (ni Spotify, ni YouTube, ni Deezer): no se marca como sonando ni se
+        // monta el hueco con solo el botón de Spotify; se dice por qué no pasa nada.
+        val fuenteElegida = fuente(item)
+        if (fuenteElegida == FuenteFeed.Ninguna) { avisar(act.getString(R.string.pub_sin_reproduccion)); return }
         val mi = ++turno
         idActual = item.id
         this.hueco = hueco
@@ -132,7 +139,7 @@ class ReproductorFeed(
         hueco.removeAllViews()
         hueco.addView(raiz, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         hueco.visibility = View.VISIBLE
-        when (val f = fuente(item)) {
+        when (val f = fuenteElegida) {
             is FuenteFeed.Spotify -> {
                 val e = EmbedView(act)
                 raiz.addView(e, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
@@ -150,10 +157,10 @@ class ReproductorFeed(
                 embed = e
             }
             is FuenteFeed.Deezer -> montarDeezer(raiz, f.id, mi)
-            FuenteFeed.Ninguna -> {}
+            FuenteFeed.Ninguna -> {}  // ya atendido arriba
         }
         raiz.addView(botonEntera(item.cancion), LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT
+            ViewGroup.LayoutParams.WRAP_CONTENT, dp(48)  // 48 dp: zona de toque mínima
         ).apply { gravity = Gravity.CENTER_HORIZONTAL; topMargin = dp(8); bottomMargin = dp(8) })
     }
 
@@ -209,7 +216,10 @@ class ReproductorFeed(
         val a = crearAudio()
         audio = a
         boton.setOnClickListener {
-            if (a.sonando()) a.pausar() else a.reanudar()
+            if (a.sonando()) a.pausar() else {
+                a.reanudar()
+                if (pulso == null) empezarPulso(a, barra)  // volver a darle tras acabar: la barra se mueve otra vez
+            }
             pintarBoton(boton, a)
         }
         barra.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
@@ -228,7 +238,15 @@ class ReproductorFeed(
                     empezarPulso(a, barra)
                 }
             },
-            alAcabar = { if (audio === a) { barra.progress = 0; pintarBoton(boton, a, acabado = true) } },
+            alAcabar = {
+                if (audio === a) {
+                    // Acabado el fragmento el pulso de 500 ms no tiene nada que medir: fuera.
+                    pulso?.let { handler.removeCallbacks(it) }
+                    pulso = null
+                    barra.progress = 0
+                    pintarBoton(boton, a, acabado = true)
+                }
+            },
             alFallar = { if (audio === a) { avisar(act.getString(R.string.pub_sin_fragmento)); parar() } }
         )
     }

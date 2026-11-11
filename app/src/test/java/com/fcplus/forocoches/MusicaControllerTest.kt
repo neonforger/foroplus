@@ -204,4 +204,57 @@ class MusicaControllerTest {
         assertEquals(1, raiz.findViewById<LinearLayout>(R.id.musica_playlists).childCount)
         assertEquals(View.GONE, raiz.findViewById<View>(R.id.musica_vacio).visibility)
     }
+
+    // ── El feed como portada (A4) ────────────────────────────────────────────
+
+    private fun enganches(servidor: Boolean): EnganchesMusica {
+        val ctx = androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>()
+        return EnganchesMusica(
+            servidorActivo = { servidor }, uidActivo = { "123456" }, cambiandoDeCuenta = { false },
+            motorCoche = MotorCocheFC({ }),
+            tokens = lazy { TokensMusica(ctx.getSharedPreferences("t_mc_tokens", android.content.Context.MODE_PRIVATE)) },
+            pendientes = PendientesCoche(ctx.getSharedPreferences("t_mc_pend", android.content.Context.MODE_PRIVATE)), entrar = { }
+        )
+    }
+
+    private val sinRed = ApiMusica({ null }, red = { _, _, _, _ -> throw java.io.IOException("sin red") })
+
+    @Test
+    fun `con el servidor encendido la portada es el feed y Lo tuyo lleva a las playlists`() {
+        val a = actividad()
+        val raiz = panel(a)
+        val musica = MusicaController(a, raiz, AlmacenMusica(carpeta.root), enganches(true), { sinRed }) {}
+
+        musica.mostrar()
+
+        assertEquals(View.VISIBLE, raiz.findViewById<View>(R.id.musica_feed_panel).visibility)
+        assertEquals(View.VISIBLE, raiz.findViewById<View>(R.id.musica_compartir).visibility)
+        assertEquals(View.GONE, raiz.findViewById<View>(R.id.musica_portada).visibility)
+        assertEquals(View.GONE, raiz.findViewById<View>(R.id.musica_anadir).visibility)
+
+        raiz.findViewById<View>(R.id.musica_ir_lo_tuyo).performClick()
+        assertEquals(View.GONE, raiz.findViewById<View>(R.id.musica_feed_panel).visibility)
+        assertEquals(View.GONE, raiz.findViewById<View>(R.id.musica_compartir).visibility)
+        assertEquals(View.VISIBLE, raiz.findViewById<View>(R.id.musica_portada).visibility)
+        assertEquals(View.VISIBLE, raiz.findViewById<View>(R.id.musica_anadir).visibility)
+
+        // El atrás de "Lo tuyo" vuelve al feed; el del feed ya no es de Música.
+        assertTrue(musica.atras())
+        assertEquals(View.VISIBLE, raiz.findViewById<View>(R.id.musica_feed_panel).visibility)
+        assertFalse(musica.atras())
+    }
+
+    @Test
+    fun `con el servidor apagado no hay feed y se ve Lo tuyo directamente`() {
+        val a = actividad()
+        val raiz = panel(a)
+        val musica = MusicaController(a, raiz, AlmacenMusica(carpeta.root), enganches(false), { sinRed }) {}
+
+        musica.mostrar()
+
+        assertEquals(View.GONE, raiz.findViewById<View>(R.id.musica_feed_panel).visibility)
+        assertEquals(View.GONE, raiz.findViewById<View>(R.id.musica_compartir).visibility)
+        assertEquals(View.VISIBLE, raiz.findViewById<View>(R.id.musica_portada).visibility)
+        assertFalse(musica.atras())
+    }
 }

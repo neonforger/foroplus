@@ -28,8 +28,9 @@ class ReproductorFeedTest {
         var soltado = false
         var suena = false
         var alListo: () -> Unit = {}
+        var alAcabar: () -> Unit = {}
         override fun preparar(url: String, alListo: () -> Unit, alAcabar: () -> Unit, alFallar: () -> Unit) {
-            this.url = url; this.alListo = alListo
+            this.url = url; this.alListo = alListo; this.alAcabar = alAcabar
         }
         override fun reanudar() { suena = true }
         override fun pausar() { suena = false }
@@ -183,5 +184,35 @@ class ReproductorFeedTest {
             ReproductorFeed.urlEntera(c)
         )
         assertEquals("https://open.spotify.com/search/Solo", ReproductorFeed.urlEntera(item("1", titulo = "Solo", artista = null).cancion))
+    }
+
+    @Test
+    fun `el boton entera en spotify mide 48 dp`() {
+        val m = montar()
+        val h = hueco(m)
+        m.r.tocar(item("1", spotify = sp), h)
+        val b = todas(h).filterIsInstance<android.widget.TextView>().first { it.text == "Entera en Spotify" }
+        assertEquals((48 * m.act.resources.displayMetrics.density).toInt(), b.layoutParams.height)
+    }
+
+    @Test
+    fun `sin fuente no marca sonando y avisa`() {
+        val m = montar()
+        val h = hueco(m)
+        m.r.tocar(item("1"), h)
+        assertNull(m.r.sonando())
+        assertEquals(listOf(m.act.getString(R.string.pub_sin_reproduccion)), m.avisos)
+        assertEquals(0, h.childCount)
+        assertEquals(View.GONE, h.visibility)
+    }
+
+    @Test
+    fun `al acabar el fragmento se para el pulso`() {
+        val m = montar()
+        m.r.tocar(item("1", deezer = 9), hueco(m))
+        m.audios[0].alListo()
+        assertTrue(m.r.pulsando())
+        m.audios[0].alAcabar()
+        assertTrue(!m.r.pulsando())
     }
 }
