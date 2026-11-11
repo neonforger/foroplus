@@ -1,6 +1,7 @@
 import { env } from "cloudflare:workers";
 import { beforeEach, describe, expect, it } from "vitest";
 import { crearApp } from "../src/app";
+import { limpiarFeed } from "../src/cron";
 import { semanaDe } from "../src/tiempo";
 import { cancion, corazonDirecto, DIA, deps, enT, filas, HORA, publicacionDirecta, reiniciarCuentas, shur, T0, TABLAS } from "./ayudas-admin";
 
@@ -120,6 +121,36 @@ describe("programado: feed cada 15 minutos", () => {
     await publicacionDirecta(malo.id, c, { creada, corazones: 8, texto: "baneado" });
     await enT(T0).programado(CRON_FEED);
     expect((await filas("SELECT texto FROM mas_querida")).map((f) => f.texto)).toEqual(["normal"]);
+    expect(await quedan()).toEqual([]);
+  });
+
+  it("una semana con todas a 0 corazones no guarda nada, y se borran igual", async () => {
+    const a = await shur(); const c = await cancion(1);
+    await publicacionDirecta(a.id, c, { creada: T0 - DIA - HORA, corazones: 0 });
+    await enT(T0).programado(CRON_FEED);
+    expect(await filas("SELECT semana FROM mas_querida")).toHaveLength(0);
+    expect(await quedan()).toEqual([]);
+  });
+
+  it("con tope pequeño borra solo lo leído: la segunda tanda borra el resto y la ganadora es la correcta", async () => {
+    const a = await shur(); const c = await cancion(1);
+    const creada = T0 - 2 * DIA;
+    await publicacionDirecta(a.id, c, { creada, corazones: 2, texto: "dos" });
+    await publicacionDirecta(a.id, c, { creada: creada + 1000, corazones: 5, texto: "cinco" });
+    await publicacionDirecta(a.id, c, { creada: creada + 2000, corazones: 3, texto: "tres" });
+    const app = deps();
+    await limpiarFeed(app, 2);
+    expect(await quedan()).toHaveLength(1);
+    expect((await filas("SELECT texto FROM mas_querida")).map((f) => f.texto)).toEqual(["cinco"]);
+    await limpiarFeed(app, 2);
+    expect(await quedan()).toEqual([]);
+    expect((await filas("SELECT texto FROM mas_querida")).map((f) => f.texto)).toEqual(["cinco"]);
+  });
+
+  it("más de 100 caducadas se borran en trozos sin pasar el límite de parámetros", async () => {
+    const a = await shur(); const c = await cancion(1);
+    for (let i = 0; i < 120; i++) await publicacionDirecta(a.id, c, { creada: T0 - 2 * DIA + i });
+    await limpiarFeed(deps());
     expect(await quedan()).toEqual([]);
   });
 
