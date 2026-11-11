@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Una publicación del feed de Música (boceto 1/3): quién, hace cuánto y lo que le queda; su frase;
+     la caja de la canción (portada, título, artista, play) con el hueco donde se monta el
+     reproductor; y la fila de corazón, guardar y ⋮. Fondo, márgenes y raya salen del TEMA (fc*), como
+     item_playlist: fila con raya en la Compacta y tarjeta en Tarjetas. Ni logo ni nombre de ningún
+     servicio de terceros. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginStart="?attr/fcFilaMargenH"
+    android:layout_marginEnd="?attr/fcFilaMargenH"
+    android:layout_marginTop="?attr/fcFilaMargenV"
+    android:layout_marginBottom="?attr/fcFilaMargenV"
+    android:orientation="vertical"
+    android:background="?attr/fcFilaFondo">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="14dp"
+        android:paddingEnd="8dp"
+        android:paddingTop="12dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingEnd="6dp">
+
+            <TextView
+                android:id="@+id/pub_autor"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:textColor="@color/fc_texto" />
+
+            <TextView
+                android:id="@+id/pub_hace"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:maxLines="1"
+                android:textSize="12.5sp"
+                android:textColor="@color/fc_texto_2" />
+
+            <TextView
+                android:id="@+id/pub_queda"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/bg_chip_queda"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:paddingTop="2dp"
+                android:paddingBottom="2dp"
+                android:maxLines="1"
+                android:textSize="12sp"
+                android:textColor="@color/fc_texto_2" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/pub_texto"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:layout_marginEnd="6dp"
+            android:textSize="16sp"
+            android:textColor="@color/fc_texto" />
+
+        <!-- La caja de la canción. El hueco de abajo es de A5: ahí se monta el reproductor. -->
+        <LinearLayout
+            android:id="@+id/pub_caja"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:layout_marginEnd="6dp"
+            android:orientation="vertical"
+            android:background="@drawable/bg_chip_queda">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="64dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:padding="6dp">
+
+                <ImageView
+                    android:id="@+id/pub_portada"
+                    android:layout_width="52dp"
+                    android:layout_height="52dp"
+                    android:background="@drawable/bg_icono_musica"
+                    android:scaleType="centerCrop"
+                    android:contentDescription="@null" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="10dp"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/pub_titulo"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:maxLines="2"
+                        android:ellipsize="end"
+                        android:textSize="15sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/fc_texto" />
+
+                    <TextView
+                        android:id="@+id/pub_artista"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:maxLines="1"
+                        android:ellipsize="end"
+                        android:textSize="12.5sp"
+                        android:textColor="@color/fc_texto_2" />
+                </LinearLayout>
+
+                <ImageView
+                    android:id="@+id/pub_play"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:padding="10dp"
+                    android:src="@drawable/ic_reproducir"
+                    app:tint="@color/fc_rojo"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Escuchar" />
+            </LinearLayout>
+
+            <FrameLayout
+                android:id="@+id/pub_hueco"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <ImageView
+                android:id="@+id/pub_corazon_ico"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:padding="12dp"
+                android:src="@drawable/ic_corazon"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Dar corazón" />
+
+            <TextView
+                android:id="@+id/pub_corazones"
+                android:layout_width="wrap_content"
+                android:layout_height="48dp"
+                android:minWidth="32dp"
+                android:gravity="center_vertical"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:textColor="@color/fc_texto_2" />
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
+            <TextView
+                android:id="@+id/pub_guardar"
+                android:layout_width="wrap_content"
+                android:layout_height="48dp"
+                android:minWidth="48dp"
+                android:gravity="center"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:text="Guardar"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:textColor="@color/fc_rojo"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Guardar la canción en mis playlists" />
+
+            <ImageView
+                android:id="@+id/pub_menu"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:padding="12dp"
+                android:src="@drawable/ic_more"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Más opciones de la publicación" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="?attr/fcDivisoriaAlto"
+        android:background="@color/fc_divisoria" />
+</LinearLayout>
