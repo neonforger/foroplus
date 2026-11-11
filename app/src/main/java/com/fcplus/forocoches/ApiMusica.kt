@@ -16,18 +16,26 @@ data class Comprobacion(
     val pendiente: Boolean, val token: String?, val nombre: String?, val puedeVotar: Boolean,
     val diasCuenta: Int? = null
 )
-data class Yo(val nombre: String, val diasCuenta: Int?, val puedeVotar: Boolean, val votosRestantes: Int, val propuestasRestantes: Int)
-data class CancionPub(val id: String, val titulo: String, val artista: String?, val portada: String?, val youtube: String?, val spotify: String?)
-data class Semana(
-    val actualId: String, val cierra: Long, val actual: List<CancionPub>, val votadas: Set<String>,
-    val anteriorId: String?, val cancionSemana: CancionPub?, val top: List<Pair<CancionPub, Int>>
+data class Yo(val nombre: String, val diasCuenta: Int?, val puedePublicar: Boolean, val publicacionesRestantes: Int)
+data class CancionFeed(
+    val id: String, val titulo: String, val artista: String?, val portada: String?,
+    val spotify: String?, val youtube: String?, val deezer: Long?
 )
-data class Propuesta(val cancion: CancionPub, val yaEstaba: Boolean, val propuestasRestantes: Int)
-data class Voto(val votada: Boolean, val votosRestantes: Int)
-data class PlaylistResumen(val id: String, val nombre: String, val autor: String, val canciones: Int, val guardados: Int, val portada: String?)
-data class PaginaPlaylists(val lista: List<PlaylistResumen>, val siguiente: String?)
-data class PlaylistPub(val id: String, val nombre: String, val autor: String, val guardados: Int, val canciones: List<CancionPub>)
-data class Publicada(val id: String, val canciones: Int, val fallidas: List<String>)
+data class ItemFeed(
+    val id: String, val autor: String, val texto: String, val creada: Long, val caduca: Long,
+    val corazones: Int, val corazon: Boolean, val mia: Boolean, val cancion: CancionFeed
+)
+data class MasQuerida(val semana: String, val autor: String, val texto: String, val corazones: Int, val cancion: CancionFeed)
+data class PaginaFeed(val items: List<ItemFeed>, val cursor: String?, val masQuerida: MasQuerida?)
+data class EstadoCorazon(val corazones: Int, val corazon: Boolean)
+
+enum class OrdenFeed(val param: String) { RECIENTES("recientes"), QUERIDAS("queridas") }
+
+/** De dónde sale la canción al publicar: un id de Deezer (la búsqueda) o un enlace pegado. Nunca los dos. */
+sealed class OrigenCancion {
+    data class Deezer(val id: Long) : OrigenCancion()
+    data class Enlace(val url: String) : OrigenCancion()
+}
 
 /**
  * Cliente del servidor de Música. Bloqueante: quien lo llame lo hace desde un hilo de fondo.
@@ -37,7 +45,7 @@ data class Publicada(val id: String, val canciones: Int, val fallidas: List<Stri
  * - Nunca manda cookies de FC: ni aquí ni en [redReal].
  * - El servidor da 401 `token` / 403 `baneada` (no la vista pública) si el token que llega es
  *   malo; eso sale como [R.Error.tokenInservible] para que quien llama borre el token y, en
- *   `semana()`, reintente sin él.
+ *   `feed()`, se repite sin él.
  */
 class ApiMusica(
     private val token: () -> String?,
@@ -69,71 +77,41 @@ class ApiMusica(
     }
 
     fun yo(): R<Yo> = llamar("GET", "/v1/yo") {
-        Yo(it.getString("nombre"), it.intONull("diasCuenta"), it.getBoolean("puedeVotar"), it.getInt("votosRestantes"), it.getInt("propuestasRestantes"))
+        Yo(it.getString("nombre"), it.intONull("diasCuenta"), it.getBoolean("puedePublicar"), it.getInt("publicacionesRestantes"))
     }
 
-    // ---- canción de la semana ----
+    // ---- feed de canciones de 24 h ----
 
-    /** Con token válido trae `votada` por canción; con token malo el servidor da 401/403 (ver la clase). */
-    fun semana(): R<Semana> = llamar("GET", "/v1/semana") { j ->
-        val act = j.getJSONObject("actual")
-        val canciones = act.getJSONArray("canciones").objetos()
-        val ant = j.optJSONObject("anterior")
-        Semana(
-            actualId = act.getString("id"),
-            cierra = act.getLong("cierra"),
-            actual = canciones.map { cancion(it) },
-            votadas = canciones.filter { it.optBoolean("votada", false) }.map { it.getString("id") }.toSet(),
-            anteriorId = ant?.getString("id"),
-            cancionSemana = ant?.optJSONObject("cancionSemana")?.let { cancion(it) },
-            top = ant?.optJSONArray("top")?.objetos()?.map { cancion(it) to it.optInt("votos", 0) } ?: emptyList()
-        )
+    /**
+     * Con token válido trae `corazon`/`mia` por publicación. El servidor trata un token malo en esta
+     * ruta como invitado (200), pero por si un día da 401/403 se repite SIN token: leer es público.
+     */
+    fun feed(orden: OrdenFeed, cursor: String?): R<PaginaFeed> {
+        val q = "?orden=" + orden.param + (if (cursor != null) "&cursor=" + enc(cursor) else "")
+        val r = llamar("GET", "/v1/feed$q", parsear = ::paginaFeed)
+        return if (r is R.Error && r.tokenInservible) llamar("GET", "/v1/feed$q", conToken = false, parsear = ::paginaFeed) else r
     }
 
-    fun proponer(enlace: String): R<Propuesta> = llamar("POST", "/v1/semana/proponer", JSONObject().put("enlace", enlace)) {
-        Propuesta(cancion(it.getJSONObject("cancion")), it.getBoolean("yaEstaba"), it.getInt("propuestasRestantes"))
-    }
-
-    /** [si] = votar (POST, con la canción en el cuerpo) o quitar el voto (DELETE, con la canción en la URL y sin cuerpo). */
-    fun votar(cancion: String, si: Boolean): R<Voto> =
-        // Quitar el voto va con la canción en la URL y sin cuerpo (ver redConGuarda).
-        (if (si) llamar("POST", "/v1/semana/voto", JSONObject().put("cancion", cancion)) { j -> Voto(j.getBoolean("votada"), j.getInt("votosRestantes")) }
-        else llamar("DELETE", "/v1/semana/voto?cancion=" + enc(cancion)) { j -> Voto(j.getBoolean("votada"), j.getInt("votosRestantes")) })
-
-    // ---- playlists públicas (listar y ver son públicas: no mandan token) ----
-
-    fun playlists(orden: String, cursor: String?): R<PaginaPlaylists> {
-        val q = "?orden=" + enc(orden) + (if (cursor != null) "&cursor=" + enc(cursor) else "")
-        return llamar("GET", "/v1/playlists$q", conToken = false) { j ->
-            PaginaPlaylists(
-                j.getJSONArray("playlists").objetos().map {
-                    PlaylistResumen(it.getString("id"), it.getString("nombre"), it.getString("autor"),
-                        it.getInt("canciones"), it.getInt("guardados"), it.cadenaONull("portada"))
-                },
-                j.cadenaONull("siguiente")
-            )
+    /** Exactamente uno de `deezer` / `enlace` en el cuerpo. Puede tardar: el servidor convierte la canción fuera. */
+    fun publicar(texto: String, origen: OrigenCancion): R<ItemFeed> {
+        val cuerpo = JSONObject().put("texto", texto)
+        when (origen) {
+            is OrigenCancion.Deezer -> cuerpo.put("deezer", origen.id)
+            is OrigenCancion.Enlace -> cuerpo.put("enlace", origen.url)
         }
+        return llamar("POST", "/v1/publicaciones", cuerpo, tiempoMs = TIMEOUT_LARGO_MS) { itemFeed(it.getJSONObject("publicacion")) }
     }
 
-    fun playlist(id: String): R<PlaylistPub> = llamar("GET", "/v1/playlists/${enc(id)}", conToken = false) { j ->
-        PlaylistPub(j.getString("id"), j.getString("nombre"), j.getString("autor"), j.getInt("guardados"),
-            j.getJSONArray("canciones").objetos().map { cancion(it) })
-    }
+    fun borrarPublicacion(id: String): R<Unit> = llamar("DELETE", "/v1/publicaciones/${enc(id)}") { }
 
-    fun publicar(nombre: String, enlaces: List<String>): R<Publicada> =
-        llamar("POST", "/v1/playlists", JSONObject().put("nombre", nombre).put("enlaces", JSONArray(enlaces)), tiempoMs = TIMEOUT_LARGO_MS) {
-            Publicada(it.getString("id"), it.getInt("canciones"), it.cadenas("fallidas"))
-        }
+    /** [si] = dar el corazón (POST) o quitarlo (DELETE, sin cuerpo). */
+    fun corazon(id: String, si: Boolean): R<EstadoCorazon> =
+        llamar(if (si) "POST" else "DELETE", "/v1/publicaciones/${enc(id)}/corazon") { EstadoCorazon(it.getInt("corazones"), it.getBoolean("corazon")) }
 
-    fun anadirAPublicada(id: String, enlaces: List<String>): R<Publicada> =
-        llamar("POST", "/v1/playlists/${enc(id)}/canciones", JSONObject().put("enlaces", JSONArray(enlaces)), tiempoMs = TIMEOUT_LARGO_MS) {
-            Publicada(id, it.getInt("canciones"), it.cadenas("fallidas"))
-        }
+    /** Quién dio corazón: solo lo contesta el servidor al autor. */
+    fun quienes(id: String): R<List<String>> = llamar("GET", "/v1/publicaciones/${enc(id)}/corazones") { it.cadenas("nombres") }
 
-    fun retirar(id: String): R<Unit> = llamar("DELETE", "/v1/playlists/${enc(id)}") { }
-
-    /** Devuelve el nuevo recuento de guardados. */
-    fun guardarPublicada(id: String): R<Int> = llamar("POST", "/v1/playlists/${enc(id)}/guardar") { it.getInt("guardados") }
+    fun mias(): R<List<ItemFeed>> = llamar("GET", "/v1/publicaciones/mias") { j -> j.getJSONArray("items").objetos().map { itemFeed(it) } }
 
     fun denunciar(tipo: String, objetivo: String, motivo: String): R<Unit> =
         llamar("POST", "/v1/denuncias", JSONObject().put("tipo", tipo).put("objetivo", objetivo).put("motivo", motivo)) { }
@@ -155,7 +133,8 @@ class ApiMusica(
         } catch (e: Exception) {
             return R.Error("red", 0, null)
         }
-        val json = try { JSONObject(r.cuerpo) } catch (e: JSONException) { null }
+        // Un 204 (borrar una publicación) no trae cuerpo: es un éxito, no una respuesta rota.
+        val json = if (r.status == 204) JSONObject() else try { JSONObject(r.cuerpo) } catch (e: JSONException) { null }
         if (r.status == 202) return R.Error("pendiente", 202, json) // lo traduce comprobar()
         if (r.status !in 200..299) {
             return R.Error(json?.optString("error")?.takeIf { it.isNotEmpty() } ?: "http_${r.status}", r.status, json)
@@ -164,9 +143,23 @@ class ApiMusica(
         return try { R.Ok(parsear(json)) } catch (e: JSONException) { R.Error("respuesta", r.status, json) }
     }
 
-    private fun cancion(j: JSONObject) = CancionPub(
+    private fun cancionFeed(j: JSONObject) = CancionFeed(
         j.getString("id"), j.getString("titulo"), j.cadenaONull("artista"), j.cadenaONull("portada"),
-        j.cadenaONull("youtube"), j.cadenaONull("spotify")
+        j.cadenaONull("spotify"), j.cadenaONull("youtube"), if (j.isNull("deezer")) null else j.getLong("deezer")
+    )
+
+    // `corazon` y `mia` solo vienen con token: sin él, falso.
+    private fun itemFeed(j: JSONObject) = ItemFeed(
+        j.getString("id"), j.getString("autor"), j.getString("texto"), j.getLong("creada"), j.getLong("caduca"),
+        j.getInt("corazones"), j.optBoolean("corazon", false), j.optBoolean("mia", false), cancionFeed(j.getJSONObject("cancion"))
+    )
+
+    private fun paginaFeed(j: JSONObject) = PaginaFeed(
+        j.getJSONArray("items").objetos().map { itemFeed(it) },
+        j.cadenaONull("cursor"),
+        j.optJSONObject("masQuerida")?.let { m ->
+            MasQuerida(m.getString("semana"), m.getString("autor"), m.getString("texto"), m.getInt("corazones"), cancionFeed(m.getJSONObject("cancion")))
+        }
     )
 
     private fun enc(s: String) = URLEncoder.encode(s, "UTF-8")
@@ -176,8 +169,8 @@ class ApiMusica(
         private const val TIMEOUT_MS = 10_000
 
         /**
-         * Publicar y ampliar una playlist leen varias tarjetas fuera en el servidor: pueden tardar
-         * más que el resto. Un tiempo agotado antes de que acabe no dice si se creó (ver [PublicarPlaylist]).
+         * Publicar una canción la convierte fuera en el servidor: pueden tardar
+         * más que el resto. Un tiempo agotado antes de que acabe no dice si se creó.
          */
         internal const val TIMEOUT_LARGO_MS = 30_000
 

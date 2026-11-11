@@ -14,20 +14,11 @@
     android:background="@color/fc_fondo"
     android:visibility="gone">
 
-    <!-- La portada. fillViewport para que el texto de vacío quede centrado en lo que se ve. -->
-    <!-- El reproductor de la semana va FUERA del scroll, fijo arriba como en la pantalla de una
-         playlist: YouTube tiene que verse (>= 200 dp) mientras suena, y dentro del scroll se podria
-         sacar de la pantalla sonando. Oculto hasta que se toca una cancion de la semana. -->
+    <!-- La portada: la lista de tus playlists (y, con el servidor encendido, verificar y borrar la cuenta). -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical">
-
-    <FrameLayout
-        android:id="@+id/musica_semana_reproductor"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:visibility="gone" />
 
     <ScrollView
         android:id="@+id/musica_portada"
@@ -56,148 +47,13 @@
                 android:gravity="center_vertical"
                 android:paddingStart="16dp"
                 android:paddingEnd="16dp"
-                android:text="Vota la canción de la semana"
+                android:text="Verifica tu cuenta de ForoCoches"
                 android:textSize="15sp"
                 android:textStyle="bold"
                 android:textColor="@color/fc_rojo"
                 android:drawableEnd="@drawable/ic_fila"
                 android:background="?attr/selectableItemBackground"
                 android:visibility="gone" />
-
-            <!-- Playlists de los shurs (C4): solo con el servidor encendido en la config. -->
-            <TextView
-                android:id="@+id/musica_shurs_entrada"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:minHeight="48dp"
-                android:gravity="center_vertical"
-                android:paddingStart="16dp"
-                android:paddingEnd="16dp"
-                android:text="Playlists de los shurs"
-                android:textSize="15sp"
-                android:textStyle="bold"
-                android:textColor="@color/fc_rojo"
-                android:drawableEnd="@drawable/ic_fila"
-                android:background="?attr/selectableItemBackground"
-                android:visibility="gone" />
-
-            <!-- La canción de la semana (C3). Solo con el servidor encendido en la config: lo
-                 enciende y lo llena PanelSemana. El reproductor de la semana es OTRA instancia de
-                 ReproductorMusica, en su propio hueco (oculto hasta que se toca algo): el de las
-                 playlists vive en su pantalla. -->
-            <LinearLayout
-                android:id="@+id/musica_semana"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:visibility="gone">
-
-                <TextView
-                    android:id="@+id/semana_titulo_ganadora"
-                    style="@style/TituloGrupoMusica"
-                    android:text="CANCIÓN DE LA SEMANA"
-                    android:contentDescription="Canción de la semana"
-                    android:visibility="gone" />
-
-                <LinearLayout
-                    android:id="@+id/semana_ganadora"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical" />
-
-                <TextView
-                    android:id="@+id/semana_titulo_top"
-                    style="@style/TituloGrupoMusica"
-                    android:text="TOP DE ESTA SEMANA"
-                    android:contentDescription="Top de esta semana"
-                    android:visibility="gone" />
-
-                <TextView
-                    android:id="@+id/semana_nota"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:paddingStart="16dp"
-                    android:paddingEnd="16dp"
-                    android:paddingBottom="4dp"
-                    android:text="El orden cambia con los votos. Los números se ven al cerrar la semana, el lunes."
-                    android:textSize="12.5sp"
-                    android:textColor="@color/fc_texto_2"
-                    android:visibility="gone" />
-
-                <LinearLayout
-                    android:id="@+id/semana_top"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical" />
-
-                <TextView
-                    android:id="@+id/semana_vacia"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:paddingStart="16dp"
-                    android:paddingEnd="16dp"
-                    android:paddingTop="4dp"
-                    android:paddingBottom="8dp"
-                    android:text="Todavía no hay canciones propuestas esta semana. Propón la primera."
-                    android:textSize="14sp"
-                    android:textColor="@color/fc_texto_2"
-                    android:visibility="gone" />
-
-                <TextView
-                    android:id="@+id/semana_pie"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:paddingStart="16dp"
-                    android:paddingEnd="16dp"
-                    android:paddingTop="6dp"
-                    android:textSize="13sp"
-                    android:textColor="@color/fc_texto_2"
-                    android:visibility="gone" />
-
-                <TextView
-                    android:id="@+id/semana_proponer"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:minHeight="48dp"
-                    android:gravity="center_vertical"
-                    android:paddingStart="16dp"
-                    android:paddingEnd="16dp"
-                    android:text="Proponer una canción"
-                    android:textSize="15sp"
-                    android:textStyle="bold"
-                    android:textColor="@color/fc_rojo"
-                    android:drawableEnd="@drawable/ic_fila"
-                    android:background="?attr/selectableItemBackground"
-                    android:visibility="gone" />
-
-                <!-- La primera carga fallo: se dice y se puede reintentar (sin esto el bloque no saldria). -->
-                <TextView
-                    android:id="@+id/semana_error"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:minHeight="48dp"
-                    android:gravity="center_vertical"
-                    android:paddingStart="16dp"
-                    android:paddingEnd="16dp"
-                    android:text="No se ha podido cargar la canción de la semana. Toca para reintentar"
-                    android:textSize="14sp"
-                    android:textColor="@color/fc_texto_2"
-                    android:background="?attr/selectableItemBackground"
-                    android:visibility="gone" />
-
-                <TextView
-                    android:id="@+id/semana_bloqueada"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:paddingStart="16dp"
-                    android:paddingEnd="16dp"
-                    android:paddingTop="8dp"
-                    android:paddingBottom="8dp"
-                    android:text="Esta cuenta de ForoCoches está bloqueada en Música."
-                    android:textSize="14sp"
-                    android:textColor="@color/fc_texto_2"
-                    android:visibility="gone" />
-            </LinearLayout>
 
             <!-- Título del grupo, con el mismo aire que las etiquetas del panel del avatar.
                  fc_texto_2 y no fc_texto_3: sobre el gris de Tarjetas el 3 no llega a 4,5:1. -->
@@ -322,6 +178,4 @@
         app:backgroundTint="@color/fc_rojo"
         app:tint="@color/fc_sobre_rojo" />
 
-    <!-- Playlists de los shurs (C4), encima de todo lo demás (también del botón "+"). -->
-    <include layout="@layout/panel_shurs" />
 </FrameLayout>
