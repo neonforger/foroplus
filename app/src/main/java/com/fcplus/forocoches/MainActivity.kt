@@ -1304,7 +1304,7 @@ class MainActivity : AppCompatActivity() {
                 showMusica()
             }
         }
-        musica.abrirAnadir(texto)
+        musica.recibirCompartido(texto)
     }
 
     private fun hayPestanaMusica(): Boolean =

@@ -99,11 +99,8 @@ class MusicaController(
         disco = { disco.execute(it) }
     )
 
-    /**
-     * "Compartir canción" (A6 lo sustituye por la hoja de publicar). Hasta entonces el botón avisa
-     * en vez de estar muerto.
-     */
-    var alCompartir: () -> Unit = { aviso("Compartir canciones llega muy pronto.") }
+    /** "Compartir canción" (el botón del feed): abre la hoja de A6 (con verificación antes si falta el token). */
+    var alCompartir: () -> Unit = { abrirCompartir(null) }
 
     /**
      * Estando el feed encendido, ¿se está viendo "Lo tuyo" (tus playlists) en vez del feed? Es el
@@ -267,7 +264,7 @@ class MusicaController(
      * La hoja de verificación (C2). Solo con el servidor encendido en la config; al verificarse,
      * la portada se repinta (la entrada desaparece).
      */
-    fun abrirVerificacion() {
+    fun abrirVerificacion(despues: (() -> Unit)? = null) {
         val e = enganches ?: return
         if (!e.servidorActivo()) return
         pausar()  // la hoja tapa el reproductor, y YouTube no puede sonar tapado
@@ -275,7 +272,48 @@ class MusicaController(
             feed?.olvidarCuenta()
             if (visible) recargar()
             feed?.refrescar(true)  // ahora con token: trae los corazones y las publicaciones propias
+            despues?.invoke()
         }.mostrar()
+    }
+
+    /**
+     * La pantalla de compartir una canción (A6), con [enlace] ya puesto si llega de otra app.
+     * Sin token, antes la verificación y, al verificarse, esta pantalla. NO se mira el tope diario
+     * (no se anuncia): solo el 429 del servidor lo dice. El token se mira fuera del hilo de la
+     * interfaz (keystore). Lo que suena se calla: la pantalla tapa el reproductor.
+     */
+    fun abrirCompartir(enlace: String?) {
+        val e = enganches ?: return
+        if (!e.servidorActivo()) return
+        pausar()
+        val uid = e.uidActivo()
+        disco.execute {
+            val tiene = uid.isNotEmpty() && try { e.tokens.de(uid) != null } catch (_: Exception) { false }
+            act.runOnUiThread {
+                if (act.isFinishing || act.isDestroyed) return@runOnUiThread
+                if (tiene) mostrarCompartir(e, enlace) else abrirVerificacion { mostrarCompartir(e, enlace) }
+            }
+        }
+    }
+
+    private fun mostrarCompartir(e: EnganchesMusica, enlace: String?) {
+        // Publicada: el feed se pide de nuevo (forzado) y la nueva sale arriba, con su sitio entre
+        // las recientes. Es la vía más corta y la misma que usa tras verificarse; evita meter a mano
+        // en la lista una tarjeta que el servidor puede tener ya con otra hora de caducidad.
+        HojaCompartirCancion(act, e, { feed?.refrescar(true) }).mostrar(enlace)
+    }
+
+    /**
+     * Una canción compartida desde otra app hacia Música. Con el feed encendido y UNA sola canción
+     * de YouTube o Spotify, va a la pantalla de compartir con el enlace puesto; con el servidor
+     * apagado, o con varias canciones o una playlist (que no caben en una publicación), a la hoja
+     * de siempre "Añadir a una playlist".
+     */
+    fun recibirCompartido(texto: String) {
+        val enlaces = EnlaceMusica.todas(texto)
+        if (usaFeed() && enlaces.size == 1 && EnlaceMusica.cortosSpotify(texto).isEmpty()) {
+            abrirCompartir(HojaCompartirCancion.enlaceDe(texto))
+        } else abrirAnadir(texto)
     }
 
     /**
