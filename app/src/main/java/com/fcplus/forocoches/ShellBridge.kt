@@ -47,8 +47,16 @@ class ShellBridge(
     /** Quién escribió un mensaje: el "último que escribe" de la lista. Ver [UltimosPosteadores]. */
     private val onLastPosterResult: (String) -> Unit = {},
     /** Nombres que propone el foro para el campo de usuario del buscador. Ver [BusquedaPorUsuario]. */
-    private val onUserSuggestionsResult: (String) -> Unit = {}
+    private val onUserSuggestionsResult: (String) -> Unit = {},
+    /**
+     * El coche del perfil, leído o escrito para la verificación de Música. Ver [MotorCocheFC]: la
+     * espera un hilo de fondo con un cerrojo, así que NO se salta al hilo de la interfaz.
+     */
+    private val onCocheResult: (String) -> Unit = {}
 ) {
+    @JavascriptInterface
+    fun onCoche(json: String) = onCocheResult(json)
+
     @JavascriptInterface
     fun onUserSuggestions(json: String) = onUserSuggestionsResult(json)
 

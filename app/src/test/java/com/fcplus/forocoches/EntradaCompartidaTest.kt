@@ -1,0 +1,158 @@
+package com.fcplus.forocoches
+
+import android.content.Intent
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+/**
+ * "Guardar en Música": lo que otra app comparte con ForoPlus (YouTube, Spotify, WhatsApp…). Es
+ * dato de fuera: solo cuenta un SEND de texto plano, y con tope de tamaño. La hoja "Añadir" ya
+ * se queda solo con los enlaces que reconoce EnlaceMusica.
+ */
+class EntradaCompartidaTest {
+
+    private val enlace = "https://youtu.be/dQw4w9WgXcQ?si=x"
+
+    @Test
+    fun `un SEND de texto plano devuelve el texto`() {
+        assertEquals(enlace, EntradaCompartida.texto(Intent.ACTION_SEND, "text/plain", enlace, null))
+    }
+
+    @Test
+    fun `con asunto va el asunto y debajo el texto`() {
+        assertEquals(
+            "Rick Astley - Never Gonna Give You Up\n$enlace",
+            EntradaCompartida.texto(Intent.ACTION_SEND, "text/plain", enlace, "Rick Astley - Never Gonna Give You Up")
+        )
+    }
+
+    @Test
+    fun `un asunto que ya va dentro del texto no se repite`() {
+        val texto = "Playlist «Para la autovía» (1 canción)\n\n1. Estopa – Como Camarón\n$enlace"
+        assertEquals(texto, EntradaCompartida.texto(Intent.ACTION_SEND, "text/plain", texto, "Playlist «Para la autovía»"))
+    }
+
+    @Test
+    fun `sin texto vale el asunto y sin nada es null`() {
+        assertEquals(enlace, EntradaCompartida.texto(Intent.ACTION_SEND, "text/plain", null, enlace))
+        assertNull(EntradaCompartida.texto(Intent.ACTION_SEND, "text/plain", null, null))
+        assertNull(EntradaCompartida.texto(Intent.ACTION_SEND, "text/plain", "  \n ", ""))
+    }
+
+    @Test
+    fun `lo que no es un SEND es null aunque traiga texto`() {
+        // Un enlace de FC (VIEW) o el launcher (MAIN) siguen su camino de siempre, IntentRouter.
+        assertNull(EntradaCompartida.texto(Intent.ACTION_VIEW, "text/plain", enlace, null))
+        assertNull(EntradaCompartida.texto(Intent.ACTION_MAIN, null, enlace, null))
+        assertNull(EntradaCompartida.texto(null, "text/plain", enlace, null))
+    }
+
+    @Test
+    fun `un SEND que no es texto plano es null`() {
+        assertNull(EntradaCompartida.texto(Intent.ACTION_SEND, "image/png", enlace, null))
+        assertNull(EntradaCompartida.texto(Intent.ACTION_SEND, null, enlace, null))
+        assertNull(EntradaCompartida.texto(Intent.ACTION_SEND_MULTIPLE, "text/plain", enlace, null))
+    }
+
+    @Test
+    fun `un texto enorme se corta a 60000 caracteres`() {
+        val largo = "a".repeat(90_000)
+        assertEquals(60_000, EntradaCompartida.texto(Intent.ACTION_SEND, "text/plain", largo, null)!!.length)
+    }
+
+    @Test
+    fun `el corte no parte un emoji por la mitad`() {
+        // 59.999 letras y un emoji (dos char): cortar a 60.000 dejaría medio emoji suelto.
+        val largo = "a".repeat(59_999) + "🎵" + "b".repeat(100)
+        val r = EntradaCompartida.texto(Intent.ACTION_SEND, "text/plain", largo, null)!!
+        assertEquals(59_999, r.length)
+        assertFalse(Character.isHighSurrogate(r.last()))
+    }
+
+    @Test
+    fun `el corte no deja un enlace a medias`() {
+        // Un enlace de YouTube cortado sigue pareciendo uno (sus ids valen desde 6 caracteres) y
+        // se guardaría otro vídeo: se corta en el espacio de antes.
+        val relleno = "x".repeat(59_990)
+        val r = EntradaCompartida.texto(Intent.ACTION_SEND, "text/plain", "$relleno $enlace y más", null)!!
+        assertEquals(relleno, r)
+    }
+
+    @Test
+    fun `solo se atiende lo compartido en una actividad nueva`() {
+        assertTrue(EntradaCompartida.esNueva(recreada = false, flags = Intent.FLAG_ACTIVITY_NEW_TASK))
+        // Recreada (modo oscuro, estilo, tamaño de letra) el intent es el mismo de antes: la hoja
+        // volvería a salir con lo que ya se guardó.
+        assertFalse(EntradaCompartida.esNueva(recreada = true, flags = 0))
+        // Y lo mismo al volver desde Recientes, que relanza el intent con el que se abrió.
+        assertFalse(EntradaCompartida.esNueva(recreada = false, flags = Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY))
+    }
+
+    // ── El extra que GuardarEnMusica le pasa a MainActivity (Ruling 32) ──────
+
+    private val launcher = setOf(Intent.CATEGORY_LAUNCHER)
+
+    @Test
+    fun `el extra vale en el intent de launcher que manda GuardarEnMusica`() {
+        assertEquals(enlace, EntradaCompartida.extraAceptado(Intent.ACTION_MAIN, launcher, enlace))
+        assertEquals(enlace, EntradaCompartida.extraAceptado(Intent.ACTION_MAIN, null, "  $enlace \n"))
+    }
+
+    @Test
+    fun `el extra no vale en un enlace de FC ni en nada que venga de una web`() {
+        // MainActivity está exportada: una página puede mandar un intent: con el extra pegado a un
+        // enlace de hilo (VIEW + BROWSABLE). Ese enlace sigue su camino, IntentRouter.
+        val web = setOf(Intent.CATEGORY_BROWSABLE, Intent.CATEGORY_DEFAULT)
+        assertNull(EntradaCompartida.extraAceptado(Intent.ACTION_VIEW, web, enlace))
+        assertNull(EntradaCompartida.extraAceptado(Intent.ACTION_VIEW, null, enlace))
+        assertNull(EntradaCompartida.extraAceptado(Intent.ACTION_MAIN, launcher + Intent.CATEGORY_BROWSABLE, enlace))
+        assertNull(EntradaCompartida.extraAceptado(Intent.ACTION_SEND, null, enlace))
+        assertNull(EntradaCompartida.extraAceptado(null, null, enlace))
+    }
+
+    @Test
+    fun `el extra vacio no cuenta y uno enorme se corta igual que lo compartido`() {
+        assertNull(EntradaCompartida.extraAceptado(Intent.ACTION_MAIN, launcher, null))
+        assertNull(EntradaCompartida.extraAceptado(Intent.ACTION_MAIN, launcher, "  \n"))
+        val relleno = "x".repeat(59_990)
+        assertEquals(relleno, EntradaCompartida.extraAceptado(Intent.ACTION_MAIN, launcher, "$relleno $enlace y más"))
+        assertEquals(60_000, EntradaCompartida.recortar("a".repeat(90_000)).length)
+    }
+
+    // ── A dónde se va al recibirlo (Ruling 32: la decisión, pura) ─────────────
+
+    @Test
+    fun `escribiendo solo sale la hoja, encima del composer`() {
+        assertEquals(DestinoCompartido.SOLO_HOJA, EntradaCompartida.destino(escribiendo = true, enRaizConPestanas = true))
+        assertEquals(DestinoCompartido.SOLO_HOJA, EntradaCompartida.destino(escribiendo = true, enRaizConPestanas = false))
+    }
+
+    @Test
+    fun `en la lista raiz Musica ocupa su sitio y sobre otra cosa se apila`() {
+        assertEquals(DestinoCompartido.MUSICA_EN_SU_SITIO, EntradaCompartida.destino(escribiendo = false, enRaizConPestanas = true))
+        assertEquals(DestinoCompartido.MUSICA_APILADA, EntradaCompartida.destino(escribiendo = false, enRaizConPestanas = false))
+    }
+
+    // ── Cuándo se entrega (arranque en frío sin config) ──────────────────────
+
+    @Test
+    fun `apagado con la config aun sin refrescar no se tira y espera a la config fresca`() {
+        assertEquals(AhoraCompartido.ESPERAR, EntradaCompartida.ahora(servidorActivo = false, configFresca = false, hayPestana = false))
+        assertEquals(AhoraCompartido.ESPERAR, EntradaCompartida.ahora(servidorActivo = false, configFresca = false, hayPestana = true))
+    }
+
+    @Test
+    fun `apagado con la config fresca avisa`() {
+        assertEquals(AhoraCompartido.AVISAR_APAGADO, EntradaCompartida.ahora(servidorActivo = false, configFresca = true, hayPestana = false))
+    }
+
+    @Test
+    fun `encendido espera a la pestana y con ella se entrega, sea o no fresca la config`() {
+        assertEquals(AhoraCompartido.ESPERAR, EntradaCompartida.ahora(servidorActivo = true, configFresca = true, hayPestana = false))
+        assertEquals(AhoraCompartido.ENTREGAR, EntradaCompartida.ahora(servidorActivo = true, configFresca = true, hayPestana = true))
+        assertEquals(AhoraCompartido.ENTREGAR, EntradaCompartida.ahora(servidorActivo = true, configFresca = false, hayPestana = true))
+    }
+}

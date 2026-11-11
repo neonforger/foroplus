@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Etiqueta de lo que le queda a una publicación del feed de Música (la normal, sin prisa) y fondo
+     de la caja de la canción. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="@color/fc_chip" />
+    <corners android:radius="10dp" />
+</shape>

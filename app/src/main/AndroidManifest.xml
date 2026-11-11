@@ -53,6 +53,34 @@
                 <data android:pathPrefix="/foro/private.php" />
             </intent-filter>
         </activity>
+
+        <!--
+            "Compartir en Música": lo que se comparte desde otra app (YouTube, Spotify…) abre Música
+            con la pantalla de compartir y el enlace puesto. Una actividad propia, con su nombre en el menú de
+            compartir; Android no deja filtrar por dominio: sale para cualquier texto, y lo que no
+            trae canciones llega al buscador de la pantalla de compartir tal cual.
+
+            Es SOLO de paso (GuardarEnMusica.kt): sin pantalla, se cierra en el acto y le pasa el
+            texto a la MainActivity que ya hubiera. Antes era un activity-alias de MainActivity, y
+            un alias hereda su launchMode (standard): cada compartir abría OTRA MainActivity, con
+            su propio motor contra FC (Ruling 30).
+            taskAffinity vacío: lanzada con NEW_TASK (por adb, o desde una app que lo ponga) no se
+            mete en la tarea de ForoPlus encima de MainActivity, que es justo donde estorbaría.
+        -->
+        <activity
+            android:name=".GuardarEnMusica"
+            android:label="Compartir en Música"
+            android:exported="true"
+            android:theme="@android:style/Theme.NoDisplay"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:taskAffinity="">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity>
         <!-- Para pasarle la tarjeta (un PNG de la caché) a WhatsApp, Telegram, etc. Android no
              deja compartir un fichero a pelo: hay que cederlo por un proveedor con permiso
              temporal. exported=false + grantUriPermissions: solo lo ve quien reciba el intent. -->

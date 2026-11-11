@@ -34,8 +34,10 @@ Cliente **no oficial** de ForoCoches para Android. Gratis, sin anuncios y con in
 
 ## Privacidad
 
-- **La app no se conecta a ningún servidor nuestro.** Habla directamente con forocoches.com desde
-  tu móvil, con tu cuenta de siempre. Nadie más ve lo que lees ni lo que escribes.
+- **Sin entrar en Música, la app no se conecta a ningún servidor nuestro**: la pestaña Música, al
+  abrirla, carga el feed público de nuestro servidor (sin enviar ningún dato tuyo; ver más abajo). Para
+  todo lo demás habla directamente con forocoches.com desde tu móvil, con tu cuenta de siempre. Nadie
+  más ve lo que lees ni lo que escribes.
 - La sesión se guarda **solo en tu móvil**.
 - Lo único que la app consulta fuera del foro: las imágenes y los contenidos incrustados de los
   mensajes (en sus propias webs) y un fichero público de configuración en GitHub
@@ -47,7 +49,24 @@ Cliente **no oficial** de ForoCoches para Android. Gratis, sin anuncios y con in
   manda nada, y solo acepta descargar la lista de esa dirección
   ([`FuentesPermitidas.kt`](app/src/main/java/com/fcplus/forocoches/FuentesPermitidas.kt)). Lo que
   hace el servidor no se puede comprobar desde fuera, y no hace falta: no recibe nada de nadie.
+- **Música** (feed de canciones de 24 horas): al abrirla, la app descarga el feed público del
+  servidor de Música, sin enviar ningún dato tuyo. Compartir una canción o dar un corazón exige verificar
+  tu cuenta de ForoCoches; entonces el servidor guarda tu cuenta de Música (el uid de FC solo como huella
+  irreversible), tus publicaciones y tus corazones. Las publicaciones y sus corazones se borran a las 24
+  horas, y puedes borrar tu cuenta entera en Opciones, "Borrar mi cuenta de Música". Nunca recibe tus
+  cookies, tu contraseña ni tus mensajes de FC, y no guarda registros de peticiones. Lo que escribes en el
+  buscador de canciones va directo de tu móvil a Deezer. La dirección del servidor está fija en el código
+  ([`ServidorMusica.kt`](app/src/main/java/com/fcplus/forocoches/ServidorMusica.kt)) y el fichero de
+  configuración solo puede encenderlo o apagarlo. A quien bloqueas ("No ver a…") se guarda solo en el móvil.
 - [Política de privacidad](docs/privacy-policy.html).
+
+## Servidor de Música
+
+Es un Cloudflare Worker con base de datos D1, y su código está en
+[`servidor/musica/`](servidor/musica/): se puede leer qué se guarda y qué se borra. Lleva las cuentas
+de Música, las publicaciones del feed y sus corazones. Los secretos (como la clave de las huellas
+del uid) no están en el repositorio. Cómo probarlo y desplegarlo, en su
+[README](servidor/musica/README.md).
 
 ## Descargar y verificar
 

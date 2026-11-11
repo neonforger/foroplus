@@ -1,0 +1,4 @@
+# Fork propio de SpotAPI (GPL-3.0), fijado por commit.
+spotapi @ git+https://github.com/neonforger/SpotAPI@cb862571574e1ddbf5f8975f58a4f61a0e3d2050
+# Falta en las dependencias de SpotAPI (medido).
+websockets==17.4

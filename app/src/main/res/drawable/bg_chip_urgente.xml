@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Etiqueta "se va en N min" de una publicación del feed de Música: el naranja de la lupa del hilo
+     (fc_busca_actual), que ya existe en claro y en oscuro; el texto va en fc_texto. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="@color/fc_busca_actual" />
+    <corners android:radius="10dp" />
+</shape>

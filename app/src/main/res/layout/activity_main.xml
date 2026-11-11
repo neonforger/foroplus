@@ -38,27 +38,23 @@
                     android:paddingEnd="8dp"
                     android:paddingTop="12dp"
                     android:paddingBottom="8dp"
+                    android:minHeight="48dp"
+                    android:gravity="center_vertical"
                     android:text="ForoPlus"
                     android:textColor="@color/fc_rojo"
                     android:textSize="20sp"
                     android:textStyle="bold" />
 
-                <!-- Lo más movido del subforo. Es una etiqueta y no un emoji a propósito:
-                     los emoji ignoran el textColor y este tiene que ponerse rojo al activarse. -->
-                <TextView
+                <!-- Hilos del momento: icono de llama (gris; rojo al activarse, lo pinta pintarBotonTop). -->
+                <ImageView
                     android:id="@+id/native_top"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:paddingStart="10dp"
-                    android:paddingEnd="10dp"
-                    android:paddingTop="14dp"
-                    android:paddingBottom="14dp"
-                    android:text="TOP"
-                    android:textSize="13sp"
-                    android:textStyle="bold"
-                    android:textColor="@color/fc_texto_2"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:padding="12dp"
+                    android:src="@drawable/ic_top_fuego"
+                    android:scaleType="fitCenter"
                     android:background="?attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="Lo más movido" />
+                    android:contentDescription="Hilos del momento" />
 
                 <ImageView
                     android:id="@+id/native_search"
@@ -233,17 +229,21 @@
                     android:visibility="gone" />
 
                 <!-- Crear hilo nuevo en el subforo actual (Bloque crear/editar/borrar). -->
-                <com.google.android.material.floatingactionbutton.FloatingActionButton
+                <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
                     android:id="@+id/fab_new_thread"
+                    style="@style/FC.FabNuevoHilo"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="bottom|end"
                     android:layout_margin="18dp"
-                    android:src="@drawable/ic_add"
-                    android:contentDescription="Crear hilo nuevo"
-                    app:backgroundTint="@color/fc_rojo"
-                    app:tint="@color/fc_sobre_rojo"
+                    android:text="Nuevo hilo"
+                    app:icon="@drawable/ic_add"
+                    android:contentDescription="Nuevo hilo"
                     android:visibility="gone" />
+
+                <!-- Música (MusicaController): hermano de list_refresh y el ÚLTIMO, para quedar
+                     encima de la lista que sustituye. Oculto salvo con listSource = "musica". -->
+                <include layout="@layout/panel_musica" />
             </FrameLayout>
         </LinearLayout>
 
@@ -1626,6 +1626,8 @@
                         <include android:id="@+id/opt_telegram" layout="@layout/item_opt_categoria" />
                         <include android:id="@+id/opt_coffee" layout="@layout/item_opt_categoria" />
                         <include android:id="@+id/opt_novedades" layout="@layout/item_opt_categoria" />
+                        <!-- Solo con una cuenta de Música verificada en este móvil: lo enciende OptionsController. -->
+                        <include android:id="@+id/opt_musica_borrar" layout="@layout/item_opt_categoria" android:visibility="gone" />
                         </LinearLayout>
                     </LinearLayout>
 

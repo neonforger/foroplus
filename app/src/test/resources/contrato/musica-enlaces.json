@@ -1,0 +1,16 @@
+[
+  { "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ", "fuente": "youtube", "id": "dQw4w9WgXcQ" },
+  { "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=PLx", "fuente": "youtube", "id": "dQw4w9WgXcQ" },
+  { "url": "https://youtu.be/dQw4w9WgXcQ?si=abc", "fuente": "youtube", "id": "dQw4w9WgXcQ" },
+  { "url": "https://www.youtube.com/shorts/dQw4w9WgXcQ", "fuente": "youtube", "id": "dQw4w9WgXcQ" },
+  { "url": "https://music.youtube.com/watch?v=dQw4w9WgXcQ", "fuente": "youtube", "id": "dQw4w9WgXcQ" },
+  { "url": "https://open.spotify.com/track/4cOdK2wGLETKBW3PvgPWqT?si=x", "fuente": "spotify", "id": "4cOdK2wGLETKBW3PvgPWqT" },
+  { "url": "https://open.spotify.com/intl-es/track/4cOdK2wGLETKBW3PvgPWqT", "fuente": "spotify", "id": "4cOdK2wGLETKBW3PvgPWqT" },
+  { "url": "spotify:track:4cOdK2wGLETKBW3PvgPWqT", "fuente": "spotify", "id": "4cOdK2wGLETKBW3PvgPWqT" },
+  { "url": "https://open.spotify.com/track/4cOdK2wGLETKBW3PvgPWq", "fuente": null, "id": null },
+  { "url": "https://open.spotify.com/album/5Z9iiGl2FcIfa3BMiv6OIw", "fuente": null, "id": null },
+  { "url": "https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M", "fuente": null, "id": null },
+  { "url": "https://open.spotify.com/artist/716NhGYqD1jl2wI1Qkgq36", "fuente": null, "id": null },
+  { "url": "https://www.youtube.com/playlist?list=PLx", "fuente": null, "id": null },
+  { "url": "https://www.tiktok.com/@a/video/1", "fuente": null, "id": null }
+]

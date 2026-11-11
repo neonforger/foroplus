@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Una fila del selector de sitio. Es un botón de verdad (TalkBack lo anuncia así) y mide
+     48dp como mínimo. El rojo y el ✓ del sitio actual los pone SelectorSitio. -->
+<Button xmlns:android="http://schemas.android.com/apk/res/android"
+    style="@style/Widget.AppCompat.Button.Borderless"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:minHeight="52dp"
+    android:paddingStart="16dp"
+    android:paddingEnd="16dp"
+    android:gravity="start|center_vertical"
+    android:textAlignment="viewStart"
+    android:textAllCaps="false"
+    android:textSize="17sp"
+    android:textColor="@color/fc_texto" />

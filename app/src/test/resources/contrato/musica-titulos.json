@@ -1,0 +1,23 @@
+{
+  "etiquetasVideo": ["official video", "official music video", "official audio", "official lyric video", "lyric video", "lyrics", "letra", "con letra", "audio", "visualizer", "videoclip oficial", "video oficial", "vídeo oficial", "hd", "hq", "4k", "4k remaster"],
+  "etiquetasVersion": ["remastered", "remaster", "remasterizado", "remasterizada", "remastered {año}", "{año} remaster", "{año} remastered"],
+  "titulos": [
+    {"titulo": "Rick Astley - Never Gonna Give You Up (Official Video) (4K Remaster)", "canal": "Rick Astley", "cancion": "Never Gonna Give You Up", "artista": "Rick Astley"},
+    {"titulo": "Estopa - Como Camarón (Videoclip Oficial) [HD]", "canal": "EstopaVEVO", "cancion": "Como Camarón", "artista": "Estopa"},
+    {"titulo": "Como Camarón", "canal": "Estopa - Topic", "cancion": "Como Camarón", "artista": "Estopa"},
+    {"titulo": "Extremoduro – So Payaso (Lyrics)", "canal": "Letras Rock", "cancion": "So Payaso", "artista": "Extremoduro"},
+    {"titulo": "Fito & Fitipaldis - Soldadito marinero (Directo)", "canal": "Fito", "cancion": "Soldadito marinero (Directo)", "artista": "Fito & Fitipaldis"},
+    {"titulo": "ROSALÍA - DESPECHÁ (Official Video)", "canal": "Rosalia", "cancion": "DESPECHÁ", "artista": "ROSALÍA"},
+    {"titulo": "Bizarrap, Quevedo — Quevedo: Bzrp Music Sessions, Vol. 52", "canal": "Bizarrap", "cancion": "Quevedo: Bzrp Music Sessions, Vol. 52", "artista": "Bizarrap, Quevedo"},
+    {"titulo": "Canción sin guion", "canal": "Estopa Oficial", "cancion": "Canción sin guion", "artista": "Estopa"}
+  ],
+  "claves": [
+    {"a": ["Rick Astley", "Never Gonna Give You Up"], "b": ["rick astley", "Never Gonna Give You Up (Remastered 2022)"], "iguales": true},
+    {"a": ["Bizarrap, Quevedo", "Quevedo: Bzrp Music Sessions, Vol. 52"], "b": ["Quevedo, Bizarrap", "Quevedo: Bzrp Music Sessions, Vol. 52"], "iguales": true},
+    {"a": ["Estopa", "Como Camarón"], "b": ["ESTOPA", "Como Camaron"], "iguales": true},
+    {"a": ["Estopa", "Como Camarón"], "b": ["Estopa", "Como Camarón (Directo Acústico)"], "iguales": false},
+    {"a": ["Bad Bunny", "Callaita (feat. Tainy)"], "b": ["Bad Bunny", "Callaita"], "iguales": true},
+    {"a": ["Rick Astley", "Never Gonna Give You Up - Remastered 2011"], "b": ["Rick Astley", "Never Gonna Give You Up"], "iguales": true},
+    {"a": ["Extremoduro", "So Payaso - En Directo"], "b": ["Extremoduro", "So Payaso"], "iguales": false}
+  ]
+}

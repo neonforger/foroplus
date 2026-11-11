@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Música (pestaña tras el Popurrí, listSource = "musica"): SOLO el feed. Va incluido DENTRO del
+     FrameLayout de la lista, el último para quedar encima de list_refresh: la cabecera y la tira
+     de pestañas de arriba siguen siendo las del listado, así que se desliza entre pestañas igual
+     que en el Popurrí o en +18. Lo enciende y lo apaga MusicaController.
+
+     El fondo de la raíz es OPACO (fc_fondo) aunque el de la Compacta sea transparente: si una
+     lista que llega tarde enciende list_empty o el aro de carga por debajo, no se trasluce.
+
+     Sin cabecera propia ("ForoPlus · Música"): la de la app ya dice dónde estás; los chips quedan
+     arriba del todo. Sin playlists, ni "Lo tuyo", ni "+" (decisión del dueño, 2026-11-11: que solo
+     se puedan compartir canciones). -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/panel_musica"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/fc_fondo"
+    android:visibility="gone">
+
+    <!-- El feed: los dos chips de orden, la lista de publicaciones y, si no hay filas, el estado con
+         su reintento. Lo enciende y lo apaga FeedController. -->
+    <LinearLayout
+        android:id="@+id/musica_feed_panel"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:background="?attr/fcFondoLista"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:paddingTop="10dp"
+            android:paddingBottom="8dp">
+
+            <TextView
+                android:id="@+id/musica_chip_recientes"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:layout_marginEnd="6dp"
+                android:background="@drawable/bg_chip_mas18"
+                android:fontFamily="sans-serif-medium"
+                android:gravity="center"
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp"
+                android:text="@string/feed_chip_recientes"
+                android:textColor="@color/chip_mas18_texto"
+                android:textSize="13sp" />
+
+            <TextView
+                android:id="@+id/musica_chip_top"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:background="@drawable/bg_chip_mas18"
+                android:fontFamily="sans-serif-medium"
+                android:gravity="center"
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp"
+                android:text="@string/feed_chip_top"
+                android:textColor="@color/chip_mas18_texto"
+                android:textSize="13sp" />
+        </LinearLayout>
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1">
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/musica_feed"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clipToPadding="false"
+                android:paddingTop="?attr/fcListaPaddingV"
+                android:paddingBottom="96dp" />
+
+            <LinearLayout
+                android:id="@+id/musica_feed_estado"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:paddingStart="32dp"
+                android:paddingEnd="32dp"
+                android:visibility="gone">
+
+                <ImageView
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"
+                    android:src="@drawable/ic_musica"
+                    app:tint="@color/fc_texto_off"
+                    android:contentDescription="@null" />
+
+                <TextView
+                    android:id="@+id/musica_feed_estado_texto"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:gravity="center"
+                    android:textSize="15sp"
+                    android:lineSpacingExtra="3dp"
+                    android:textColor="@color/fc_texto_2" />
+
+                <TextView
+                    android:id="@+id/musica_feed_reintentar"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:minHeight="48dp"
+                    android:minWidth="48dp"
+                    android:layout_marginTop="8dp"
+                    android:gravity="center"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    android:text="Reintentar"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/fc_rojo"
+                    android:background="?attr/selectableItemBackground" />
+            </LinearLayout>
+
+            <ProgressBar
+                android:id="@+id/musica_feed_cargando"
+                style="?android:attr/progressBarStyle"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_gravity="center"
+                android:visibility="gone" />
+        </FrameLayout>
+    </LinearLayout>
+
+    <!-- Compartir una canción (A6): el mismo botón extendido que "Nuevo hilo". Solo en el feed. -->
+    <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+        android:id="@+id/musica_compartir"
+        style="@style/FC.FabNuevoHilo"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_margin="18dp"
+        android:text="Compartir canción"
+        app:icon="@drawable/ic_add"
+        android:contentDescription="Compartir canción"
+        android:visibility="gone" />
+
+</FrameLayout>

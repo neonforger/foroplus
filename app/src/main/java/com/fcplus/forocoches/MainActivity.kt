@@ -116,8 +116,22 @@ class MainActivity : AppCompatActivity() {
     /** Preferencias de la app. Antes se pedían con getSharedPreferences en cada uso. */
     private val shellPrefs by lazy { getSharedPreferences(PREFS, MODE_PRIVATE) }
 
+    /** Música (C2): el coche del perfil por el motor, y lo que el servidor de Música necesita de aquí. */
+    private val motorCoche by lazy { MotorCocheFC({ js -> runOnUiThread { webView.evaluateJavascript(js, null) } }) }
+    private val enganchesMusica by lazy {
+        EnganchesMusica(
+            servidorActivo = { ConfigMusica.servidorActivo(RemoteConfig.cached(this)) },
+            uidActivo = { uidActivo },
+            cambiandoDeCuenta = { cambiandoDeCuenta },
+            motorCoche = motorCoche,
+            tokens = lazy { TokensMusica(TokensMusica.cifradas(this)) },
+            pendientes = PendientesCoche(getSharedPreferences(PendientesCoche.FICHERO, MODE_PRIVATE)),
+            entrar = { showLogin() }
+        )
+    }
+
     private lateinit var forumTabs: TabLayout
-    private lateinit var navTop: TextView
+    private lateinit var navTop: android.widget.ImageView
     /** Subforos reales del índice (fid → nombre), para la elección del Popurrí en Opciones. */
     private var subforosConocidos: List<Pair<Int, String>> = emptyList()
     /** Los mismos, por fid: los usa la miga de las filas del Popurrí. */
@@ -247,9 +261,12 @@ class MainActivity : AppCompatActivity() {
     private var isProfileVisible = false
     private var profileLogoutUrl = ""
     /** Uid de la cuenta activa, o "" sin sesión. Es la identidad para separar preferencias. */
-    private var uidActivo = ""
-    /** Cambio de cuenta en curso: mientras dure, no se puede publicar. */
-    private var cambiandoDeCuenta = false
+    @Volatile private var uidActivo = ""
+    /**
+     * Cambio de cuenta en curso: mientras dure, no se puede publicar. Volatile: la verificación de
+     * Música lo consulta desde su hilo justo antes de escribir en el perfil.
+     */
+    @Volatile private var cambiandoDeCuenta = false
     /**
      * Generación del cambio de cuenta en curso: el puente JS→Kotlin NO correlaciona peticiones
      * (`onQuienSoy` es un callback global, no una respuesta atada a QUIÉN preguntó), así que la
@@ -362,16 +379,34 @@ class MainActivity : AppCompatActivity() {
     private var currentMemberUsername = ""
 
     private lateinit var nativeHeader: TextView
-    private lateinit var fabNewThread: View
-    // home | top | popurri | mas18 | favs | mine (qué alimenta la lista)
+    private lateinit var fabNewThread: com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+    // home | top | popurri | mas18 | musica | favs | mine (qué alimenta la lista)
     private var listSource = "home"
         set(valor) {
+            val antes = field
             field = valor
             // La cabecera de la sección +18 (estado y chips) solo existe sobre SU lista: atada
             // al setter, ninguna de las rutas que cambian de fuente la deja colgada.
             if (::mas18Cabecera.isInitialized)
                 mas18Cabecera.visibility = if (valor == "mas18") View.VISIBLE else View.GONE
+            // Lo mismo con Música, que tapa la lista en vez de ser una: salir a cualquier otra
+            // fuente quita su panel y devuelve la lista de hilos.
+            if (antes == "musica" && valor != "musica" && ::musica.isInitialized) {
+                musica.ocultar()
+                listRefresh.visibility = View.VISIBLE
+            }
         }
+    /** Música: el panel que sustituye a la lista con la pestaña "Música" (ver [showMusica]). */
+    private lateinit var musica: MusicaController
+    private lateinit var panelMusica: View
+    /** Lo llegado por "Compartir en Música" antes de que hubiera pestaña de Música (ver [recibirCompartido]). */
+    private var compartidoPendiente: String? = null
+    /**
+     * ¿Ya se sabe si Música está encendida en ESTE arranque? Se pone en la vuelta de
+     * `RemoteConfig.cuandoEsteFresca` (config recién bajada o tope agotado). Hasta entonces un
+     * "apagado" puede ser solo la config vieja o la de fábrica (ver [EntradaCompartida.ahora]).
+     */
+    private var configMusicaFresca = false
     /** Sección +18: lo ya pintado, sin filtrar por chips (para refiltrar sin volver a bajar). */
     private var mas18Hilos: List<HiloMas18> = emptyList()
     private var mas18Total = 1
@@ -625,6 +660,7 @@ class MainActivity : AppCompatActivity() {
         /** Marca de la pestaña del Popurrí; ningún subforo real tiene este fid. */
         private const val TAG_POPURRI = -1
         private const val TAG_MAS18 = -2
+        private const val TAG_MUSICA = -3
         private val LISTAS_DE_SUBFORO = setOf("home", "top", "popurri")
     }
 
@@ -833,10 +869,12 @@ class MainActivity : AppCompatActivity() {
      * (Inicio, lo más movido y el Popurrí) y **al añadir el tercero se me olvidó uno de los
      * sitios**: en el Popurrí no se podía deslizar para cambiar de subforo y había que tocar
      * las pestañas a mano. Un cuarto modo volvería a olvidarse. El cuarto fue la sección +18:
-     * sin ella aquí, la pila no la anotaba y volver de un hilo te sacaba de +18.
+     * sin ella aquí, la pila no la anotaba y volver de un hilo te sacaba de +18. El quinto es
+     * Música: no es una lista, pero tiene la tira de pestañas a la vista y se desliza igual.
      */
     private fun conPestanasDeSubforo(): Boolean =
-        listSource == "home" || listSource == "top" || listSource == "popurri" || listSource == "mas18"
+        listSource == "home" || listSource == "top" || listSource == "popurri" ||
+            listSource == "mas18" || listSource == "musica"
 
     /**
      * ¿Lo que se está mirando es UN subforo concreto?
@@ -876,12 +914,17 @@ class MainActivity : AppCompatActivity() {
     /** Inicio: la lista nativa vuelve al modo foro (pestañas de subforos visibles). */
     private fun showHomeList() {
         val wasOther = listSource != "home"
-        val veniaDeSeccion = listSource == "mas18" || listSource == "popurri"
+        // La pestaña de una sección puede seguir marcada aunque no se venga directamente de ella:
+        // Música → Suscripciones → Inicio pintaba el General con MÚSICA marcada (medido en el
+        // Samsung, 2026-11-08). Por eso se mira también la pestaña, no solo la fuente anterior.
+        val seccionMarcada = (forumTabs.getTabAt(forumTabs.selectedTabPosition)?.tag as? Int ?: 0) < 0
+        val veniaDeSeccion = seccionMarcada ||
+            listSource == "mas18" || listSource == "popurri" || listSource == "musica"
         listSource = "home"
-        // Que la pestaña marcada sea la del subforo y no la +18/Popurrí de la que se sale.
+        // Que la pestaña marcada sea la del subforo y no la +18/Popurrí/Música de la que se sale.
         if (veniaDeSeccion) pintarPestanas()
         forumTabs.visibility = View.VISIBLE
-        nativeHeader.text = "ForoPlus"
+        refrescarTitulo()
         pintarBotonTop()
         showNative()
         fabNewThread.visibility = if (isLoggedIn()) View.VISIBLE else View.GONE
@@ -908,7 +951,7 @@ class MainActivity : AppCompatActivity() {
     private fun ponerModoTop(activo: Boolean) {
         listSource = if (activo) "top" else "home"
         forumTabs.visibility = View.VISIBLE
-        nativeHeader.text = if (activo) "Hilos del momento" else "ForoPlus"
+        refrescarTitulo()
         pintarBotonTop()
         setSelectedNav(R.id.nav_home)
         listLoaded = false
@@ -971,7 +1014,7 @@ class MainActivity : AppCompatActivity() {
     private fun showPopurri() {
         listSource = "popurri"
         forumTabs.visibility = View.VISIBLE
-        nativeHeader.text = "Popurrí"
+        refrescarTitulo()
         pintarBotonTop()
         showNative()
         setSelectedNav(R.id.nav_home)
@@ -1018,7 +1061,7 @@ class MainActivity : AppCompatActivity() {
     private fun showMas18() {
         listSource = "mas18"
         forumTabs.visibility = View.VISIBLE
-        nativeHeader.text = "+18"
+        refrescarTitulo()
         pintarBotonTop()
         showNative()
         setSelectedNav(R.id.nav_home)
@@ -1155,10 +1198,138 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Música: la pestaña tras el Popurrí. No es una lista: su panel ([MusicaController]) tapa
+     * la de hilos dentro del mismo FrameLayout, así que la cabecera y la tira de pestañas se
+     * quedan y deslizar de lado vuelve a los subforos. Al foro no se le pide nada: la sección
+     * es independiente de él.
+     */
+    private fun showMusica() {
+        listSource = "musica"
+        forumTabs.visibility = View.VISIBLE
+        refrescarTitulo()
+        pintarBotonTop()
+        // Lo que estuviera en vuelo era de la lista que se deja: con listaEsperada vacía se tira
+        // al llegar (ver PeticionLista), y no puede dejar el aro girando ni la carga en alto
+        // para cuando se vuelva a un subforo.
+        listaEsperada = ""
+        loadingPage = false
+        listRefresh.isRefreshing = false
+        showNative()                 // que es quien pone el panel (ver ponerPanelMusica)
+        setSelectedNav(R.id.nav_home)
+        anotarListaEnPila()
+        marcarPestanaMusica()
+    }
+
+    /**
+     * Cambia la lista por el panel de Música. Lo llama [showNative], que es por donde se vuelve
+     * a la capa nativa desde cualquier panel (Opciones, la web, el login…): así Música reaparece
+     * sola y no una lista vacía. Lo deshace el setter de [listSource] al ir a otra fuente.
+     */
+    private fun ponerPanelMusica() {
+        listRefresh.visibility = View.GONE
+        listLoading.visibility = View.GONE
+        listEmpty.visibility = View.GONE
+        fabNewThread.visibility = View.GONE
+        musica.mostrar()
+    }
+
+    /**
+     * Deja marcada, y a la vista, la pestaña de Música cuando se entra sin tocarla (volviendo de
+     * un hilo por la pila o, en A12, desde Compartir). `populatingTabs` impide que el `select`
+     * vuelva a entrar por onTabSelected; y se encuadra con el listado ya visible, porque una
+     * tira escondida no se desplaza (gotcha "UNA VISTA ESCONDIDA NO SE DESPLAZA").
+     */
+    private fun marcarPestanaMusica() {
+        for (i in 0 until forumTabs.tabCount) {
+            val tab = forumTabs.getTabAt(i) ?: continue
+            if (tab.tag != TAG_MUSICA) continue
+            // Ya marcada = se ha entrado tocando o deslizando la pestaña: TabLayout la está
+            // llevando a la vista con su animación, y encuadrarla aquí (setScrollPosition sin
+            // animar) la cortaba a medias: la tira pegaba un salto al llegar a Música que no pega
+            // entre subforos. Solo se encuadra cuando se marca desde aquí (pila, Compartir).
+            if (tab.isSelected) return
+            populatingTabs = true
+            tab.select()
+            populatingTabs = false
+            encuadrarPestanaEn = i
+            encuadrarPestanas()
+            return
+        }
+    }
+
+    /**
+     * El texto de "Compartir en Música" que trae [i] ([GuardarEnMusica] lo pone en
+     * [EntradaCompartida.EXTRA]), o null. Solo en el intent de launcher que manda ella y con el
+     * mismo tope ([EntradaCompartida.extraAceptado]): pegado a un enlace de FC no cuenta y el
+     * enlace sigue a IntentRouter. Se quita del intent al leerlo, además de lo que para
+     * [EntradaCompartida.esNueva]: nada que vuelva a leer este intent lo encuentra otra vez. En el
+     * build depurable deja en logcat (`adb logcat -s Musica`) por dónde ha entrado; lo que mandó
+     * la otra app tal cual lo apunta GuardarEnMusica.
+     */
+    private fun textoCompartido(i: android.content.Intent?, via: String): String? {
+        i ?: return null
+        val texto = EntradaCompartida.extraAceptado(i.action, i.categories, i.getStringExtra(EntradaCompartida.EXTRA))
+            ?: return null
+        i.removeExtra(EntradaCompartida.EXTRA)
+        val depurable = (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        if (depurable) android.util.Log.d("Musica",
+            "a MainActivity por $via (flags=0x${Integer.toHexString(i.flags)}, raíz=$isTaskRoot) texto=[$texto]")
+        return texto
+    }
+
+    /**
+     * Lo que llega por "Compartir en Música": Música con la pantalla de compartir y el enlace ya
+     * puesto. Siempre a ESTA MainActivity, la única (Ruling 30): por onNewIntent si ya estaba, por
+     * onCreate si no.
+     *
+     * Qué toca lo decide [EntradaCompartida.ahora]:
+     * - Servidor apagado con la config de este arranque ya leída: se avisa "Música no está
+     *   disponible" y no se hace nada más (la pestaña ni existe).
+     * - Apagado pero con la config aún sin refrescar (arranque en frío sin config guardada), o sin
+     *   pestaña de Música todavía (sale con el índice del foro, como el Popurrí y +18): se aparta
+     *   en [compartidoPendiente], se dice que no se ha perdido, y lo vuelven a intentar la config
+     *   fresca y [onForumListJson].
+     * - Si no, a donde diga [EntradaCompartida.destino] (escribiendo, solo la hoja; en la lista
+     *   raíz, Música en su sitio; sobre otra cosa, apilada).
+     */
+    private fun recibirCompartido(texto: String) {
+        when (EntradaCompartida.ahora(enganchesMusica.servidorActivo(), configMusicaFresca, hayPestanaMusica())) {
+            AhoraCompartido.AVISAR_APAGADO -> {
+                compartidoPendiente = null
+                toast(getString(R.string.musica_no_disponible))
+                return
+            }
+            AhoraCompartido.ESPERAR -> {
+                if (compartidoPendiente == null) toast("Abriendo Música en cuanto cargue el foro…")
+                compartidoPendiente = texto
+                return
+            }
+            AhoraCompartido.ENTREGAR -> {}
+        }
+        compartidoPendiente = null
+        val destino = EntradaCompartida.destino(
+            escribiendo = isReplyVisible || isPmComposeVisible,
+            enRaizConPestanas = nav.atRoot && nav.current is Screen.ThreadList && conPestanasDeSubforo()
+        )
+        when (destino) {
+            DestinoCompartido.SOLO_HOJA -> {}
+            DestinoCompartido.MUSICA_EN_SU_SITIO -> showMusica()
+            DestinoCompartido.MUSICA_APILADA -> {
+                nav.push(Screen.ThreadList("musica", currentForumId))
+                showMusica()
+            }
+        }
+        musica.recibirCompartido(texto)
+    }
+
+    private fun hayPestanaMusica(): Boolean =
+        (0 until forumTabs.tabCount).any { forumTabs.getTabAt(it)?.tag == TAG_MUSICA }
+
     /** El botón TOP encendido (rojo) o apagado. Se pinta SIEMPRE que cambia la fuente. */
     private fun pintarBotonTop() {
         val activo = listSource == "top"
-        navTop.setTextColor(color(if (activo) R.color.fc_rojo else R.color.fc_texto_2))
+        navTop.setColorFilter(color(if (activo) R.color.fc_rojo else R.color.fc_texto_2))
         // Solo tiene sentido sobre un subforo: en Suscripciones o en el buscador no pinta nada.
         navTop.visibility =
             if (sobreUnSubforo()) View.VISIBLE else View.GONE
@@ -1169,7 +1340,7 @@ class MainActivity : AppCompatActivity() {
         listSource = "favs"
         pintarBotonTop()
         forumTabs.visibility = View.GONE
-        nativeHeader.text = "Suscripciones"
+        ponerTitulo("Suscripciones")
         listLoaded = false
         adapter.submit(emptyList())
         showNative()
@@ -1183,7 +1354,7 @@ class MainActivity : AppCompatActivity() {
         listSource = "mine"
         myThreadsBase = ""
         forumTabs.visibility = View.GONE
-        nativeHeader.text = "Mis hilos"
+        ponerTitulo("Mis hilos")
         listLoaded = false
         adapter.submit(emptyList())
         showNative()
@@ -1445,7 +1616,7 @@ class MainActivity : AppCompatActivity() {
         listSource = "search"
         myThreadsBase = ""
         forumTabs.visibility = View.GONE
-        nativeHeader.text = BusquedaPorUsuario.cabecera(searchQuery, searchUser, porMensajes = false)
+        ponerTitulo(BusquedaPorUsuario.cabecera(searchQuery, searchUser, porMensajes = false))
         listLoaded = false
         adapter.submit(emptyList())
         showNative()
@@ -1479,7 +1650,7 @@ class MainActivity : AppCompatActivity() {
         memberPanel.visibility = View.GONE
         isMemberVisible = false
         noticesPanel.visibility = View.VISIBLE
-        nativePanel.visibility = View.GONE
+        esconderListado()
         threadPanel.visibility = View.GONE
         replyPanel.visibility = View.GONE
         loginPanel.visibility = View.GONE
@@ -1570,7 +1741,7 @@ class MainActivity : AppCompatActivity() {
             isLoginVisible = false; isProfileVisible = false; isOptionsVisible = false
             hidePmPanels()
             noticesPanel.visibility = View.VISIBLE
-            nativePanel.visibility = View.GONE
+            esconderListado()
             threadPanel.visibility = View.GONE
             replyPanel.visibility = View.GONE
             loginPanel.visibility = View.GONE
@@ -1594,7 +1765,7 @@ class MainActivity : AppCompatActivity() {
         pintarBotonTop()
         myThreadsBase = ""
         forumTabs.visibility = View.GONE
-        nativeHeader.text = if (modo == "started") "@$usuario · hilos suyos" else "@$usuario · participa"
+        ponerTitulo(if (modo == "started") "@$usuario · hilos suyos" else "@$usuario · participa")
         listLoaded = false
         adapter.submit(emptyList())
         showNative()
@@ -1606,7 +1777,7 @@ class MainActivity : AppCompatActivity() {
         listSource = "participated"
         myThreadsBase = ""
         forumTabs.visibility = View.GONE
-        nativeHeader.text = "Participados"
+        ponerTitulo("Participados")
         listLoaded = false
         adapter.submit(emptyList())
         showNative()
@@ -1687,7 +1858,7 @@ class MainActivity : AppCompatActivity() {
 
     /** Oculta todas las capas estándar (para que un panel de MP/perfil quede solo). */
     private fun hideAllStandardPanels() {
-        nativePanel.visibility = View.GONE
+        esconderListado()
         threadPanel.visibility = View.GONE
         replyPanel.visibility = View.GONE
         loginPanel.visibility = View.GONE
@@ -2230,7 +2401,7 @@ class MainActivity : AppCompatActivity() {
         isLoginVisible = false; isProfileVisible = false; isOptionsVisible = false
         hidePmPanels()
         noticesPanel.visibility = View.VISIBLE
-        nativePanel.visibility = View.GONE
+        esconderListado()
         threadPanel.visibility = View.GONE
         replyPanel.visibility = View.GONE
         loginPanel.visibility = View.GONE
@@ -2551,7 +2722,7 @@ class MainActivity : AppCompatActivity() {
         isLoginVisible = false; isNoticesVisible = false; isOptionsVisible = false
         hidePmPanels()
         profilePanel.visibility = View.VISIBLE
-        nativePanel.visibility = View.GONE
+        esconderListado()
         threadPanel.visibility = View.GONE
         replyPanel.visibility = View.GONE
         loginPanel.visibility = View.GONE
@@ -2722,6 +2893,8 @@ class MainActivity : AppCompatActivity() {
         guardarCookiesDe(uidActivo)
         pintarAvatarCuenta()
         pintarAvatarComposer()
+        // Una verificación de Música que se quedó a medias con esta cuenta: devolver su coche.
+        enganchesMusica.restaurarCoche(uid)
     }
 
     /** Cuentas guardadas ahora mismo. */
@@ -2993,6 +3166,8 @@ class MainActivity : AppCompatActivity() {
                     resuelto = true
                     uidEsperado = ""
                     cambiandoDeCuenta = false
+                    // El de onQuienSoy llegó con el cambio aún en curso y no hizo nada.
+                    enganchesMusica.restaurarCoche(uid)
                     replySend.isEnabled = true
                     toast("Cuenta cambiada")
                     listLoaded = false
@@ -3025,6 +3200,7 @@ class MainActivity : AppCompatActivity() {
                         shellPrefs.edit().putString(PREF_UID_ACTIVO, anterior).apply()
                         uidEsperado = ""
                         cambiandoDeCuenta = false
+                        enganchesMusica.restaurarCoche(anterior)
                         replySend.isEnabled = true
                         pedirLoginDe(uid)
                     }
@@ -3062,7 +3238,7 @@ class MainActivity : AppCompatActivity() {
         hidePmPanels()
         options.bind()
         optionsPanel.visibility = View.VISIBLE
-        nativePanel.visibility = View.GONE
+        esconderListado()
         threadPanel.visibility = View.GONE
         replyPanel.visibility = View.GONE
         loginPanel.visibility = View.GONE
@@ -3329,7 +3505,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun aplicarBarra(nav: Boolean) {
-        if (nav) pintarBarraInferior() else pintarPestanas()
+        if (nav) pintarBarraInferior() else { sitios.alOrganizar(); pintarPestanas() }
     }
 
     /**
@@ -3443,10 +3619,17 @@ class MainActivity : AppCompatActivity() {
         mas18Cabecera = findViewById(R.id.mas18_cabecera)
         mas18Estado = findViewById(R.id.mas18_estado)
         mas18Chips = findViewById(R.id.mas18_chips)
+        panelMusica = findViewById(R.id.panel_musica)
+        // Música abre fuera con su propio abridor: openExternal fija el navegador y las canciones
+        // tienen que poder ir a la app de YouTube o de Spotify.
+        musica = MusicaController(this, panelMusica, enganchesMusica) {
+            MusicaController.abrirEnSuApp(this, it)
+        }
         bottomNav = findViewById(R.id.bottom_nav)
         forumTabs = findViewById(R.id.forum_tabs)
         navTop = findViewById(R.id.native_top)
         navTop.setOnClickListener { alternarTop() }
+        androidx.appcompat.widget.TooltipCompat.setTooltipText(navTop, "Hilos del momento")
         threadPanel = findViewById(R.id.thread_panel)
         postList = findViewById(R.id.post_list)
         configurarBarrasLectura()
@@ -3483,6 +3666,7 @@ class MainActivity : AppCompatActivity() {
         pollBarDivider = findViewById(R.id.poll_bar_divider)
         pollBar.setOnClickListener { showPollSheet() }
         nativeHeader = findViewById(R.id.native_header)
+        cabecera = TituloCabecera(nativeHeader) { sitios.abrirSelector() }
         noticesPanel = findViewById(R.id.notices_panel)
         noticesHeader = findViewById(R.id.notices_header)
         noticesList = findViewById(R.id.notices_list)
@@ -3511,15 +3695,25 @@ class MainActivity : AppCompatActivity() {
         // Destino centralizado en IntentRouter. En frío el motor aún no está listo, así que
         // hilo/MP se guardan como pendientes y se abren en NATIVO al arrancar; mientras, se
         // muestra la lista nativa. REGLA DE ORO: jamás la capa web.
-        val route = IntentRouter.route(urlDelIntent(intent), engineReady = false)
-        when (route.target) {
-            Target.THREAD, Target.PM_INBOX -> pendingDeepLink = route.url
-            Target.HOME -> {}
+        // "Compartir en Música" (el extra de GuardarEnMusica) va ANTES y no pasa por IntentRouter:
+        // no es un enlace de FC. Recreada (modo oscuro, estilo) o desde Recientes no se vuelve a
+        // atender (EntradaCompartida.esNueva).
+        val compartido = textoCompartido(intent, "onCreate")
+        val atenderCompartido = compartido != null &&
+            EntradaCompartida.esNueva(savedInstanceState != null, intent.flags)
+        if (compartido == null) {
+            val route = IntentRouter.route(urlDelIntent(intent), engineReady = false)
+            when (route.target) {
+                Target.THREAD, Target.PM_INBOX -> pendingDeepLink = route.url
+                Target.HOME -> {}
+            }
         }
         showNative()
         nav.root(Screen.ThreadList("home", currentForumId))
         listLoading.visibility = View.VISIBLE
         webView.loadUrl(TrustedOrigins.DEFAULT_URL)
+        // Aún no hay pestaña de Música (sale con el índice): se aparta hasta entonces.
+        if (atenderCompartido) recibirCompartido(compartido!!)
 
         prepararActualizador()
         maybeShowWelcome()
@@ -3634,7 +3828,9 @@ class MainActivity : AppCompatActivity() {
                 onThreadDescargaData = { json -> runOnUiThread { onPaginaDescargada(json) } },
                 onThreadDescargaErrorData = { r -> runOnUiThread { cancelarDescarga(motivoDescarga(r)) } },
                 onLastPosterResult = { json -> runOnUiThread { onLastPosterJson(json) } },
-                onUserSuggestionsResult = { json -> runOnUiThread { alLlegarSugerencias?.invoke(json) } }
+                onUserSuggestionsResult = { json -> runOnUiThread { alLlegarSugerencias?.invoke(json) } },
+                // Sin saltar a la interfaz: lo espera un hilo de fondo con un cerrojo (MotorCocheFC).
+                onCocheResult = { json -> motorCoche.alLlegar(json) }
             ),
             "AndroidShell"
         )
@@ -3787,7 +3983,9 @@ class MainActivity : AppCompatActivity() {
                 listLoaded = false
                 pintarPestanas()
                 recargarListaPorFiltros()
-            }
+            },
+            tieneCuentaMusica = { alSaber -> musica.tieneCuenta(alSaber) },
+            onBorrarCuentaMusica = { alTerminar -> musica.borrarMiCuenta(alTerminar) }
         )
         // Comunidad y apoyo: enlaces EXTERNOS (Telegram / navegador), nunca la capa web.
         optionsPanel.findViewById<View>(R.id.opt_telegram).setOnClickListener {
@@ -3805,7 +4003,13 @@ class MainActivity : AppCompatActivity() {
         nativeAvatar = findViewById(R.id.native_avatar)
         nativeAvatarPunto = findViewById(R.id.native_avatar_punto)
         findViewById<View>(R.id.native_cuenta).apply {
-            setOnClickListener { if (isLoggedIn()) cuentaPanel.abrir() else showLogin() }
+            setOnClickListener {
+                if (isLoggedIn()) {
+                    // El cajón tapa el reproductor de Música, y YouTube no puede sonar tapado.
+                    if (::musica.isInitialized) musica.pausar()
+                    cuentaPanel.abrir()
+                } else showLogin()
+            }
             // Atajo de siempre para cambiar de cuenta (antes estaba en el botón de Perfil).
             setOnLongClickListener { mostrarHojaCuentas(); true }
         }
@@ -3849,6 +4053,17 @@ class MainActivity : AppCompatActivity() {
         // Scroll infinito BAJO DEMANDA (regla anti-crawler: solo se pide la página
         // siguiente cuando el usuario se acerca al final, nunca precarga en bucle).
         threadList.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+            // El FAB se encoge al bajar y se extiende arriba. Aquí y NO en onScrolled (tocar vistas
+            // ahí dentro corre durante el layout del RecyclerView).
+            override fun onScrollStateChanged(rv: RecyclerView, newState: Int) {
+                if (fabNewThread.visibility != View.VISIBLE) return
+                when (FabNuevoHilo.decidir(newState != RecyclerView.SCROLL_STATE_IDLE,
+                        rv.computeVerticalScrollOffset() == 0)) {
+                    FabNuevoHilo.Accion.EXTENDER -> fabNewThread.extend()
+                    FabNuevoHilo.Accion.ENCOGER -> fabNewThread.shrink()
+                    FabNuevoHilo.Accion.NADA -> {}
+                }
+            }
             override fun onScrolled(rv: RecyclerView, dx: Int, dy: Int) {
                 if (dy <= 0 || loadingPage || !listLoaded || listaAgotada) return
                 val last = layoutManager.findLastVisibleItemPosition()
@@ -3866,22 +4081,7 @@ class MainActivity : AppCompatActivity() {
             override fun onTabSelected(tab: TabLayout.Tab) {
                 if (populatingTabs) return
                 val fid = tab.tag as? Int ?: return
-                if (fid == TAG_MAS18) { showMas18(); return }
-                if (fid == TAG_POPURRI) { showPopurri(); return }
-                // Salir del Popurrí o de +18 a un subforo devuelve la lista a su modo normal
-                // (al cambiar listSource, el setter apaga la cabecera de +18).
-                if (listSource == "popurri" || listSource == "mas18") {
-                    listSource = "home"
-                    nativeHeader.text = "ForoPlus"
-                    pintarBotonTop()
-                }
-                currentForumId = fid
-                getSharedPreferences(PREFS, MODE_PRIVATE).edit().putInt(PREF_LAST_FID, fid).apply()
-                listLoaded = false
-                adapter.submit(emptyList())
-                showNative()
-                anotarListaEnPila()
-                requestThreadList(1)
+                abrirDestino(fid)
             }
             override fun onTabUnselected(tab: TabLayout.Tab) {}
             override fun onTabReselected(tab: TabLayout.Tab) {
@@ -3891,10 +4091,57 @@ class MainActivity : AppCompatActivity() {
                 when (tab.tag as? Int) {
                     TAG_MAS18 -> if (listSource != "mas18") showMas18() else requestThreadList(1)
                     TAG_POPURRI -> if (listSource != "popurri") showPopurri() else requestThreadList(1)
+                    // Música no tiene lista que recargar: solo se entra si no se estaba.
+                    TAG_MUSICA -> if (listSource != "musica") showMusica()
                     else -> requestThreadList(1)
                 }
             }
         })
+    }
+
+    // ── Título-selector de sitio (ver TituloCabecera, TituloSitio, SelectorSitio) ─────────
+
+    private lateinit var cabecera: TituloCabecera
+
+    /** Único sitio que pone el texto de la cabecera: el resto pasa por aquí o por [refrescarTitulo]. */
+    private fun ponerTitulo(texto: String) = cabecera.plano(texto)
+
+    /** Título de la lista actual si es "un sitio" (subforo, Popurrí, +18, Música) o los hilos del momento. */
+    private fun refrescarTitulo() {
+        val t = TituloSitio.deLista(listSource, currentForumId, nombresDeForo) ?: return
+        if (t.selector) cabecera.sitio(t.texto) else cabecera.plano(t.texto)
+    }
+
+    private fun lugarActualClave(): Int = when (listSource) {
+        "musica" -> TAG_MUSICA; "popurri" -> TAG_POPURRI; "mas18" -> TAG_MAS18; else -> currentForumId
+    }
+
+    private val sitios by lazy {
+        SitioController(this, forumTabs, { lugarActualClave() }, { subforosConocidos.map { Sitio(it.first, it.second) } },
+            { abrirDestino(it) }, { pintarPestanas() }, { b -> populatingTabs = true; b(); populatingTabs = false })
+    }
+
+    /** Ir a un sitio de la barra (pestaña tocada) o del selector: sección, subforo o subforo suelto. */
+    private fun abrirDestino(fid: Int) {
+        if (fid != sitios.tabTemporalFid) sitios.quitarTabTemporal()
+        if (fid == TAG_MAS18) { showMas18(); return }
+        if (fid == TAG_POPURRI) { showPopurri(); return }
+        if (fid == TAG_MUSICA) { showMusica(); return }
+        // Salir del Popurrí, de +18 o de Música a un subforo devuelve la lista a su modo
+        // normal (al cambiar listSource, el setter apaga la cabecera de +18 y el panel
+        // de Música).
+        if (listSource == "popurri" || listSource == "mas18" || listSource == "musica") {
+            listSource = "home"
+            pintarBotonTop()
+        }
+        currentForumId = fid
+        refrescarTitulo()
+        getSharedPreferences(PREFS, MODE_PRIVATE).edit().putInt(PREF_LAST_FID, fid).apply()
+        listLoaded = false
+        adapter.submit(emptyList())
+        showNative()
+        anotarListaEnPila()
+        requestThreadList(1)
     }
 
     /** Pestaña que hay que dejar a la vista en cuanto el listado se pinte. -1 = ninguna. */
@@ -3916,6 +4163,8 @@ class MainActivity : AppCompatActivity() {
         val forums = parseForumListPayload(json)
         if (forums.isEmpty()) return
         pintarPestanas(forums)
+        // Lo de "Compartir en Música" que esperaba a la pestaña de Música (arranque en frío).
+        compartidoPendiente?.let { recibirCompartido(it) }
     }
 
     /** Rehace la barra de subforos. Sin argumento, con los que ya conocíamos. */
@@ -3932,6 +4181,7 @@ class MainActivity : AppCompatActivity() {
         // Los nombres pueden llegar después que el Popurrí (arranque directo en él): sin esto
         // sus filas se quedarían sin miga hasta el siguiente refresco.
         nombresDeForo = subforosConocidos.toMap()
+        refrescarTitulo()   // los nombres pueden llegar después que la lista (el título lleva el del subforo)
         if (::adapter.isInitialized) adapter.nombresDeForoCambiados()
         // Y encima del defecto va lo que haya elegido el usuario.
         val porFid = forums.associateBy { it.fid.toString() }
@@ -3944,9 +4194,10 @@ class MainActivity : AppCompatActivity() {
         // enseñando los hilos de otro (medido en el dispositivo el 2026-08-28).
         // La sección +18 apagada (Opciones o config remota) estando dentro: no hay pestaña a la
         // que volver, así que la lista pasa a Inicio ANTES de pintar.
-        if (listSource == "mas18" && configMas18() == null) {
+        // Lo mismo con Música si el servidor se apaga (config remota nueva) estando dentro.
+        if ((listSource == "mas18" && configMas18() == null) || (listSource == "musica" && !enganchesMusica.servidorActivo())) {
             listSource = "home"
-            nativeHeader.text = "ForoPlus"
+            refrescarTitulo()
             pintarBotonTop()
             listLoaded = false
             adapter.submit(emptyList())
@@ -3958,8 +4209,12 @@ class MainActivity : AppCompatActivity() {
             listRefresh.isRefreshing = false
             vueltaAInicio = true
         }
-        val saltar = listSource == "home" && visibles.isNotEmpty() &&
-            visibles.none { it.fid == currentForumId }
+        // Un subforo escondido que se abrió desde el selector no es un "subforo que ya no existe":
+        // se queda con una pestaña temporal (ver [SitioController]).
+        val fidsVisibles = visibles.map { it.fid }.toSet()
+        val temporal = BarraTemporal.temporal(listSource, currentForumId, sitios.fueraDeBarra, fidsVisibles)
+            ?.let { porFid[it.toString()] }
+        val saltar = BarraTemporal.saltar(listSource, visibles.isNotEmpty(), currentForumId, fidsVisibles, temporal != null)
         if (saltar) {
             currentForumId = visibles.first().fid
             shellPrefs.edit().putInt(PREF_LAST_FID, currentForumId).apply()
@@ -3971,27 +4226,46 @@ class MainActivity : AppCompatActivity() {
         // configurado nada" no es un atajo, es un obstáculo.
         var selectIdx = 0
         var desplazamiento = 0
-        // +18 va la primera y el Popurrí detrás: el Popurrí queda en desplazamiento - 1.
+        // +18 va la primera, el Popurrí detrás y Música detrás del Popurrí, delante de los
+        // subforos. Cada una apunta dónde ha quedado para poder marcarla.
         if (configMas18() != null) {
             val tab = forumTabs.newTab().setText("+18")
             tab.tag = TAG_MAS18
             forumTabs.addTab(tab, false)
             desplazamiento += 1
         }
+        var idxPopurri = -1
         if (popurriFids().isNotEmpty()) {
             val tab = forumTabs.newTab().setText("Popurrí")
             tab.tag = TAG_POPURRI
             forumTabs.addTab(tab, false)
+            idxPopurri = desplazamiento
             desplazamiento += 1
         }
+        // Música sale para todo el mundo, sin activarla en Opciones (spec), mientras el servidor esté
+        // encendido en la config: Música es solo el feed y sin servidor no hay nada que enseñar.
+        val hayMusica = enganchesMusica.servidorActivo()
+        val idxMusica = if (hayMusica) desplazamiento else -1
+        if (hayMusica) {
+            forumTabs.addTab(forumTabs.newTab().setText("Música").also { it.tag = TAG_MUSICA }, false)
+            desplazamiento += 1
+        }
+        val enSeccion = listSource == "popurri" || listSource == "mas18" || listSource == "musica"
         visibles.forEachIndexed { idx, f ->
             val tab = forumTabs.newTab().setText(f.name)
             tab.tag = f.fid
             forumTabs.addTab(tab, false)
-            if (f.fid == currentForumId && listSource != "popurri" && listSource != "mas18") selectIdx = idx + desplazamiento
+            if (f.fid == currentForumId && !enSeccion) selectIdx = idx + desplazamiento
+        }
+        sitios.tabTemporalFid = BarraTemporal.NINGUNO
+        if (temporal != null) {
+            forumTabs.addTab(forumTabs.newTab().setText(temporal.name).also { it.tag = temporal.fid }, false)
+            sitios.tabTemporalFid = temporal.fid
+            if (!enSeccion) selectIdx = forumTabs.tabCount - 1
         }
         if (listSource == "mas18") selectIdx = 0
-        if (listSource == "popurri" && popurriFids().isNotEmpty()) selectIdx = desplazamiento - 1
+        if (listSource == "popurri" && idxPopurri >= 0) selectIdx = idxPopurri
+        if (listSource == "musica" && idxMusica >= 0) selectIdx = idxMusica
         forumTabs.getTabAt(selectIdx)?.select()
         populatingTabs = false
         // La lista se vació arriba (sección +18 apagada estando dentro): se pide la de Inicio. Va
@@ -4524,7 +4798,7 @@ class MainActivity : AppCompatActivity() {
         hidePmPanels()
         replyPanel.visibility = View.VISIBLE
         threadPanel.visibility = View.GONE
-        nativePanel.visibility = View.GONE
+        esconderListado()
         // Pantalla de escritura = sin barra de navegación: el teclado ocupa su hueco
         // y se escribe cómodo (la barra no "sube" con el teclado).
         bottomNav.visibility = View.GONE
@@ -5471,7 +5745,7 @@ class MainActivity : AppCompatActivity() {
         isNoticesVisible = false
         isProfileVisible = false
         loginPanel.visibility = View.VISIBLE
-        nativePanel.visibility = View.GONE
+        esconderListado()
         threadPanel.visibility = View.GONE
         replyPanel.visibility = View.GONE
         noticesPanel.visibility = View.GONE
@@ -6083,7 +6357,7 @@ class MainActivity : AppCompatActivity() {
         hidePmPanels()
         memberPanel.visibility = View.GONE
         isMemberVisible = false
-        nativePanel.visibility = View.GONE
+        esconderListado()
         threadPanel.visibility = View.GONE
         replyPanel.visibility = View.GONE
         loginPanel.visibility = View.GONE
@@ -6341,6 +6615,9 @@ class MainActivity : AppCompatActivity() {
                 listSource == "mas18" && listLoaded -> { showNative(); setSelectedNav(R.id.nav_home) }
                 else -> { showMas18(); pintarPestanas() }   // que +18 sea la pestaña marcada
             }
+            // Música no se descarga: volver (de un hilo abierto desde ella, por ejemplo) es
+            // enseñar otra vez su panel, que relee lo guardado y marca su pestaña.
+            "musica" -> showMusica()
             // La búsqueda se REHACE si lo cargado ya no son esos resultados (p. ej. volviste
             // pasando por Inicio). Si siguen ahí no se pide nada: repetir la consulta por
             // gusto es lento y además la búsqueda de FC va justa.
@@ -6958,7 +7235,14 @@ class MainActivity : AppCompatActivity() {
         adapter.submit(emptyList())
         showNative()
         setSelectedNav(R.id.nav_home)
-        if (tabIdx >= 0) forumTabs.getTabAt(tabIdx)?.select() else requestThreadList(1)
+        refrescarTitulo()   // venir de Suscripciones, Mis hilos… dejaba el título de allí
+        if (tabIdx >= 0) forumTabs.getTabAt(tabIdx)?.select() else {
+            // Fuera de la barra (escondido): pestaña temporal, no un salto atrás. Se decide por el
+            // fid, no por si los nombres ya han llegado (si no, los pinta pintarPestanas al llegar).
+            sitios.recordarSiFuera(fid)
+            pintarPestanas()
+            requestThreadList(1)
+        }
     }
 
     /**
@@ -7094,8 +7378,21 @@ class MainActivity : AppCompatActivity() {
         // FAB de crear hilo: solo en un subforo real y con sesión.
         fabNewThread.visibility =
             if (sobreUnSubforo() && isLoggedIn()) View.VISIBLE else View.GONE
+        // Con Música, lo que vuelve a verse es su panel y no la lista que tapa.
+        if (listSource == "musica") ponerPanelMusica()
         // invisible (no gone): el WebView sigue vivo debajo como motor de datos.
         swipeRefresh.visibility = View.INVISIBLE
+    }
+
+    /**
+     * Quita la capa nativa (la lista, o Música) para enseñar otro panel. Todos los paneles
+     * pasan por aquí y no por `nativePanel.visibility` a secas para que Música se entere: su
+     * reproductor (A11) no puede seguir sonando detrás de un hilo o de Opciones. Volver lo
+     * enseña otra vez [showNative].
+     */
+    private fun esconderListado() {
+        nativePanel.visibility = View.GONE
+        if (::musica.isInitialized) musica.ocultar()
     }
 
     private fun showThread() {
@@ -7114,7 +7411,7 @@ class MainActivity : AppCompatActivity() {
         isOptionsVisible = false
         hidePmPanels()
         threadPanel.visibility = View.VISIBLE
-        nativePanel.visibility = View.GONE
+        esconderListado()
         replyPanel.visibility = View.GONE
         loginPanel.visibility = View.GONE
         noticesPanel.visibility = View.GONE
@@ -7142,7 +7439,7 @@ class MainActivity : AppCompatActivity() {
         isOptionsVisible = false
         hidePmPanels()
         swipeRefresh.visibility = View.VISIBLE
-        nativePanel.visibility = View.GONE
+        esconderListado()
         threadPanel.visibility = View.GONE
         replyPanel.visibility = View.GONE
         loginPanel.visibility = View.GONE
@@ -7349,6 +7646,10 @@ class MainActivity : AppCompatActivity() {
         // cante nadie.
         android.util.Log.i("FC_LIST", "pedir $listSource pagina=$page" +
             (if (listaAgotada) " (AGOTADA)" else ""))
+        // Música no tiene lista: su panel tapa la de hilos y no se le pide nada al foro. Sin esto,
+        // lo que recarga "la lista" por su cuenta (cambiar un filtro en Opciones, el motor que
+        // acaba de cargar) bajaría un subforo para nadie y encendería el aro de carga.
+        if (listSource == "musica") return
         // La sección +18 no pasa por el motor: baja su JSON de GitHub, así que no espera al WebView.
         if ((!engineReady && listSource != "mas18") || !PeticionLista.hayQuePedir(page, loadingPage) ||
             (page > 1 && listaAgotada)) return
@@ -7640,8 +7941,12 @@ class MainActivity : AppCompatActivity() {
                 touchDownY = ev.y
                 // El swipe de subforo solo vale si arranca SOBRE la lista de hilos: así,
                 // deslizar la barra inferior (que scrollea en horizontal) o las pestañas
-                // ya no cambia de subforo por accidente.
-                swipeStartedInList = touchInside(threadList, ev)
+                // ya no cambia de subforo por accidente. En Música la lista está tapada: vale su
+                // panel, que ocupa el mismo sitio, salvo donde Música dice que no (el reproductor
+                // y la barra de lo que suena).
+                swipeStartedInList = if (listSource == "musica")
+                    touchInside(panelMusica, ev) && musica.dejaDeslizarDesde(ev.rawX.toInt(), ev.rawY.toInt())
+                    else touchInside(threadList, ev)
             }
             MotionEvent.ACTION_UP -> {
                 val diffX = ev.x - touchDownX
@@ -7653,6 +7958,14 @@ class MainActivity : AppCompatActivity() {
                 // Umbral más exigente que en la web: la lista scrollea en vertical y un
                 // arrastre diagonal no debe cambiar de subforo por accidente.
                 if (tabsSwipe && swipeStartedInList && abs(diffX) > abs(diffY) * 2f && abs(diffX) > 150f) {
+                    // El gesto se lo queda la tira de pestañas, pero la fila que recibió el DOWN
+                    // espera su UP: sin un CANCEL, su pulsación larga salta medio segundo después.
+                    // Entre subforos no se notaba porque vaciar la lista suelta las filas; Música
+                    // tapa la lista sin vaciarla, y deslizar del Popurrí a Música sacaba el menú
+                    // "Ignorar este hilo" encima del panel (medido en el Samsung, 2026-11-08).
+                    val cancelar = MotionEvent.obtain(ev).apply { action = MotionEvent.ACTION_CANCEL }
+                    super.dispatchTouchEvent(cancelar)
+                    cancelar.recycle()
                     selectAdjacentTab(if (diffX < 0) 1 else -1)
                     return true
                 }
@@ -7909,7 +8222,12 @@ class MainActivity : AppCompatActivity() {
         // gente ya habría actualizado y no vería las notas nunca. Con tope, para que un remoto
         // caído no retrase nada.
         RemoteConfig.cuandoEsteFresca(3_000, skinHandler) {
-            runOnUiThread { pintarAviso(); pintarPestanas() }   // la config fresca puede traer/quitar +18
+            runOnUiThread {
+                pintarAviso(); pintarPestanas()   // la config fresca puede traer/quitar +18 (y Música)
+                // Lo compartido en frío que esperaba a saber si Música está encendida: ahora se sabe.
+                configMusicaFresca = true
+                compartidoPendiente?.let { recibirCompartido(it) }
+            }
             EmoticonosRemotos.sincronizar(this, RemoteConfig.cached(this))   // y emoticonos nuevos
             actualizador.comprobar { nueva ->
                 if (nueva == null) return@comprobar
@@ -7961,10 +8279,16 @@ class MainActivity : AppCompatActivity() {
         // cambiándose el diseño del foro. El acelerador de recheckSkin evita que esto sea una
         // petición cada vez que se cambia de aplicación.
         recheckSkin()
+        // Música: un coche de prueba que no se pudo devolver antes (challenge, sin red). Barato:
+        // sin nada guardado para la cuenta activa es una lectura de preferencias y ya.
+        enganchesMusica.restaurarCoche(uidActivo)
+        if (::musica.isInitialized) musica.reanudar()
     }
 
     override fun onPause() {
         super.onPause()
+        // Música: "La música se para al salir de la app" (nada suena en segundo plano).
+        if (::musica.isInitialized) musica.alSegundoPlano()
         // Persiste las cookies de sesión a disco para que el NotificationWorker en
         // background no haga el fetch deslogueado.
         CookieManager.getInstance().flush()
@@ -7974,11 +8298,18 @@ class MainActivity : AppCompatActivity() {
         // El respaldo del chequeo de diseño es un callback diferido: si la Activity se va
         // antes de que dispare, se queda apuntando a una pantalla que ya no existe.
         skinHandler.removeCallbacks(skinFallback)
+        if (::musica.isInitialized) musica.destruir()
         super.onDestroy()
     }
 
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
+        // "Compartir en Música" primero, y sin pasar por IntentRouter (ver onCreate). Es el camino
+        // normal con la app abierta: GuardarEnMusica llega aquí con CLEAR_TOP + SINGLE_TOP.
+        textoCompartido(intent, "onNewIntent")?.let {
+            if (EntradaCompartida.esNueva(recreada = false, flags = intent.flags)) recibirCompartido(it)
+            return
+        }
         // App viva: destino centralizado en IntentRouter. REGLA DE ORO: nunca la capa web.
         executeRoute(
             IntentRouter.route(urlDelIntent(intent), engineReady)

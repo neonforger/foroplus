@@ -5,4 +5,32 @@
          en el mismo móvil. Ojo: la rama v2-shell es la que se publica, así que aquí NUNCA
          puede quedarse un nombre de desarrollo. -->
     <string name="app_name">ForoPlus</string>
+    <!-- Feed de Música: tarjeta de publicación. -->
+    <string name="pub_escuchar">Escuchar</string>
+    <string name="pub_dar_corazon">Dar corazón</string>
+    <string name="pub_quitar_corazon">Quitar corazón</string>
+    <string name="pub_menu_desc">Más opciones de la publicación</string>
+    <string name="pub_pausar">Pausar</string>
+    <string name="pub_entera_spotify">Entera en Spotify</string>
+    <string name="pub_sin_fragmento">No se ha podido cargar el fragmento. Prueba otra vez en unos segundos.</string>
+    <string name="pub_sin_reproduccion">No se puede reproducir esta canción</string>
+    <string name="feed_borrar">Borrar</string>
+    <string name="feed_denunciar">Denunciar</string>
+    <string name="feed_no_ver">No ver a %1$s</string>
+    <string name="feed_no_ver_hecho">Ya no verás las canciones de %1$s</string>
+    <string name="feed_borrar_titulo">¿Borrar esta publicación?</string>
+    <string name="feed_borrar_hecho">Publicación borrada</string>
+    <string name="feed_denunciar_titulo">Denunciar esta publicación</string>
+    <string name="feed_denunciar_pista">Cuéntanos qué pasa (opcional)</string>
+    <string name="feed_denunciar_hecho">Gracias, la revisaremos.</string>
+    <string name="feed_quienes_titulo">Han dado corazón</string>
+    <string name="feed_quienes_nadie">Todavía nadie ha dado corazón.</string>
+    <string name="feed_cancelar">Cancelar</string>
+    <string name="feed_cerrar">Cerrar</string>
+    <string name="feed_mas_fallo">No se han podido cargar más. Desliza para reintentar.</string>
+    <string name="feed_chip_recientes">Recientes</string>
+    <string name="feed_chip_top">Top</string>
+    <string name="feed_top_semana">Top de la semana pasada</string>
+    <string name="musica_no_disponible">Música no está disponible</string>
+    <string name="opt_musica_borrar">Borrar mi cuenta de Música</string>
 </resources>
