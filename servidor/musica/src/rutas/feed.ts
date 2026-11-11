@@ -71,11 +71,11 @@ async function borrar(c: Contexto): Promise<Response> {
   const suya = "SELECT id FROM publicaciones WHERE id = ?1 AND cuenta = ?2";
   const r = await db.batch([
     db.prepare(`DELETE FROM corazones WHERE publicacion IN (${suya})`).bind(id, cuenta.id),
-    db.prepare(`DELETE FROM denuncias WHERE tipo = 'publicacion' AND objetivo IN (${suya})`).bind(id, cuenta.id),
+    // Las denuncias se quedan: son el rastro de moderación (borrar el mensaje no borra quién lo denunció).
     db.prepare("DELETE FROM publicaciones WHERE id = ?1 AND cuenta = ?2").bind(id, cuenta.id),
   ]);
   // Ajena e inexistente dan lo mismo: no se confirma de quién es.
-  return r[2].meta.changes === 1 ? new Response(null, { status: 204, headers: SIN_CACHE }) : error("no_existe", 404);
+  return r[1].meta.changes === 1 ? new Response(null, { status: 204, headers: SIN_CACHE }) : error("no_existe", 404);
 }
 
 // ---- Leer ----
@@ -121,7 +121,7 @@ async function leerFeed(c: Contexto): Promise<Response> {
   return json(
     { items: pagina.map((f) => itemFeed(f, !!cuenta)), cursor: siguiente, masQuerida },
     200,
-    cuenta ? { "Cache-Control": "private, no-store", Vary: "Authorization" } : { "Cache-Control": "public, max-age=15" },
+    cuenta ? { "Cache-Control": "private, no-store", Vary: "Authorization" } : { "Cache-Control": "public, max-age=15", Vary: "Authorization" },
   );
 }
 
@@ -149,11 +149,86 @@ async function mias(c: Contexto): Promise<Response> {
   return json({ items: filas.map((f) => itemFeed(f, true)) }, 200, SIN_CACHE);
 }
 
+// ---- Corazones ----
+
+/** La publicación solo cuenta si se ve en el feed (misma condición `VISIBLE`); devuelve su autor. */
+async function publicacionVisible(c: Contexto, id: string): Promise<{ cuenta: string } | null> {
+  const ahora = c.deps.ahora().getTime();
+  return c.deps.db
+    .prepare(
+      "SELECT p.cuenta FROM publicaciones p JOIN cuentas u ON u.id = p.cuenta JOIN canciones c ON c.id = p.cancion " +
+        `WHERE p.id = ?3 AND ${VISIBLE}`,
+    )
+    .bind(ahora, ahora - ESPERA_CONVERSION_MS, id)
+    .first<{ cuenta: string }>();
+}
+
+async function corazon(c: Contexto, dar: boolean): Promise<Response> {
+  const cuenta = yo(c);
+  const d = c.deps;
+  const id = c.params.id;
+  if (!permisoVoto(cuenta.registro, d.ahora(), d.diasMinVoto).puedeVotar) return error("antiguedad", 403);
+  const pub = await publicacionVisible(c, id);
+  if (!pub) return error("no_existe", 404);
+  if (pub.cuenta === cuenta.id) return error("propia", 422);
+  const db = d.db;
+  // El contador se RECUENTA en el mismo batch (nunca +1/-1): dos peticiones a la vez o quitar uno que
+  // no existe no lo desvían. El INSERT lleva el EXISTS para no dejar un corazón huérfano si el autor
+  // borra la publicación entre la comprobación y el batch.
+  const r = await db.batch([
+    dar
+      ? db
+          .prepare(
+            "INSERT INTO corazones (publicacion, cuenta, creado) SELECT ?1, ?2, ?3 " +
+              "WHERE EXISTS (SELECT 1 FROM publicaciones WHERE id = ?1) ON CONFLICT DO NOTHING",
+          )
+          .bind(id, cuenta.id, d.ahora().getTime())
+      : db.prepare("DELETE FROM corazones WHERE publicacion = ?1 AND cuenta = ?2").bind(id, cuenta.id),
+    db
+      .prepare("UPDATE publicaciones SET corazones = (SELECT COUNT(*) FROM corazones WHERE publicacion = ?1) WHERE id = ?1")
+      .bind(id),
+    db
+      .prepare(
+        "SELECT corazones, EXISTS (SELECT 1 FROM corazones WHERE publicacion = ?1 AND cuenta = ?2) AS yo " +
+          "FROM publicaciones WHERE id = ?1",
+      )
+      .bind(id, cuenta.id),
+  ]);
+  const f = (r[2].results as { corazones: number; yo: number }[])[0];
+  if (!f) return error("no_existe", 404);
+  return json({ corazones: f.corazones, corazon: f.yo === 1 }, 200, SIN_CACHE);
+}
+
+async function quienDioCorazon(c: Contexto): Promise<Response> {
+  const cuenta = yo(c);
+  const id = c.params.id;
+  // Solo el autor, y de una publicación viva: lo demás es 404 (no se confirma de quién es).
+  const pub = await c.deps.db
+    .prepare("SELECT 1 AS x FROM publicaciones WHERE id = ? AND cuenta = ? AND caduca > ?")
+    .bind(id, cuenta.id, c.deps.ahora().getTime())
+    .first();
+  if (!pub) return error("no_existe", 404);
+  // Cuentas borradas fuera: sin fila en `cuentas` o con la lápida (nombre vacío).
+  const filas = (
+    await c.deps.db
+      .prepare(
+        "SELECT u.nombre FROM corazones h JOIN cuentas u ON u.id = h.cuenta " +
+          "WHERE h.publicacion = ? AND u.nombre <> '' ORDER BY h.creado DESC, h.cuenta DESC",
+      )
+      .bind(id)
+      .all<{ nombre: string }>()
+  ).results;
+  return json({ nombres: filas.map((f) => f.nombre) }, 200, SIN_CACHE);
+}
+
 export function rutasFeed(o: OpcionesApp = {}): Ruta[] {
   return [
     ["POST", "/v1/publicaciones", (c) => publicar(c, o), "cuenta"],
     ["GET", "/v1/publicaciones/mias", mias, "cuenta"],
     ["DELETE", "/v1/publicaciones/:id", borrar, "cuenta"],
+    ["POST", "/v1/publicaciones/:id/corazon", (c) => corazon(c, true), "cuenta"],
+    ["DELETE", "/v1/publicaciones/:id/corazon", (c) => corazon(c, false), "cuenta"],
+    ["GET", "/v1/publicaciones/:id/corazones", quienDioCorazon, "cuenta"],
     ["GET", "/v1/feed", leerFeed, "publica"],
   ];
 }

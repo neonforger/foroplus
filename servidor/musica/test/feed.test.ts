@@ -153,6 +153,115 @@ describe("DELETE /v1/publicaciones/:id", () => {
     expect(await filas("SELECT 1 FROM publicaciones")).toHaveLength(0);
     expect(await filas("SELECT 1 FROM corazones")).toHaveLength(0);
   });
+
+  it("borrar la propia deja sus denuncias (rastro de moderación)", async () => {
+    const a = await shur();
+    const p = await publicacionDirecta(a.id, await cancion(1));
+    await env.DB
+      .prepare("INSERT INTO denuncias (id, tipo, objetivo, cuenta, motivo, creada) VALUES ('d1', 'publicacion', ?, 'x', 'spam', ?)")
+      .bind(p, T0)
+      .run();
+    expect((await borrar(a, p)).status).toBe(204);
+    expect(await filas("SELECT id FROM denuncias")).toHaveLength(1);
+  });
+});
+
+describe("corazones", () => {
+  const dar = (s: Shur, id: string, a: App = en()) =>
+    llamar(a, peticion("POST", `/v1/publicaciones/${id}/corazon`, undefined, conToken(s)));
+  const quitar = (s: Shur, id: string, a: App = en()) =>
+    llamar(a, peticion("DELETE", `/v1/publicaciones/${id}/corazon`, undefined, conToken(s)));
+  const nombres = (s: Shur, id: string, a: App = en()) =>
+    llamar(a, peticion("GET", `/v1/publicaciones/${id}/corazones`, undefined, conToken(s)));
+  const contador = async (id: string) => (await filas("SELECT corazones FROM publicaciones WHERE id = ?", id))[0].corazones;
+
+  it("corazón sube a 1 y repetirlo no sube", async () => {
+    const a = await shur();
+    const b = await shur();
+    const p = await publicacionDirecta(a.id, await cancion(1));
+    expect((await dar(b, p)).cuerpo).toEqual({ corazones: 1, corazon: true });
+    expect((await dar(b, p)).cuerpo).toEqual({ corazones: 1, corazon: true });
+    expect(await contador(p)).toBe(1);
+  });
+
+  it("quitar uno que no existe deja 0", async () => {
+    const a = await shur();
+    const b = await shur();
+    const p = await publicacionDirecta(a.id, await cancion(1));
+    const r = await quitar(b, p);
+    expect([r.status, r.cuerpo]).toEqual([200, { corazones: 0, corazon: false }]);
+    await dar(b, p);
+    expect((await quitar(b, p)).cuerpo).toEqual({ corazones: 0, corazon: false });
+    expect((await quitar(b, p)).cuerpo).toEqual({ corazones: 0, corazon: false });
+  });
+
+  it("dos POST en paralelo dejan 1", async () => {
+    const a = await shur();
+    const b = await shur();
+    const p = await publicacionDirecta(a.id, await cancion(1));
+    const rs = await Promise.all([dar(b, p), dar(b, p)]);
+    expect(rs.map((r) => r.status)).toEqual([200, 200]);
+    expect(await contador(p)).toBe(1);
+    expect(await filas("SELECT 1 FROM corazones")).toHaveLength(1);
+  });
+
+  it("a la propia → 422 propia", async () => {
+    const a = await shur();
+    const p = await publicacionDirecta(a.id, await cancion(1));
+    expect(await dar(a, p)).toMatchObject({ status: 422, cuerpo: { error: "propia" } });
+  });
+
+  it("a una borrada → 404", async () => {
+    const a = await shur();
+    const b = await shur();
+    const p = await publicacionDirecta(a.id, await cancion(1));
+    await borrar(a, p);
+    expect(await dar(b, p)).toMatchObject({ status: 404, cuerpo: { error: "no_existe" } });
+    expect((await quitar(b, p)).status).toBe(404);
+  });
+
+  it("a una caducada, oculta o inexistente → 404", async () => {
+    const a = await shur();
+    const b = await shur();
+    const c = await cancion(1);
+    const vieja = await publicacionDirecta(a.id, c, { creada: T0 - DIA - MIN });
+    const oculta = await publicacionDirecta(a.id, c, { oculta: true });
+    for (const id of [vieja, oculta, "0".repeat(26)]) {
+      expect(await dar(b, id), id).toMatchObject({ status: 404, cuerpo: { error: "no_existe" } });
+    }
+    expect(await filas("SELECT 1 FROM corazones")).toHaveLength(0);
+  });
+
+  it("cuenta nueva → 403 antiguedad", async () => {
+    const a = await shur();
+    const b = await shur();
+    const p = await publicacionDirecta(a.id, await cancion(1));
+    await env.DB.prepare("UPDATE cuentas SET registro_fc = ? WHERE id = ?").bind("05-oct-2026", b.id).run();
+    expect(await dar(b, p)).toMatchObject({ status: 403, cuerpo: { error: "antiguedad" } });
+  });
+
+  it("lista de nombres solo para el autor, más reciente primero y sin cuentas borradas", async () => {
+    const a = await shur();
+    const b = await shur();
+    const c = await shur();
+    const d = await shur();
+    const p = await publicacionDirecta(a.id, await cancion(1), { corazones: 4 });
+    await corazonDirecto(p, b.id, T0 - 3 * MIN);
+    await corazonDirecto(p, c.id, T0 - MIN);
+    await corazonDirecto(p, d.id, T0 - 2 * MIN);
+    await corazonDirecto(p, "fantasma", T0);
+    await env.DB.prepare("UPDATE cuentas SET nombre = '' WHERE id = ?").bind(d.id).run();
+    const r = await nombres(a, p);
+    expect([r.status, r.cuerpo]).toEqual([200, { nombres: ["YoMismo3", "YoMismo2"] }]);
+  });
+
+  it("otro pide la lista → 404", async () => {
+    const a = await shur();
+    const b = await shur();
+    const p = await publicacionDirecta(a.id, await cancion(1));
+    expect(await nombres(b, p)).toMatchObject({ status: 404, cuerpo: { error: "no_existe" } });
+    expect((await nombres(a, "0".repeat(26))).status).toBe(404);
+  });
 });
 
 describe("GET /v1/feed", () => {
@@ -240,6 +349,7 @@ describe("GET /v1/feed", () => {
     await publicacionDirecta(a.id, await cancion(1));
     const r = await feed();
     expect(r.cabeceras.get("Cache-Control")).toBe("public, max-age=15");
+    expect(r.cabeceras.get("Vary")).toBe("Authorization");
     expect(r.cuerpo.items[0]).not.toHaveProperty("corazon");
     expect(r.cuerpo.items[0]).not.toHaveProperty("mia");
     expect(r.cuerpo.items[0]).toMatchObject({ autor: "YoMismo1", corazones: 0, cancion: { titulo: "Tema 1" } });
