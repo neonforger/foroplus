@@ -26,6 +26,8 @@ export function deps(o: Partial<Deps> = {}): Deps {
     pepper: "pimienta",
     adminSecreto: "admin",
     lectorSecreto: "lector",
+    conversorSecreto: "conversor",
+    dormir: async () => {},
     diasMinVoto: 90,
     lectorEnVps: false,
     ...o,

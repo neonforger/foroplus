@@ -12,6 +12,8 @@ function deps(): Deps {
     pepper: "p",
     adminSecreto: "a",
     lectorSecreto: "l",
+    conversorSecreto: "c",
+    dormir: async () => {},
     diasMinVoto: 90,
     lectorEnVps: false,
   };

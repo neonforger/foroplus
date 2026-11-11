@@ -5,6 +5,7 @@ export interface Env {
   UID_PEPPER: string;
   ADMIN_SECRETO: string;
   LECTOR_SECRETO: string;
+  CONVERSOR_SECRETO: string;
   DIAS_MIN_VOTO: string;
   LECTOR_EN_VPS: string;
 }
@@ -29,6 +30,8 @@ function deps(env: Env): Deps {
     pepper: env.UID_PEPPER,
     adminSecreto: env.ADMIN_SECRETO,
     lectorSecreto: env.LECTOR_SECRETO,
+    conversorSecreto: env.CONVERSOR_SECRETO,
+    dormir: (ms) => new Promise((r) => setTimeout(r, ms)),
     diasMinVoto: diasMinVoto(env.DIAS_MIN_VOTO),
     lectorEnVps: env.LECTOR_EN_VPS === "true",
   };

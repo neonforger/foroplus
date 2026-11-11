@@ -62,6 +62,8 @@ export async function acceder(acceso: Acceso, req: Request, d: Deps): Promise<Cu
       return cuentaDe(req, d, true);
     case "lector":
       return (await secretoValido(req.headers.get("X-Lector"), d.lectorSecreto)) ? null : error("lector", 401);
+    case "conversor":
+      return (await secretoValido(req.headers.get("X-Conversor"), d.conversorSecreto)) ? null : error("conversor", 401);
     case "admin":
       // Nunca acepta un token de cuenta: solo la cabecera X-Admin. Secreto vacío = nadie entra.
       return (await secretoValido(req.headers.get("X-Admin"), d.adminSecreto)) ? null : error("admin", 401);

@@ -2,6 +2,7 @@ import { programado } from "./cron";
 import { acceder, type Cuenta } from "./auth";
 import { error, json } from "./http";
 import { rutasAdmin } from "./rutas/admin";
+import { rutasConversor } from "./rutas/conversor";
 import { rutasCuenta } from "./rutas/cuenta";
 import { rutasFeed } from "./rutas/feed";
 import { rutasVerificacion } from "./rutas/verificacion";
@@ -14,6 +15,9 @@ export interface Deps {
   pepper: string;
   adminSecreto: string;
   lectorSecreto: string;
+  conversorSecreto: string;
+  /** Espera `ms` milisegundos (la petición larga del conversor); los tests la hacen instantánea. */
+  dormir: (ms: number) => Promise<void>;
   diasMinVoto: number;
   lectorEnVps: boolean;
 }
@@ -32,7 +36,7 @@ export interface App {
 }
 
 /** "cuenta_o_baneada": como "cuenta" pero deja pasar a una cuenta baneada (solo para borrar la propia). */
-export type Acceso = "publica" | "cuenta" | "cuenta_o_baneada" | "admin" | "lector";
+export type Acceso = "publica" | "cuenta" | "cuenta_o_baneada" | "admin" | "lector" | "conversor";
 
 export interface Contexto {
   req: Request;
@@ -69,7 +73,7 @@ function casar(patron: string, ruta: string): Record<string, string> | null {
 }
 
 function rutas(o: OpcionesApp): Ruta[] {
-  return [["GET", "/v1/salud", () => json({ ok: true }), "publica"], ...rutasVerificacion(o), ...rutasCuenta(o), ...rutasFeed(o), ...rutasAdmin()];
+  return [["GET", "/v1/salud", () => json({ ok: true }), "publica"], ...rutasVerificacion(o), ...rutasCuenta(o), ...rutasFeed(o), ...rutasAdmin(), ...rutasConversor()];
 }
 
 export function crearApp(d: Deps, o: OpcionesApp = {}): App {

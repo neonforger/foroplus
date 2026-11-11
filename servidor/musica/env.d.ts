@@ -5,6 +5,7 @@ declare namespace Cloudflare {
     UID_PEPPER: string;
     ADMIN_SECRETO: string;
     LECTOR_SECRETO: string;
+    CONVERSOR_SECRETO: string;
     DIAS_MIN_VOTO: string;
     LECTOR_EN_VPS: string;
   }
