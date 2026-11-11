@@ -1,4 +1,5 @@
 import time
+import urllib.error
 
 import pytest
 
@@ -102,11 +103,47 @@ def test_latido_solo_ok_si_empareja_la_cancion_conocida(monkeypatch):
     assert enviados[-1]["ok"] is True
 
 
-def test_respuesta_vacia_rapida_hace_pausa(monkeypatch):
+def test_sondeo_corto_cola_vacia_espera_5_s_y_con_trabajo_sigue_enseguida():
+    assert conversor.espera_tras([]) == 5.0
+    assert conversor.espera_tras([CANCION]) == 0.0
+
+
+def test_tiempo_agotado_reintenta_al_ritmo_normal_y_otro_fallo_espera_30_s():
+    assert conversor.espera_tras_error(TimeoutError("timed out")) == 5.0
+    assert conversor.espera_tras_error(urllib.error.URLError(TimeoutError("timed out"))) == 5.0
+    assert conversor.espera_tras_error(urllib.error.URLError("Name or service not known")) == 30.0
+    assert conversor.espera_tras_error(RuntimeError("x")) == 30.0
+
+
+class Fin(Exception):
+    pass
+
+
+def test_bucle_pide_pendientes_con_timeout_de_15_s_y_duerme_solo_si_vino_vacia(monkeypatch):
+    monkeypatch.setattr(conversor, "API", "https://w")
+    monkeypatch.setattr(conversor, "SECRETO", "s")
+    monkeypatch.setattr(conversor, "latido", lambda: None)
+    atendidas = []
+    monkeypatch.setattr(conversor, "atender", lambda c: atendidas.append(c["id"]))
+    respuestas = iter([{"canciones": [CANCION]}, {"canciones": []}])
+    timeouts = []
+
+    def llamar(metodo, ruta, cuerpo=None, timeout=30):
+        assert (metodo, ruta) == ("GET", "/v1/conversor/pendientes")
+        timeouts.append(timeout)
+        return next(respuestas)
+
     pausas = []
-    monkeypatch.setattr(conversor.time, "sleep", pausas.append)
-    conversor.pausa_si_vacia([], time.monotonic())
-    assert len(pausas) == 1 and 0.5 < pausas[0] <= 1.0
-    conversor.pausa_si_vacia([CANCION], time.monotonic())
-    conversor.pausa_si_vacia([], time.monotonic() - 5)
-    assert len(pausas) == 1
+
+    def dormir(s):
+        pausas.append(s)
+        raise Fin
+
+    monkeypatch.setattr(conversor, "llamar", llamar)
+    monkeypatch.setattr(conversor.time, "sleep", dormir)
+    with pytest.raises(Fin):
+        conversor.main()
+    # La primera tanda trajo trabajo: se atiende y se vuelve a preguntar sin pausa; la segunda vino vacía.
+    assert atendidas == [CANCION["id"]]
+    assert timeouts == [15, 15]
+    assert pausas == [5.0]

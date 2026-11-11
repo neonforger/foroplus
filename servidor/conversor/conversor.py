@@ -1,7 +1,7 @@
 """Conversor de Música: canciones (Deezer) -> id de Spotify, desde el VPS.
 
 La app nunca habla con el VPS y el VPS no abre puertos: es este bucle quien llama al Worker
-(GET pendientes con petición larga, POST resultado, POST latido) con la cabecera X-Conversor.
+(GET pendientes cada 5 s si no hay trabajo, POST resultado, POST latido) con la cabecera X-Conversor.
 """
 import json
 import os
@@ -21,6 +21,10 @@ ENTRE_BUSQUEDAS_S = 1.0
 PRUEBA_ISRC = "AUAP07900028"
 PRUEBA = {"titulo": "Highway to Hell", "artista": "AC/DC"}
 TIMEOUT_BUSQUEDA_S = 20
+# El Worker contesta pendientes al instante (una consulta): con la cola vacía se vuelve a preguntar a
+# los 5 s, y una petición que no vuelve en 15 s se da por perdida.
+SONDEO_S = 5.0
+TIMEOUT_PENDIENTES_S = 15
 _ultima_busqueda = 0.0
 _timeouts_seguidos = 0
 
@@ -142,12 +146,18 @@ def atender(c: dict):
     comprobar_colgado()
 
 
-def pausa_si_vacia(canciones: list, desde: float):
-    """Respuesta vacía en menos de 1 s (el Worker no esperó): sin pausa sería un bucle caliente."""
-    if not canciones:
-        resto = 1.0 - (time.monotonic() - desde)
-        if resto > 0:
-            time.sleep(resto)
+def espera_tras(canciones: list) -> float:
+    """Segundos hasta el siguiente GET pendientes: el Worker contesta al instante (sin petición larga),
+    así que con la cola vacía se espera SONDEO_S; si vino trabajo, se vuelve a preguntar enseguida."""
+    return 0.0 if canciones else SONDEO_S
+
+
+def espera_tras_error(e: Exception) -> float:
+    """Un tiempo agotado (Worker lento o, mientras siga desplegado, el viejo de petición larga de 20 s)
+    se reintenta al ritmo normal; cualquier otro fallo (red caída, 5xx, 401) espera 30 s."""
+    if isinstance(e, urllib.error.URLError) and isinstance(e.reason, TimeoutError):
+        return SONDEO_S  # el tiempo agotado al conectar llega envuelto en URLError
+    return SONDEO_S if isinstance(e, TimeoutError) else 30.0
 
 
 def main():
@@ -159,17 +169,18 @@ def main():
         if time.monotonic() >= proximo_latido:
             latido()
             proximo_latido = time.monotonic() + LATIDO_CADA_S
-        desde = time.monotonic()
         try:
-            r = llamar("GET", "/v1/conversor/pendientes", timeout=30)
+            r = llamar("GET", "/v1/conversor/pendientes", timeout=TIMEOUT_PENDIENTES_S)
         except Exception as e:  # noqa: BLE001
             log("pendientes:", type(e).__name__, e)
-            time.sleep(30)
+            time.sleep(espera_tras_error(e))
             continue
         canciones = (r or {}).get("canciones", [])
-        pausa_si_vacia(canciones, desde)
         for c in canciones:
             atender(c)
+        espera = espera_tras(canciones)
+        if espera:
+            time.sleep(espera)
 
 
 if __name__ == "__main__":

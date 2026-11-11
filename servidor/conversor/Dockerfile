@@ -6,4 +6,7 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY emparejar.py conversor.py ./
+# Sin root: el bucle solo habla HTTP hacia fuera. Con su HOME por si alguna librería quiere una caché.
+RUN useradd --system --create-home --shell /usr/sbin/nologin conversor
+USER conversor
 CMD ["python", "-u", "conversor.py"]

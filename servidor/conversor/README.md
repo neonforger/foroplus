@@ -4,7 +4,8 @@ Servicio que corre en el VPS y convierte las canciones del feed de Música (Deez
 para que la app pueda enseñar la tarjeta con reproductor. Ni la app habla con él ni él abre puertos:
 es él quien llama al Worker (`servidor/musica`) con la cabecera `X-Conversor`.
 
-Bucle: `GET /v1/conversor/pendientes` (petición larga) -> por canción, búsqueda en Spotify por ISRC y,
+Bucle: `GET /v1/conversor/pendientes` (el Worker contesta al instante; con la cola vacía se vuelve a
+preguntar a los 5 s, y una petición que no vuelve en 15 s se da por perdida) -> por canción, búsqueda en Spotify por ISRC y,
 si no casa, por título y artista -> `POST /v1/conversor/resultado`. Latido al arrancar y cada 6 h con una
 conversión de prueba fija (`POST /v1/conversor/latido`). Como mucho una búsqueda por segundo.
 
