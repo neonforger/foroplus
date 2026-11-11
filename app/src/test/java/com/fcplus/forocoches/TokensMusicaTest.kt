@@ -56,7 +56,7 @@ class TokensMusicaTest {
         val cabeceras = mutableListOf<Map<String, String>>()
         val api = ApiMusica(
             token = { tokens.de(uidActivo) },
-            red = { _, _, _, h -> cabeceras.add(h); Respuesta(200, """{"nombre":"YoMismo","diasCuenta":162,"puedeVotar":true,"votosRestantes":10,"propuestasRestantes":3}""") }
+            red = { _, _, _, h -> cabeceras.add(h); Respuesta(200, """{"nombre":"YoMismo","diasCuenta":162,"puedePublicar":true,"publicacionesRestantes":6}""") }
         )
         api.yo()
         uidActivo = "222"

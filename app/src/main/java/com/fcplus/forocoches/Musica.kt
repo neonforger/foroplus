@@ -21,12 +21,12 @@ data class Playlist(
     val publicadaId: String? = null,
     /**
      * uid de FC de la cuenta que la publicó. La marca es de ESTE móvil pero la playlist pública es de una
-     * cuenta: con varias cuentas, retirar con otra daría 404 y se tomaría por "ya retirada". null = marca
+     * cuenta: con varias cuentas, borrarla con otra daría 404 y se tomaría por "ya borrada". null = marca
      * anterior a este campo (dueña desconocida): se enseña a todas, pero solo se actúa si el servidor confirma.
      */
     val publicadaPor: String? = null
 ) {
-    /** ¿Se enseña como publicada (y se puede retirar) estando activa [uid]? Las marcas sin dueña, sí. */
+    /** ¿Se enseña como publicada (y se puede borrar) estando activa [uid]? Las marcas sin dueña, sí. */
     fun deLaCuenta(uid: String) = publicadaId != null && (publicadaPor == null || publicadaPor == uid)
 
     /** Publicada, pero por otra cuenta de este móvil: con [uid] activa no se toca. */

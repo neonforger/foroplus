@@ -119,7 +119,7 @@ class HojaVerificarMusica(
             is Fin.Ok -> {
                 val quien = if (fin.nombre.isNotEmpty()) " como ${fin.nombre}" else ""
                 val voto = if (fin.puedeVotar) "" else
-                    " Para votar y proponer, tu cuenta de ForoCoches necesita al menos 90 días."
+                    " Para compartir canciones y dar corazones, tu cuenta de ForoCoches necesita al menos 90 días."
                 Triple("Listo: ya estás verificado$quien.$voto", false, false)
             }
             is Fin.Error -> VerificacionMusica.aviso(fin.motivo, errorMotor).let { Triple(it.texto, true, it.entrar) }

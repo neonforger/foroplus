@@ -37,7 +37,7 @@
                 android:id="@+id/verificar_para"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Para votar la canción de la semana, proponer canciones y publicar playlists."
+                android:text="Para compartir canciones y dar corazones en Música."
                 android:textSize="14sp"
                 android:lineSpacingExtra="2dp"
                 android:textColor="@color/fc_texto_2" />
