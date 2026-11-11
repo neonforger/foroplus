@@ -25,7 +25,9 @@ import com.google.android.material.bottomsheet.BottomSheetDialog
 class HojaVerificarMusica(
     private val act: AppCompatActivity,
     private val enganches: EnganchesMusica,
-    private val alVerificar: () -> Unit
+    private val alVerificar: () -> Unit,
+    /** Si lo que sigue a verificarse abre otra pantalla, la hoja se cierra antes: si no, queda debajo y reaparece. */
+    private val cerrarAlVerificar: Boolean = false
 ) {
     private var dialog: BottomSheetDialog? = null
     private lateinit var progreso: View
@@ -124,7 +126,10 @@ class HojaVerificarMusica(
             }
             is Fin.Error -> VerificacionMusica.aviso(fin.motivo, errorMotor).let { Triple(it.texto, true, it.entrar) }
         }
-        if (fin is Fin.Ok) alVerificar()
+        if (fin is Fin.Ok) {
+            if (cerrarAlVerificar) dialog?.dismiss()
+            alVerificar()
+        }
         if (dialog == null) {
             Toast.makeText(act, texto + nota, Toast.LENGTH_LONG).show()
             return

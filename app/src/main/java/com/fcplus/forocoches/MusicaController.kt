@@ -143,11 +143,11 @@ class MusicaController(
         val e = enganches
         if (!e.servidorActivo()) return
         pausar()  // la hoja tapa el reproductor, y YouTube no puede sonar tapado
-        HojaVerificarMusica(act, e) {
+        HojaVerificarMusica(act, e, {
             feed.olvidarCuenta()
             feed.refrescar(true)
             despues?.invoke()
-        }.mostrar()
+        }, cerrarAlVerificar = despues != null).mostrar()
     }
 
     /** "Borrar mi cuenta de Música" de Opciones: pregunta y, si se confirma, borra. */
