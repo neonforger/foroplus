@@ -28,7 +28,7 @@ const DETALLE_MAX = 200;
 const RECLAMAR =
   "UPDATE canciones SET conversion = 'en_curso', conversion_en = ?1, conversion_intentos = conversion_intentos + 1 " +
   "WHERE id IN (SELECT id FROM canciones WHERE conversion = 'pendiente' " +
-  "OR (conversion = 'en_curso' AND conversion_en < ?1 - ?2) " +
+  "OR (conversion = 'en_curso' AND conversion_en < ?1 - ?2 AND conversion_intentos < ?4) " +
   "OR (conversion = 'error' AND conversion_en < ?1 - ?3 AND conversion_intentos < ?4) " +
   "ORDER BY COALESCE(conversion_en, 0), id LIMIT ?5) " +
   "RETURNING id, titulo, artista, isrc";
@@ -48,6 +48,12 @@ async function pendientes(c: Contexto): Promise<Response> {
   return json({ canciones: [] }, 200, SIN_CACHE);
 }
 
+/** Ese Spotify es de otra canción: esta se queda sin conversión (y su publicación sale con la tarjeta nativa). */
+async function ocupada(db: D1Database, id: string, t: number): Promise<Response> {
+  await db.prepare("UPDATE canciones SET conversion = 'no_esta', conversion_en = ? WHERE id = ? AND conversion != 'hecha'").bind(t, id).run();
+  return error("ocupada", 409);
+}
+
 async function resultado(c: Contexto): Promise<Response> {
   const { db, ahora } = c.deps;
   const cuerpo = await cuerpoJson(c.req, MAX_CUERPO);
@@ -65,7 +71,8 @@ async function resultado(c: Contexto): Promise<Response> {
   if (!(await db.prepare("SELECT 1 AS x FROM canciones WHERE id = ?").bind(id).first())) return error("no_existe", 404);
 
   if (!conId) {
-    await db.prepare("UPDATE canciones SET conversion = ?, conversion_en = ? WHERE id = ?").bind(motivo, t, id).run();
+    // Una canción ya hecha no baja (un resultado atrasado o repetido no puede deshacerla).
+    await db.prepare("UPDATE canciones SET conversion = ?, conversion_en = ? WHERE id = ? AND conversion != 'hecha'").bind(motivo, t, id).run();
     return new Response(null, { status: 204 });
   }
   const ref = "spotify:" + spotify;
@@ -73,14 +80,20 @@ async function resultado(c: Contexto): Promise<Response> {
   if (previa && previa.cancion !== id) {
     // Ese Spotify ya es de otra canción (un duplicado): no se le quita. Esta se queda sin conversión
     // y su publicación sale igualmente con la tarjeta nativa.
-    await db.prepare("UPDATE canciones SET conversion = 'no_esta', conversion_en = ? WHERE id = ?").bind(t, id).run();
-    return error("ocupada", 409);
+    return ocupada(db, id, t);
   }
-  await db.batch([
-    db.prepare("UPDATE canciones SET spotify = ?, conversion = 'hecha', conversion_en = ? WHERE id = ?").bind(spotify, t, id),
+  // El enlace va ANTES y la canción solo se marca hecha si el ref acaba siendo SUYO: entre la comprobación
+  // de arriba y este batch otra canción pudo quedarse con él (INSERT OR IGNORE no falla, solo no inserta).
+  const [, marca] = await db.batch([
     db.prepare("INSERT OR IGNORE INTO enlaces_cancion (ref, cancion) VALUES (?, ?)").bind(ref, id),
+    db
+      .prepare(
+        "UPDATE canciones SET spotify = ?1, conversion = 'hecha', conversion_en = ?2 WHERE id = ?3 " +
+          "AND EXISTS (SELECT 1 FROM enlaces_cancion WHERE ref = ?4 AND cancion = ?3)",
+      )
+      .bind(spotify, t, id, ref),
   ]);
-  return new Response(null, { status: 204 });
+  return marca.meta.changes === 1 ? new Response(null, { status: 204 }) : ocupada(db, id, t);
 }
 
 async function latido(c: Contexto): Promise<Response> {

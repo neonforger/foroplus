@@ -4,6 +4,7 @@ import type { Contexto, OpcionesApp, Ruta } from "../app";
 import { yo } from "../auth";
 import { nuevoId } from "../cripto";
 import { cuerpoJson, error, json } from "../http";
+import { AUTO_OCULTAR } from "../feed";
 import { permitido } from "../limites";
 
 const MAX_CUERPO = 4096;
@@ -29,11 +30,13 @@ async function denunciar(c: Contexto): Promise<Response> {
   const existe =
     tipo === "publicacion"
       ? await d.db
-          .prepare("SELECT 1 AS x FROM publicaciones WHERE id = ? AND caduca > ? AND oculta = 0")
+          .prepare("SELECT cuenta FROM publicaciones WHERE id = ? AND caduca > ? AND oculta = 0")
           .bind(objetivo, ahora.getTime())
-          .first()
+          .first<{ cuenta: string }>()
       : await d.db.prepare("SELECT 1 AS x FROM canciones WHERE id = ?").bind(objetivo).first();
   if (!existe) return error("no_existe", 404);
+  // Denunciarse a uno mismo no tiene sentido (y sería la forma de esconder la propia publicación).
+  if (tipo === "publicacion" && (existe as { cuenta: string }).cuenta === cuenta.id) return error("propia", 422);
   // Repetir la misma denuncia no crea otra fila ni gasta cupo.
   const repetida = await d.db
     .prepare("SELECT 1 AS x FROM denuncias WHERE tipo = ? AND objetivo = ? AND cuenta = ?")
@@ -41,14 +44,23 @@ async function denunciar(c: Contexto): Promise<Response> {
     .first();
   if (repetida) return json({ ok: true }, 200, SIN_CACHE);
   if (!(await permitido(d.db, "denuncia:" + cuenta.id, DIA_S, DENUNCIAS_POR_DIA, ahora))) return error("limite", 429);
-  await d.db
-    .prepare(
-      "INSERT INTO denuncias (id, tipo, objetivo, cuenta, motivo, creada, resuelta) " +
-        "SELECT ?1, ?2, ?3, ?4, ?5, ?6, 0 WHERE NOT EXISTS " +
-        "(SELECT 1 FROM denuncias WHERE tipo = ?2 AND objetivo = ?3 AND cuenta = ?4)",
-    )
-    .bind(nuevoId(ahora), tipo, objetivo, cuenta.id, motivo.trim(), ahora.getTime())
-    .run();
+  // Denuncia y auto-ocultado en el MISMO batch: la tercera denuncia de cuentas distintas sin resolver
+  // oculta la publicación sin que dos denuncias simultáneas se pisen el recuento.
+  await d.db.batch([
+    d.db
+      .prepare(
+        "INSERT INTO denuncias (id, tipo, objetivo, cuenta, motivo, creada, resuelta) " +
+          "SELECT ?1, ?2, ?3, ?4, ?5, ?6, 0 WHERE NOT EXISTS " +
+          "(SELECT 1 FROM denuncias WHERE tipo = ?2 AND objetivo = ?3 AND cuenta = ?4)",
+      )
+      .bind(nuevoId(ahora), tipo, objetivo, cuenta.id, motivo.trim(), ahora.getTime()),
+    d.db
+      .prepare(
+        "UPDATE publicaciones SET oculta = 1 WHERE id = ?1 AND ?2 = 'publicacion' AND " +
+          "(SELECT COUNT(DISTINCT cuenta) FROM denuncias WHERE tipo = 'publicacion' AND objetivo = ?1 AND COALESCE(resuelta, 0) = 0) >= ?3",
+      )
+      .bind(objetivo, tipo, AUTO_OCULTAR),
+  ]);
   return json({ ok: true }, 200, SIN_CACHE);
 }
 

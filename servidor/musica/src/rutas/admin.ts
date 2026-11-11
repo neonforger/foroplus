@@ -16,8 +16,19 @@ async function ocultar(c: Contexto): Promise<Response> {
   const tipo = cuerpo?.tipo;
   const id = cuerpo?.id;
   const oculto = cuerpo?.oculto;
-  if (tipo !== "cancion" || typeof id !== "string" || !RE_ULID.test(id)) return error("cuerpo", 400);
+  if ((tipo !== "cancion" && tipo !== "publicacion") || typeof id !== "string" || !RE_ULID.test(id)) return error("cuerpo", 400);
   if (typeof oculto !== "boolean") return error("cuerpo", 400);
+  if (tipo === "publicacion") {
+    // Restaurar también da por resueltas sus denuncias: si no, la siguiente la volvería a ocultar al instante
+    // (el auto-ocultado cuenta las sin resolver).
+    const [r] = await c.deps.db.batch([
+      c.deps.db.prepare("UPDATE publicaciones SET oculta = ? WHERE id = ?").bind(oculto ? 1 : 0, id),
+      c.deps.db
+        .prepare("UPDATE denuncias SET resuelta = ?2 WHERE tipo = 'publicacion' AND objetivo = ?1 AND COALESCE(resuelta, 0) = 0 AND ?3 = 0")
+        .bind(id, c.deps.ahora().getTime(), oculto ? 1 : 0),
+    ]);
+    return r.meta.changes === 1 ? json({ ok: true }, 200, SIN_CACHE) : error("no_existe", 404);
+  }
   const r = await c.deps.db.prepare("UPDATE canciones SET oculta = ? WHERE id = ?").bind(oculto ? 1 : 0, id).run();
   return r.meta.changes === 1 ? json({ ok: true }, 200, SIN_CACHE) : error("no_existe", 404);
 }
@@ -35,23 +46,38 @@ async function banear(c: Contexto): Promise<Response> {
   }
   if (!(await db.prepare("SELECT 1 AS x FROM cuentas WHERE id = ?").bind(cuenta).first())) return error("no_existe", 404);
   // Los tokens NO se borran (ver cuentaDe): una baneada sigue pudiendo borrar su cuenta (RGPD) con el suyo.
-  // Sus publicaciones del feed las trata la moderación (Tarea S6).
-  await db.prepare("UPDATE cuentas SET baneada = 1 WHERE id = ?").bind(cuenta).run();
+  // Sus publicaciones ya no salen (VISIBLE mira cuentas.baneada). Sus corazones se quitan y los contadores
+  // se RECUENTAN (no se restan), en un batch: el recuento va antes de borrar, mientras aún se sabe cuáles eran.
+  await db.batch([
+    db
+      .prepare(
+        "UPDATE publicaciones SET corazones = (SELECT COUNT(*) FROM corazones h WHERE h.publicacion = publicaciones.id AND h.cuenta <> ?1) " +
+          "WHERE id IN (SELECT publicacion FROM corazones WHERE cuenta = ?1)",
+      )
+      .bind(cuenta),
+    db.prepare("DELETE FROM corazones WHERE cuenta = ?1").bind(cuenta),
+    db.prepare("UPDATE cuentas SET baneada = 1 WHERE id = ?").bind(cuenta),
+  ]);
   return json({ ok: true }, 200, SIN_CACHE);
 }
 
 async function listarDenuncias(c: Contexto): Promise<Response> {
   const { results } = await c.deps.db
     .prepare(
-      "SELECT d.id, d.tipo, d.objetivo, d.cuenta, d.motivo, d.creada, s.titulo AS s_titulo, s.artista AS s_artista " +
+      "SELECT d.id, d.tipo, d.objetivo, d.cuenta, d.motivo, d.creada, COALESCE(s.titulo, pc.titulo) AS s_titulo, " +
+        "COALESCE(s.artista, pc.artista) AS s_artista, p.texto AS p_texto, pu.nombre AS p_autor " +
         "FROM denuncias d " +
         "LEFT JOIN canciones s ON d.tipo IN ('cancion', 'sistema') AND s.id = d.objetivo " +
+        "LEFT JOIN publicaciones p ON d.tipo = 'publicacion' AND p.id = d.objetivo " +
+        "LEFT JOIN cuentas pu ON pu.id = p.cuenta " +
+        "LEFT JOIN canciones pc ON pc.id = p.cancion " +
         "WHERE COALESCE(d.resuelta, 0) = 0 ORDER BY d.creada ASC, d.id ASC LIMIT ?",
     )
     .bind(MAX_DENUNCIAS)
     .all<Record<string, string | number | null>>();
   const denuncias = results.map((f) => ({
     id: f.id, tipo: f.tipo, objetivo: f.objetivo, cuenta: f.cuenta, motivo: f.motivo, creada: f.creada,
+    ...(f.p_texto !== null ? { texto: f.p_texto, autor: f.p_autor } : {}),
     ...(f.s_titulo !== null ? { titulo: f.s_titulo, artista: f.s_artista } : {}),
   }));
   return json({ denuncias }, 200, SIN_CACHE);
@@ -92,6 +118,8 @@ async function fusionar(c: Contexto): Promise<Response> {
     enlace("youtube"),
     enlace("spotify"),
     db.prepare("UPDATE enlaces_cancion SET cancion = ?2 WHERE cancion = ?1").bind(de, dest),
+    // Las publicaciones del feed apuntan a la canción: sin esto se quedarían colgando de una que se borra.
+    db.prepare("UPDATE publicaciones SET cancion = ?2 WHERE cancion = ?1").bind(de, dest),
     db.prepare("UPDATE denuncias SET objetivo = ?2 WHERE tipo IN ('cancion', 'sistema') AND objetivo = ?1").bind(de, dest),
     db.prepare("DELETE FROM canciones WHERE id = ?1").bind(de),
   ]);

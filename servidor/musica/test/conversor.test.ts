@@ -78,6 +78,15 @@ describe("GET /v1/conversor/pendientes", () => {
     expect((await fila(reciente)).conversion).toBe("error");
   });
 
+  it("en_curso perdida se reparte solo mientras conversion_intentos < 24", async () => {
+    const agotada = await cancion(1);
+    const viva = await cancion(2);
+    await estado(agotada, "en_curso", T0 - 61_000, 24);
+    await estado(viva, "en_curso", T0 - 61_000, 23);
+    expect((await pendientes()).cuerpo.canciones.map((c: Json) => c.id)).toEqual([viva]);
+    expect(await fila(agotada)).toMatchObject({ conversion: "en_curso", conversion_intentos: 24 });
+  });
+
   it("espera y devuelve [] sin trabajo", async () => {
     const pausas: number[] = [];
     const r = await pendientes(en(0, { dormir: async (ms) => void pausas.push(ms) }));
@@ -131,6 +140,41 @@ describe("POST /v1/conversor/resultado", () => {
     await estado(id, "en_curso", T0 - 1000, 2);
     expect((await resultado({ cancion: id, spotify: null, motivo: "error" }, en(5000))).status).toBe(204);
     expect(await fila(id)).toMatchObject({ conversion: "error", conversion_en: T0 + 5000, conversion_intentos: 2 });
+  });
+
+  it("motivo no_esta o error no baja una canción ya hecha", async () => {
+    const id = await cancion(1);
+    await estado(id, "en_curso", T0, 1);
+    expect((await resultado({ cancion: id, spotify: SP, motivo: null })).status).toBe(204);
+    for (const motivo of ["no_esta", "error"]) {
+      expect((await resultado({ cancion: id, spotify: null, motivo }, en(9000))).status).toBe(204);
+    }
+    expect(await fila(id)).toMatchObject({ conversion: "hecha", conversion_en: T0, spotify: SP });
+  });
+
+  it("si otra canción se lleva el spotify entre la comprobación y el batch → 409 y no se marca hecha", async () => {
+    const a = await cancion(1);
+    const b = await cancion(2);
+    await estado(b, "en_curso", T0, 1);
+    // Un db que, justo antes del batch, hace que otra canción reclame el mismo id (la carrera).
+    const db = env.DB;
+    const carrera = new Proxy(db, {
+      get(t, k) {
+        if (k === "batch") {
+          return async (...args: Parameters<D1Database["batch"]>) => {
+            await db.prepare("INSERT INTO enlaces_cancion (ref, cancion) VALUES (?, ?)").bind("spotify:" + SP, a).run();
+            return db.batch(...args);
+          };
+        }
+        const v = (t as any)[k];
+        return typeof v === "function" ? v.bind(t) : v;
+      },
+    });
+    const r = await resultado({ cancion: b, spotify: SP, motivo: null }, en(0, { db: carrera }));
+    expect(r.status).toBe(409);
+    expect(r.cuerpo).toEqual({ error: "ocupada" });
+    expect(await fila(b)).toMatchObject({ conversion: "no_esta", spotify: null });
+    expect(await filas("SELECT cancion FROM enlaces_cancion WHERE ref = ?", "spotify:" + SP)).toEqual([{ cancion: a }]);
   });
 
   it("id de spotify ya usado por otra canción → 409 ocupada", async () => {

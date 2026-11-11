@@ -46,6 +46,36 @@ describe("POST /v1/denuncias", () => {
     expect((await denunciar(d, { tipo: "publicacion", objetivo: viva, motivo: "x" }, en(DIA))).status).toBe(404);
   });
 
+  it("tercera denuncia distinta oculta la publicación; tres de la misma cuenta no", async () => {
+    const autor = await shur();
+    const c = await cancion(1);
+    const pub = await publicacionDirecta(autor.id, c);
+    const [d1, d2, d3] = [await shur(), await shur(), await shur()];
+    const oculta = async () => (await filas("SELECT oculta FROM publicaciones WHERE id = ?", pub))[0].oculta;
+    // Repetir la denuncia desde la misma cuenta no suma.
+    for (let i = 0; i < 3; i++) await denunciar(d1, { tipo: "publicacion", objetivo: pub, motivo: "x" });
+    expect(await oculta()).toBe(0);
+    await denunciar(d2, { tipo: "publicacion", objetivo: pub, motivo: "x" });
+    expect(await oculta()).toBe(0);
+    expect((await denunciar(d3, { tipo: "publicacion", objetivo: pub, motivo: "x" })).status).toBe(200);
+    expect(await oculta()).toBe(1);
+    // Las resueltas no cuentan: otra publicación con dos denuncias resueltas y una nueva sigue visible.
+    const pub2 = await publicacionDirecta(autor.id, c);
+    await env.DB.batch([d1, d2].map((d, i) =>
+      env.DB.prepare("INSERT INTO denuncias (id, tipo, objetivo, cuenta, motivo, creada, resuelta) VALUES (?, 'publicacion', ?, ?, 'x', ?, 1)").bind("r" + i, pub2, d.id, T0)));
+    await denunciar(d3, { tipo: "publicacion", objetivo: pub2, motivo: "x" });
+    expect((await filas("SELECT oculta FROM publicaciones WHERE id = ?", pub2))[0].oculta).toBe(0);
+  });
+
+  it("denunciar la propia publicación da 422 propia y no deja fila", async () => {
+    const a = await shur();
+    const pub = await publicacionDirecta(a.id, await cancion(1));
+    const r = await denunciar(a, { tipo: "publicacion", objetivo: pub, motivo: "x" });
+    expect(r.status).toBe(422);
+    expect(r.cuerpo).toEqual({ error: "propia" });
+    expect(await filas("SELECT 1 FROM denuncias")).toHaveLength(0);
+  });
+
   it("el tipo playlist ya no existe; valida tipo, objetivo y motivo (hasta 300)", async () => {
     const a = await shur();
     const c = await cancion(1);

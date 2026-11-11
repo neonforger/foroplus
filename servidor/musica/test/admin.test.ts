@@ -1,7 +1,9 @@
 import { env } from "cloudflare:workers";
 import { beforeEach, describe, expect, it } from "vitest";
 import { nuevoId } from "../src/cripto";
-import { admin, cancion, conToken, en, filas, llamar, peticion, reiniciarCuentas, shur, T0, TABLAS } from "./ayudas-admin";
+import {
+  admin, cancion, conToken, corazonDirecto, en, filas, llamar, peticion, publicacionDirecta, reiniciarCuentas, shur, T0, TABLAS,
+} from "./ayudas-admin";
 
 beforeEach(async () => {
   reiniciarCuentas();
@@ -82,6 +84,21 @@ describe("POST /v1/admin/ocultar", () => {
     expect((await filas("SELECT oculta FROM canciones WHERE id = ?", c))[0].oculta).toBe(0);
   });
 
+  it("admin restaura una oculta y resuelve sus denuncias; oculta una visible", async () => {
+    const a = await shur();
+    const c = await cancion(1);
+    const pub = await publicacionDirecta(a.id, c, { oculta: true });
+    await env.DB.prepare("INSERT INTO denuncias (id, tipo, objetivo, cuenta, motivo, creada, resuelta) VALUES ('d', 'publicacion', ?, ?, 'x', ?, 0)")
+      .bind(pub, (await shur()).id, T0).run();
+    const oculta = async () => (await filas("SELECT oculta FROM publicaciones WHERE id = ?", pub))[0].oculta;
+    expect((await admin("POST", "/v1/admin/ocultar", { tipo: "publicacion", id: pub, oculto: false })).status).toBe(200);
+    expect(await oculta()).toBe(0);
+    expect((await filas("SELECT resuelta FROM denuncias WHERE id = 'd'"))[0].resuelta).not.toBe(0);
+    expect((await admin("POST", "/v1/admin/ocultar", { tipo: "publicacion", id: pub, oculto: true })).status).toBe(200);
+    expect(await oculta()).toBe(1);
+    expect((await admin("POST", "/v1/admin/ocultar", { tipo: "publicacion", id: nuevoId(new Date(T0)), oculto: true })).status).toBe(404);
+  });
+
   it("id o tipo erróneo 400 (ya no hay playlists que ocultar); inexistente 404", async () => {
     expect((await admin("POST", "/v1/admin/ocultar", { tipo: "otro", id: "x", oculto: true })).status).toBe(400);
     expect((await admin("POST", "/v1/admin/ocultar", { tipo: "playlist", id: nuevoId(new Date(T0)), oculto: true })).status).toBe(400);
@@ -113,7 +130,56 @@ describe("denuncias de administración", () => {
   });
 });
 
+describe("denuncias de publicaciones en administración", () => {
+  it("admin lista denuncias de publicaciones con texto, autor y canción", async () => {
+    const autor = await shur();
+    const c = await cancion(1);
+    const pub = await publicacionDirecta(autor.id, c, { texto: "Mi tema del verano" });
+    const quien = await shur();
+    await env.DB.prepare("INSERT INTO denuncias (id, tipo, objetivo, cuenta, motivo, creada, resuelta) VALUES ('d1', 'publicacion', ?, ?, 'ofensiva', ?, 0)")
+      .bind(pub, quien.id, T0).run();
+    const r = await admin("GET", "/v1/admin/denuncias");
+    expect(r.cuerpo.denuncias).toEqual([
+      { id: "d1", tipo: "publicacion", objetivo: pub, cuenta: quien.id, motivo: "ofensiva", creada: T0,
+        texto: "Mi tema del verano", autor: "YoMismo1", titulo: "Tema 1", artista: "Grupo 1" },
+    ]);
+  });
+});
+
+describe("banear y el feed", () => {
+  it("banear quita sus corazones y baja los contadores; desbanear no los devuelve", async () => {
+    const autor = await shur();
+    const mala = await shur();
+    const buena = await shur();
+    const c = await cancion(1);
+    const p1 = await publicacionDirecta(autor.id, c, { corazones: 2 });
+    const p2 = await publicacionDirecta(autor.id, c, { corazones: 1 });
+    const p3 = await publicacionDirecta(autor.id, c, { corazones: 1 });
+    await corazonDirecto(p1, mala.id);
+    await corazonDirecto(p1, buena.id);
+    await corazonDirecto(p2, mala.id);
+    await corazonDirecto(p3, buena.id);
+    expect((await admin("POST", "/v1/admin/banear", { cuenta: mala.id, baneada: true })).status).toBe(200);
+    expect(await filas("SELECT 1 FROM corazones WHERE cuenta = ?", mala.id)).toHaveLength(0);
+    expect(await filas("SELECT id, corazones FROM publicaciones ORDER BY corazones DESC, id")).toEqual([
+      ...[p1, p3].sort().map((id) => ({ id, corazones: 1 })), { id: p2, corazones: 0 },
+    ]);
+    await admin("POST", "/v1/admin/banear", { cuenta: mala.id, baneada: false });
+    expect(await filas("SELECT 1 FROM corazones WHERE cuenta = ?", mala.id)).toHaveLength(0);
+    expect((await filas("SELECT corazones FROM publicaciones WHERE id = ?", p2))[0].corazones).toBe(0);
+  });
+});
+
 describe("POST /v1/admin/fusionar", () => {
+  it("las publicaciones de la fusionada pasan a la destino", async () => {
+    const a = await shur();
+    const de = await cancion(1);
+    const dest = await cancion(2);
+    const pub = await publicacionDirecta(a.id, de);
+    expect((await admin("POST", "/v1/admin/fusionar", { de, en: dest })).status).toBe(200);
+    expect((await filas("SELECT cancion FROM publicaciones WHERE id = ?", pub))[0].cancion).toBe(dest);
+  });
+
   it("mueve enlaces y referencias de la fusionada a la destino y borra la fusionada", async () => {
     const de = await cancion(1);
     const dest = await cancion(2);
