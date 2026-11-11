@@ -77,7 +77,7 @@ async function borrarCuenta(c: Contexto): Promise<Response> {
     db.prepare("DELETE FROM denuncias WHERE cuenta = ?1").bind(yoId),
     // Retos vivos de su uid (guardan el uid en claro): fuera.
     db.prepare("DELETE FROM retos WHERE uid_hmac = (SELECT uid_hmac FROM cuentas WHERE id = ?1)").bind(yoId),
-    db.prepare("DELETE FROM limites WHERE clave IN ('tarjeta:' || ?1, 'denuncia:' || ?1)").bind(yoId),
+    db.prepare("DELETE FROM limites WHERE clave IN ('tarjeta:' || ?1, 'denuncia:' || ?1, 'pub:' || ?1)").bind(yoId),
     db.prepare("DELETE FROM tokens WHERE cuenta = ?1").bind(yoId),
     // Una cuenta baneada NO desaparece del todo: queda una LÁPIDA con solo id, uid_hmac y baneada = 1
     // (sin nombre, registro ni fechas) para que volver a verificar la misma cuenta de FC siga dando

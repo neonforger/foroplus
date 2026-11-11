@@ -2,7 +2,7 @@ import { env } from "cloudflare:workers";
 import { beforeEach, describe, expect, it } from "vitest";
 import { uidHmac } from "../src/cripto";
 import {
-  cancion, conToken, corazonDirecto, DIA, en, filas, HORA, llamar, MIN, peticion, publicacionDirecta, reiniciarCuentas,
+  cancion, conToken, corazonDirecto, DIA, en, enlaceDe, filas, HORA, llamar, MIN, peticion, publicacionDirecta, reiniciarCuentas,
   shur, T0, TABLAS, type App, type Shur,
 } from "./ayudas-admin";
 
@@ -96,6 +96,7 @@ describe("DELETE /v1/cuenta", () => {
     await env.DB.batch([
       env.DB.prepare("INSERT INTO retos (id, uid, uid_hmac, coche, caduca) VALUES ('r', '123456', 'hmac1', 'x', ?)").bind(T0 + MIN),
       env.DB.prepare("INSERT INTO limites (clave, ventana, n) VALUES (?, 0, 1)").bind("denuncia:" + a.id),
+      env.DB.prepare("INSERT INTO limites (clave, ventana, n) VALUES (?, 0, 4)").bind("pub:" + a.id),
     ]);
     const r = await borrarCuenta(a);
     expect(r.status).toBe(200);
@@ -162,29 +163,38 @@ describe("GET /v1/yo", () => {
     expect(r.cuerpo).toEqual({ nombre: "YoMismo1", diasCuenta: 400, puedePublicar: true, publicacionesRestantes: 6 });
   });
 
-  it("yo con 2 publicaciones en 24 h devuelve 4 restantes; solo cuentan las de esta cuenta", async () => {
+  // El tope sale del contador "pub:" de la tabla limites (ventana fija de 24 h), el mismo que usa
+  // POST /v1/publicaciones: cuenta también las publicaciones ya borradas.
+  const gastar = (cuenta: string, n: number, ventana = Math.floor(T0 / 1000 / 86400) * 86400) =>
+    env.DB.prepare("INSERT INTO limites (clave, ventana, n) VALUES (?, ?, ?)").bind("pub:" + cuenta, ventana, n).run();
+
+  it("yo con 2 publicaciones hechas hoy devuelve 4 restantes; solo cuentan las de esta cuenta", async () => {
     const a = await shur();
     const b = await shur();
-    const c = await cancion(1);
-    await publicacionDirecta(a.id, c, { creada: T0 - HORA });
-    await publicacionDirecta(a.id, c, { creada: T0 - 2 * HORA });
-    await publicacionDirecta(b.id, c);
+    await gastar(a.id, 2);
+    await gastar(b.id, 5);
     expect((await yo(a)).cuerpo.publicacionesRestantes).toBe(4);
   });
 
-  it("yo cuenta las de hace 25 h como libres", async () => {
+  it("yo no cuenta la ventana de ayer", async () => {
     const a = await shur();
-    const c = await cancion(1);
-    await publicacionDirecta(a.id, c, { creada: T0 - 25 * HORA });
-    await publicacionDirecta(a.id, c, { creada: T0 - 23 * HORA });
-    expect((await yo(a)).cuerpo.publicacionesRestantes).toBe(5);
+    await gastar(a.id, 3, Math.floor(T0 / 1000 / 86400) * 86400 - 86400);
+    expect((await yo(a)).cuerpo.publicacionesRestantes).toBe(6);
   });
 
   it("nunca baja de 0", async () => {
     const a = await shur();
-    const c = await cancion(1);
-    for (let i = 0; i < 8; i++) await publicacionDirecta(a.id, c, { creada: T0 - i * MIN });
+    await gastar(a.id, 9);
     expect((await yo(a)).cuerpo.publicacionesRestantes).toBe(0);
+  });
+
+  it("publicar y borrar mueve el contador de yo (las borradas cuentan)", async () => {
+    const a = await shur();
+    await cancion(1);
+    const r = await llamar(en(), peticion("POST", "/v1/publicaciones", { texto: "hola", enlace: enlaceDe(1) }, conToken(a)));
+    expect((await yo(a)).cuerpo.publicacionesRestantes).toBe(5);
+    await llamar(en(), peticion("DELETE", "/v1/publicaciones/" + r.cuerpo.publicacion.id, undefined, conToken(a)));
+    expect((await yo(a)).cuerpo.publicacionesRestantes).toBe(5);
   });
 
   it("puedePublicar es false con una cuenta de menos de 90 días", async () => {

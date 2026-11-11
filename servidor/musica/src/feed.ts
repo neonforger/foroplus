@@ -1,4 +1,6 @@
-// Constantes del feed de canciones de 24 h. En esta tarea solo constantes: la lógica llega después.
+// El feed de canciones de 24 h: constantes y la lógica común de sus rutas (rutas/feed.ts).
+import { cancionPub, type CancionPub, type FilaCancion } from "./canciones";
+import { RE_ULID } from "./cripto";
 
 /** Caracteres máximos del texto de una publicación (tras `trim`). */
 export const TEXTO_MAX = 100;
@@ -15,3 +17,112 @@ export const ESPERA_CONVERSION_MS = 8000;
 export const AUTO_OCULTAR = 3;
 /** Tamaño de página del feed. */
 export const POR_PAGINA = 20;
+
+/** Una publicación tal como la ve la app. `corazon` y `mia` solo van si quien pide trae token. */
+export interface ItemFeed {
+  id: string;
+  autor: string;
+  texto: string;
+  creada: number;
+  caduca: number;
+  corazones: number;
+  corazon?: boolean;
+  mia?: boolean;
+  cancion: CancionPub;
+}
+
+/** La publicación más querida de una semana, guardada al caducar. */
+export interface MasQuerida {
+  semana: string;
+  autor: string;
+  texto: string;
+  corazones: number;
+  cancion: CancionPub;
+}
+
+/** Enlace en el texto: con esquema, con www. o un dominio suelto de los habituales. */
+export const RE_ENLACE = /(https?:\/\/|www\.|\b[a-z0-9-]+\.(com|es|net|org|io|me|ly|gg|tv)\b)/i;
+
+/**
+ * Lo que sale en el feed. ?1 = ahora (ms), ?2 = ahora - ESPERA_CONVERSION_MS. Una publicación cuya
+ * canción aún no se ha convertido espera ESPERA_CONVERSION_MS y sale igualmente (tarjeta nativa).
+ */
+export const VISIBLE =
+  "p.caduca > ?1 AND p.oculta = 0 AND COALESCE(u.baneada, 0) = 0 AND COALESCE(c.oculta, 0) = 0 " +
+  "AND (c.conversion IN ('hecha', 'no_esta') OR p.creada <= ?2)";
+
+/** ?4 = la cuenta que mira (null = invitado: `mia` y `corazon` salen nulos y no se enseñan). */
+export const SELECT_FEED =
+  "SELECT p.id, u.nombre AS autor, p.texto, p.creada, p.caduca, p.corazones, p.cuenta = ?4 AS mia, " +
+  "EXISTS (SELECT 1 FROM corazones h WHERE h.publicacion = p.id AND h.cuenta = ?4) AS corazon, " +
+  "c.id AS cancion_id, c.titulo, c.artista, c.portada, c.enlaces, c.deezer, c.spotify " +
+  "FROM publicaciones p JOIN cuentas u ON u.id = p.cuenta JOIN canciones c ON c.id = p.cancion ";
+
+export type FilaFeed = Omit<FilaCancion, "id"> & {
+  cancion_id: string;
+  id: string;
+  autor: string;
+  texto: string;
+  creada: number;
+  caduca: number;
+  corazones: number;
+  mia: number | null;
+  corazon: number;
+};
+
+export function itemFeed(f: FilaFeed, conCuenta: boolean): ItemFeed {
+  return {
+    id: f.id,
+    autor: f.autor,
+    texto: f.texto,
+    creada: f.creada,
+    caduca: f.caduca,
+    corazones: f.corazones,
+    ...(conCuenta ? { corazon: !!f.corazon, mia: !!f.mia } : {}),
+    // El id de la canción viaja como `cancion_id`: `id` es el de la publicación.
+    cancion: cancionPub({ ...f, id: f.cancion_id }),
+  };
+}
+
+/** Cursor opaco por keyset (nada de OFFSET): g = corazones (solo en "queridas"), p = creada, i = id. */
+export interface Cursor {
+  g?: number;
+  p: number;
+  i: string;
+}
+
+export function codificar(c: Cursor): string {
+  return btoa(JSON.stringify(c)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+export function decodificar(texto: string, conCorazones: boolean): Cursor | null {
+  try {
+    const v: unknown = JSON.parse(atob(texto.replace(/-/g, "+").replace(/_/g, "/")));
+    if (!v || typeof v !== "object") return null;
+    const { g, p, i } = v as Record<string, unknown>;
+    if (typeof p !== "number" || typeof i !== "string" || !RE_ULID.test(i)) return null;
+    if (conCorazones && typeof g !== "number") return null;
+    return conCorazones ? { g: g as number, p, i } : { p, i };
+  } catch {
+    return null;
+  }
+}
+
+const DIA_S = 86_400;
+
+/** La clave del contador del tope de publicaciones (tabla `limites`) y su ventana, en segundos. */
+export const claveTope = (cuentaId: string): string => "pub:" + cuentaId;
+export const VENTANA_TOPE_S = DIA_S;
+
+/**
+ * Publicaciones que le quedan hoy a la cuenta: 6 menos el contador del tope en la ventana actual
+ * (6 si aún no hay fila). Lee el MISMO contador que cuenta al publicar, así que incluye las borradas.
+ */
+export async function publicacionesRestantes(db: D1Database, cuentaId: string, ahora: Date): Promise<number> {
+  const inicio = Math.floor(ahora.getTime() / 1000 / DIA_S) * DIA_S;
+  const fila = await db
+    .prepare("SELECT n FROM limites WHERE clave = ? AND ventana = ?")
+    .bind(claveTope(cuentaId), inicio)
+    .first<{ n: number }>();
+  return Math.max(0, PUBLICACIONES_DIA - (fila?.n ?? 0));
+}

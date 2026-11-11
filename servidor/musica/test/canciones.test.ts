@@ -85,4 +85,22 @@ describe("cancionDeOrigen", () => {
     expect(fs[0]).toMatchObject({ spotify: "0aaaaaaaaaaaaaaaaaaaaa", conversion: "hecha", deezer: 92719900, isrc: "AUAP07900028" });
     expect((await filas("SELECT ref FROM enlaces_cancion")).map((x) => x.ref)).toEqual(["deezer:92719900"]);
   });
+
+  it("un enlace de Spotify de una canción pendiente le enseña su id y la deja hecha", async () => {
+    const SP = "0aaaaaaaaaaaaaaaaaaaaa";
+    const { red } = redFalsa({
+      "https://open.spotify.com/oembed?": () => json(spEstopaOembed),
+      "https://open.spotify.com/track/": () => new Response(spEstopaMeta, { headers: { "content-type": "text/html" } }),
+      "https://api.deezer.com/search?": () => json(deezerEstopa),
+    });
+    // La misma canción llegó antes por otra fuente: sin Spotify y a la espera del conversor.
+    await cancionDeOrigen(deps({ red }), { enlace: "https://open.spotify.com/track/" + SP }, sinLimite);
+    await env.DB.batch([
+      env.DB.prepare("UPDATE canciones SET spotify = NULL, conversion = 'pendiente'"),
+      env.DB.prepare("DELETE FROM enlaces_cancion"),
+    ]);
+    const r = await cancionDeOrigen(deps({ red }), { enlace: "https://open.spotify.com/track/" + SP }, sinLimite);
+    expect(await filas("SELECT spotify, conversion FROM canciones")).toEqual([{ spotify: SP, conversion: "hecha" }]);
+    if ("cancion" in r) expect(cancionPub(r.cancion).spotify).toBe("https://open.spotify.com/track/" + SP);
+  });
 });

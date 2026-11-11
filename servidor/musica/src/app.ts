@@ -3,6 +3,7 @@ import { acceder, type Cuenta } from "./auth";
 import { error, json } from "./http";
 import { rutasAdmin } from "./rutas/admin";
 import { rutasCuenta } from "./rutas/cuenta";
+import { rutasFeed } from "./rutas/feed";
 import { rutasVerificacion } from "./rutas/verificacion";
 
 export interface Deps {
@@ -68,7 +69,7 @@ function casar(patron: string, ruta: string): Record<string, string> | null {
 }
 
 function rutas(o: OpcionesApp): Ruta[] {
-  return [["GET", "/v1/salud", () => json({ ok: true }), "publica"], ...rutasVerificacion(o), ...rutasCuenta(o), ...rutasAdmin()];
+  return [["GET", "/v1/salud", () => json({ ok: true }), "publica"], ...rutasVerificacion(o), ...rutasCuenta(o), ...rutasFeed(o), ...rutasAdmin()];
 }
 
 export function crearApp(d: Deps, o: OpcionesApp = {}): App {

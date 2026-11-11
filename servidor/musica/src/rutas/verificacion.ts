@@ -10,7 +10,7 @@ import { hashToken, nuevoId, nuevoToken, RE_ULID, uidHmac } from "../cripto";
 import { leerFicha, type Ficha } from "../ficha";
 import { cuerpoJson, error, json } from "../http";
 import { claveIp } from "../ip";
-import { PUBLICACIONES_DIA, VIDA_MS } from "../feed";
+import { publicacionesRestantes } from "../feed";
 import { contarUna, permitido } from "../limites";
 import { USER_AGENT } from "../tarjeta";
 
@@ -245,20 +245,15 @@ async function yoRuta(c: Contexto): Promise<Response> {
   const cuenta = yo(c);
   const { db, ahora: reloj, diasMinVoto } = c.deps;
   const ahora = reloj();
-  // Siempre con el id de la cuenta del token: no hay otra forma de pedir este número. Cuenta las
-  // publicaciones vivas de las últimas 24 h; el tope real (que cuenta también las borradas) llega con
-  // la Tarea S3.
-  const vivas = await db
-    .prepare("SELECT COUNT(*) AS n FROM publicaciones WHERE cuenta = ? AND creada > ?")
-    .bind(cuenta.id, ahora.getTime() - VIDA_MS)
-    .first<{ n: number }>();
+  // Siempre con el id de la cuenta del token: no hay otra forma de pedir este número. Lee el mismo
+  // contador que cuenta al publicar (con las borradas incluidas).
   const { diasCuenta, puedeVotar } = permisoVoto(cuenta.registro, ahora, diasMinVoto);
   return json(
     {
       nombre: cuenta.nombre,
       diasCuenta,
       puedePublicar: puedeVotar,
-      publicacionesRestantes: Math.max(0, PUBLICACIONES_DIA - (vivas?.n ?? 0)),
+      publicacionesRestantes: await publicacionesRestantes(db, cuenta.id, ahora),
     },
     200,
     SIN_CACHE,

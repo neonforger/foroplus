@@ -158,5 +158,14 @@ export async function cancionDeOrigen(
   if (!t) return { error: "no_encontrada" };
   const extras: ExtrasCancion =
     ref.fuente === "spotify" ? { spotify: ref.id, conversion: "hecha" } : { conversion: "pendiente" };
-  return { cancion: await guardarCancion(d, { ...t, ...extras }) };
+  const fila = await guardarCancion(d, { ...t, ...extras });
+  if (ref.fuente !== "spotify") return { cancion: fila };
+  // La canción ya existía (llegó por Deezer o por otro enlace) y aún esperaba al conversor, o no se
+  // le encontró Spotify: este enlace trae su id de Spotify de primera mano, así que ya no hay nada
+  // que convertir. guardarCancion nunca toca spotify/conversion de una fila existente: se hace aquí.
+  await d.db
+    .prepare("UPDATE canciones SET spotify = COALESCE(spotify, ?1), conversion = 'hecha' WHERE id = ?2 AND conversion <> 'hecha'")
+    .bind(ref.id, fila.id)
+    .run();
+  return { cancion: { ...fila, spotify: fila.spotify ?? ref.id } };
 }
