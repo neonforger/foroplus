@@ -120,4 +120,62 @@ class FeedAdapterTest {
         assertEquals(listOf("1"), m.autor)
         assertEquals(listOf("2"), m.corazones)
     }
+
+    private fun Montaje.montarReproductor(i: Int): View {
+        val dummy = View(rv.context)
+        m_hueco(i).addView(dummy)
+        return dummy
+    }
+
+    private fun Montaje.m_hueco(i: Int) = fila(i).findViewById<android.widget.FrameLayout>(R.id.pub_hueco)
+
+    @Test fun `cambiarCorazon no desmonta el reproductor del hueco`() {
+        val m = montar()
+        m.ad.poner(listOf(item("1")), ahora)
+        m.medir()
+        val dummy = m.montarReproductor(0)
+        m.ad.cambiarCorazon("1", EstadoCorazon(4, true))
+        m.medir()
+        assertEquals(m.m_hueco(0), dummy.parent)
+    }
+
+    @Test fun `poner la misma lista con otro ahora mantiene el hueco y actualiza queda`() {
+        val m = montar()
+        m.ad.poner(listOf(item("1")), ahora)
+        m.medir()
+        val dummy = m.montarReproductor(0)
+        m.ad.poner(listOf(item("1")), ahora + 3_600_000L)
+        m.medir()
+        assertEquals(m.m_hueco(0), dummy.parent)
+        assertEquals("21 h", m.fila(0).findViewById<TextView>(R.id.pub_queda).text.toString())
+    }
+
+    @Test fun `poner sin una publicacion la quita`() {
+        val m = montar()
+        m.ad.poner(listOf(item("1"), item("2")), ahora)
+        m.ad.poner(listOf(item("2")), ahora)
+        m.medir()
+        assertEquals(1, m.ad.itemCount)
+        assertEquals("Para el domingo 2", m.fila(0).findViewById<TextView>(R.id.pub_texto).text.toString())
+    }
+
+    @Test fun `salir de la ventana avisa con el id`() {
+        val salidas = ArrayList<String>()
+        val ctrl = Robolectric.buildActivity(AppCompatActivity::class.java)
+        ctrl.get().setTheme(R.style.Theme_FCForocoches)
+        ctrl.setup()
+        val ad = FeedAdapter({}, { _, _ -> }, {}, { _, _ -> }, {}, alSalirDePantalla = { salidas.add(it) })
+        val rv = RecyclerView(ctrl.get())
+        rv.layoutManager = LinearLayoutManager(ctrl.get())
+        rv.adapter = ad
+        ctrl.get().setContentView(rv)
+        ad.poner(listOf(item("7")), ahora)
+        rv.measure(
+            View.MeasureSpec.makeMeasureSpec(1080, View.MeasureSpec.EXACTLY),
+            View.MeasureSpec.makeMeasureSpec(4000, View.MeasureSpec.EXACTLY)
+        )
+        rv.layout(0, 0, 1080, 4000)
+        ad.onViewDetachedFromWindow(rv.findViewHolderForAdapterPosition(0) as FeedAdapter.Fila)
+        assertEquals(listOf("7"), salidas)
+    }
 }

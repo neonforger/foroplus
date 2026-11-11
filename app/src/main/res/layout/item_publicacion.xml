@@ -82,7 +82,7 @@
             android:layout_marginTop="10dp"
             android:layout_marginEnd="6dp"
             android:orientation="vertical"
-            android:background="@drawable/bg_chip_queda">
+            android:background="@drawable/bg_caja_cancion">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -136,7 +136,7 @@
                     android:src="@drawable/ic_reproducir"
                     app:tint="@color/fc_rojo"
                     android:background="?attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="Escuchar" />
+                    android:contentDescription="@string/pub_escuchar" />
             </LinearLayout>
 
             <FrameLayout
@@ -159,7 +159,7 @@
                 android:padding="12dp"
                 android:src="@drawable/ic_corazon"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Dar corazón" />
+                android:contentDescription="@string/pub_dar_corazon" />
 
             <TextView
                 android:id="@+id/pub_corazones"
@@ -184,12 +184,12 @@
                 android:gravity="center"
                 android:paddingStart="12dp"
                 android:paddingEnd="12dp"
-                android:text="Guardar"
+                android:text="@string/pub_guardar"
                 android:textSize="14sp"
                 android:textStyle="bold"
                 android:textColor="@color/fc_rojo"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Guardar la canción en mis playlists" />
+                android:contentDescription="@string/pub_guardar_desc" />
 
             <ImageView
                 android:id="@+id/pub_menu"
@@ -198,7 +198,7 @@
                 android:padding="12dp"
                 android:src="@drawable/ic_more"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Más opciones de la publicación" />
+                android:contentDescription="@string/pub_menu_desc" />
         </LinearLayout>
     </LinearLayout>
 

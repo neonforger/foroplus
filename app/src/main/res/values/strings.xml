@@ -5,4 +5,11 @@
          en el mismo móvil. Ojo: la rama v2-shell es la que se publica, así que aquí NUNCA
          puede quedarse un nombre de desarrollo. -->
     <string name="app_name">ForoPlus</string>
+    <!-- Feed de Música: tarjeta de publicación. -->
+    <string name="pub_escuchar">Escuchar</string>
+    <string name="pub_dar_corazon">Dar corazón</string>
+    <string name="pub_quitar_corazon">Quitar corazón</string>
+    <string name="pub_guardar">Guardar</string>
+    <string name="pub_guardar_desc">Guardar la canción en mis playlists</string>
+    <string name="pub_menu_desc">Más opciones de la publicación</string>
 </resources>
