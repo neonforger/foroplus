@@ -5,6 +5,7 @@
       "nombre": "1.17.0",
       "fecha": "2026-11-14",
       "notas": [
+        "Nueva sección Música: comparte la canción que estás escuchando y descubre lo que escuchan los demás. Cada canción dura 24 horas en el feed; dale corazones a las que te gusten y mira el Top",
         "Notas sobre usuarios: apúntate lo que quieras de alguien desde el menú de su mensaje (\"Nota sobre @…\"). Se ve bajo su nombre en todos sus mensajes y solo la ves tú: se guarda en tu móvil y nunca llega a ForoCoches",
         "Reportar vuelve a funcionar bien: la app ya no se queda enseñando la página de ForoCoches a mitad de reporte ni lo pierde por el camino",
         "Lo mismo al iniciar sesión cuando ForoCoches pide la verificación de Cloudflare"
