@@ -72,5 +72,8 @@
     <color name="fc_cita_fondo_tarjeta">#2A2A30</color>
     <!-- Rojo suave: cuadrito del sobre sin leer y pastilla del icono activo. -->
     <color name="fc_rojo_suave">#3A2126</color>
+    <!-- Nota privada: un pelín más de cuerpo en oscuro para que se vea. -->
+    <color name="fc_nota_fondo">#33E0A020</color>
+
 
 </resources>

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fondo de la nota privada bajo el nick: un tinte ámbar muy suave (aire de "post-it"), que
+     funciona en claro y oscuro. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="@color/fc_nota_fondo" />
+    <corners android:radius="8dp" />
+</shape>

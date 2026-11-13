@@ -413,7 +413,11 @@ class PostAdapter(
     // Pantalla completa de vídeo de un embed: lo gestiona el Activity anfitrión.
     private val onEmbedFullscreen: (View?, android.webkit.WebChromeClient.CustomViewCallback?) -> Unit = { _, _ -> },
     // Tocar una imagen del post → visor a pantalla completa. Recibe la URL original.
-    private val onImageClick: (String) -> Unit = {}
+    private val onImageClick: (String) -> Unit = {},
+    // La nota privada sobre el autor de un post (o "" si no hay): la pinta bindNota.
+    private val notaDe: (PostItem) -> String = { "" },
+    // Tocar la nota (o "Nota sobre…" del menú) → abrir el bocadillo para editarla. El View es el ancla.
+    private val onNota: (PostItem, View) -> Unit = { _, _ -> }
 ) : RecyclerView.Adapter<PostAdapter.Holder>() {
 
     private val items = ArrayList<PostItem>()
@@ -576,6 +580,7 @@ class PostAdapter(
      * repintado entero vuelve a montar los reproductores, y buscar cortaría el vídeo que suena.
      */
     private object SoloTexto
+    private object SoloNota
 
     fun buscar(consulta: String) {
         if (consulta == busqueda && actualPid.isEmpty()) return
@@ -666,6 +671,7 @@ class PostAdapter(
         val menu: View = v.findViewById(R.id.post_menu)
         val insigniaAutor: View = v.findViewById(R.id.post_autor_insignia)
         val divider: View = v.findViewById(R.id.post_divider)
+        val nota: TextView = v.findViewById(R.id.post_nota)
         var boundPid: String = ""
 
         /**
@@ -823,10 +829,11 @@ class PostAdapter(
     }
 
     override fun onBindViewHolder(h: Holder, pos: Int, payloads: MutableList<Any>) {
-        // Solo la lupa: se repinta el texto del mismo mensaje y nada más (ver [SoloTexto]).
-        if (payloads.isNotEmpty() && payloads.all { it === SoloTexto } && h.boundPid == items[pos].pid) {
-            renderContent(h, items[pos])
-            return
+        if (payloads.isNotEmpty() && h.boundPid == items[pos].pid) {
+            // Solo la lupa: se repinta el texto del mismo mensaje y nada más (ver [SoloTexto]).
+            if (payloads.all { it === SoloTexto }) { renderContent(h, items[pos]); return }
+            // Solo la nota: se repinta la línea de la nota, sin tocar el texto ni volver a pedir fotos.
+            if (payloads.all { it === SoloNota }) { bindNota(h, items[pos]); return }
         }
         onBindViewHolder(h, pos)
     }
@@ -844,6 +851,7 @@ class PostAdapter(
         val editado = AvisoEdicion.texto(item.editadoPor, item.editadoCuando, item.author)
         h.editado.text = editado
         h.editado.visibility = if (editado.isEmpty()) View.GONE else View.VISIBLE
+        bindNota(h, item)
         // Nombre y avatar abren el perfil ajeno, pero solo si conocemos el uid real
         // (anónimos/baneados quedan sin clic, sin gestos fantasma).
         val hasProfile = item.uid.isNotEmpty()
@@ -864,6 +872,27 @@ class PostAdapter(
         h.menu.visibility = View.VISIBLE
         h.menu.setOnClickListener { onMenu(item, h.menu) }
         engancharGestos(h.content, h, item)
+    }
+
+    /** La línea de la nota privada bajo el nick: visible solo si hay nota; tocarla la edita. */
+    private fun bindNota(h: Holder, item: PostItem) {
+        val t = notaDe(item)
+        if (t.isEmpty()) {
+            h.nota.visibility = View.GONE
+            h.nota.text = ""
+            h.nota.setOnClickListener(null)
+            h.nota.isClickable = false
+        } else {
+            h.nota.text = "📝  $t" // 📝 + la nota
+            h.nota.visibility = View.VISIBLE
+            h.nota.isClickable = true
+            h.nota.setOnClickListener { onNota(item, h.nota) }
+        }
+    }
+
+    /** Tras editar una nota: refresca solo las líneas de nota visibles (payload ligero, sin recargar fotos). */
+    fun refrescarNotas() {
+        if (items.isNotEmpty()) notifyItemRangeChanged(0, items.size, SoloNota)
     }
 
     /**

@@ -152,6 +152,17 @@ class MainActivity : AppCompatActivity() {
     private var threadForumFid = 0
     private var threadForumName = ""
     private lateinit var postAdapter: PostAdapter
+
+    /** Notas privadas sobre usuarios (solo en este móvil, nunca a FC). Ver [NotasUsuario]. */
+    private val notas: NotasUsuario by lazy {
+        val sp = getSharedPreferences("notas_usuario", MODE_PRIVATE)
+        NotasUsuario(object : NotasUsuario.Almacen {
+            override fun leer(clave: String): String? = sp.getString(clave, null)
+            override fun escribir(clave: String, valor: String?) {
+                sp.edit().apply { if (valor == null) remove(clave) else putString(clave, valor) }.apply()
+            }
+        })
+    }
     /** La lupa del hilo (ver [BuscarEnPaginaController]). Se crea con la lista de posts. */
     private lateinit var buscador: BuscarEnPaginaController
 
@@ -4346,7 +4357,10 @@ class MainActivity : AppCompatActivity() {
                 if (post.uid.isNotEmpty()) showMemberProfile(post.uid, post.avatar, conectado = post.conectado)
             },
             onEmbedFullscreen = { view, cb -> onEmbedFullscreen(view, cb) },
-            onImageClick = { url -> abrirVisorImagen(url) }
+            onImageClick = { url -> abrirVisorImagen(url) },
+            // Nota privada sobre el autor: la línea bajo el nick y el bocadillo para editarla.
+            notaDe = { post -> notas.get(post.uid, post.author) },
+            onNota = { post, anchor -> abrirNotaBubble(post, anchor) }
         )
         // Pulgar de scroll de tamaño fijo: ver FixedThumbLayoutManager.
         val lm = FixedThumbLayoutManager(this)
@@ -5065,6 +5079,12 @@ class MainActivity : AppCompatActivity() {
                 menu.menu.add(0, 5, 1, "Ignorar a ${post.author}")
             }
         }
+        // Nota privada sobre el autor (solo en este móvil): crear o editar. Va con las acciones
+        // del autor; no tiene sentido en los mensajes propios.
+        if (!post.own && (post.author.isNotEmpty() || post.uid.isNotEmpty())) {
+            val etiqueta = if (notas.hay(post.uid, post.author)) "Editar nota sobre ${post.author}" else "Nota sobre ${post.author}"
+            menu.menu.add(0, 8, 2, etiqueta)
+        }
         // Compartir vale para cualquier mensaje, propio o ajeno: va el último para no mover
         // de sitio las opciones que la gente ya tiene aprendidas.
         menu.menu.add(0, 7, 7, "Ver solo sus mensajes")
@@ -5079,10 +5099,42 @@ class MainActivity : AppCompatActivity() {
                 5 -> { confirmarIgnorar(post.author); true }
                 6 -> { copiarMensaje(post); true }
                 7 -> { mostrarSusMensajesEnHilo(post.author, currentThreadTid); true }
+                8 -> { abrirNotaBubble(post, anchor); true }
                 else -> false
             }
         }
         menu.show()
+    }
+
+    /**
+     * Bocadillo para escribir/editar la nota privada sobre el autor de un post. Se guarda al tocar
+     * fuera (o cerrarlo): un texto vacío borra la nota. Todo local, nunca viaja a ForoCoches.
+     */
+    private fun abrirNotaBubble(post: PostItem, anchor: View) {
+        if (post.author.isEmpty() && post.uid.isEmpty()) return
+        val v = layoutInflater.inflate(R.layout.bubble_nota, null)
+        v.findViewById<android.widget.TextView>(R.id.nota_titulo).text =
+            if (post.author.isNotEmpty()) "Nota sobre @${post.author}" else "Nota"
+        val edit = v.findViewById<EditText>(R.id.nota_edit)
+        edit.setText(notas.get(post.uid, post.author))
+        edit.setSelection(edit.text.length)
+        val ancho = (resources.displayMetrics.widthPixels * 0.84f).toInt()
+        val pop = android.widget.PopupWindow(v, ancho, android.view.ViewGroup.LayoutParams.WRAP_CONTENT, true)
+        pop.isOutsideTouchable = true
+        pop.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
+        pop.inputMethodMode = android.widget.PopupWindow.INPUT_METHOD_NEEDED
+        pop.softInputMode = android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE
+        pop.setOnDismissListener {
+            notas.poner(post.uid, post.author, edit.text.toString())
+            postAdapter.refrescarNotas()
+        }
+        pop.showAsDropDown(anchor, 0, 0, android.view.Gravity.END)
+        // El teclado no sale justo al poner la vista visible (gotcha): un pequeño retardo.
+        edit.postDelayed({
+            edit.requestFocus()
+            (getSystemService(INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager)
+                .showSoftInput(edit, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+        }, 150)
     }
 
     /**

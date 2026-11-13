@@ -102,6 +102,24 @@
             android:visibility="gone" />
     </LinearLayout>
 
+    <!-- Nota privada sobre el autor (solo en este móvil). Oculta si no hay nota; tocarla la edita.
+         La pinta y engancha PostAdapter.bindNota. -->
+    <TextView
+        android:id="@+id/post_nota"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:paddingStart="10dp"
+        android:paddingEnd="10dp"
+        android:paddingTop="6dp"
+        android:paddingBottom="6dp"
+        android:background="@drawable/bg_nota"
+        android:textSize="13sp"
+        android:textColor="@color/fc_texto_2"
+        android:maxLines="4"
+        android:ellipsize="end"
+        android:visibility="gone" />
+
     <TextView
         android:id="@+id/post_content"
         android:layout_width="match_parent"
