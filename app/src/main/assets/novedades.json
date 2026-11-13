@@ -1,6 +1,16 @@
 {
   "versiones": [
     {
+      "code": 56,
+      "nombre": "1.17.0",
+      "fecha": "2026-11-14",
+      "notas": [
+        "Notas sobre usuarios: apúntate lo que quieras de alguien desde el menú de su mensaje (\"Nota sobre @…\"). Se ve bajo su nombre en todos sus mensajes y solo la ves tú: se guarda en tu móvil y nunca llega a ForoCoches",
+        "Reportar vuelve a funcionar bien: la app ya no se queda enseñando la página de ForoCoches a mitad de reporte ni lo pierde por el camino",
+        "Lo mismo al iniciar sesión cuando ForoCoches pide la verificación de Cloudflare"
+      ]
+    },
+    {
       "code": 55,
       "nombre": "1.16.1",
       "fecha": "2026-11-07",
