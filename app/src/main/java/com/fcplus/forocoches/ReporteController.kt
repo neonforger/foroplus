@@ -151,37 +151,50 @@ class ReporteController(
 
         wv.loadUrl("https://forocoches.com/foro/report.php?do=report&p=${post.pid}")
         val started = System.currentTimeMillis()
+        // El sondeo va por RELOJ y la tapa solo se quita con una respuesta reciente que vea el
+        // challenge: un callback de evaluateJavascript que no vuelve ya no deja el foro a la
+        // vista ni el reporte sin enviar (VigiaVerificacion, 2026-11-13).
+        val vigia = VigiaVerificacion(inicio = started)
         var submitted = false
         var ultimoEstado = ""
         val poll = object : Runnable {
             override fun run() {
                 val w = reportWeb ?: return
-                w.evaluateJavascript(
-                    """(function(){
-                        var b=document.body?document.body.innerText:'';
-                        var cf=/Un momento|Just a moment|Verificaci.n de seguridad|Verifique que/i.test((document.title||'')+b);
-                        var form=!!document.querySelector('textarea[name="reason"]');
-                        return JSON.stringify({cf:cf,form:form});
-                    })()"""
-                ) { res ->
-                    val r = try {
-                        val inner = org.json.JSONTokener(res).nextValue() as? String
-                        if (inner != null) org.json.JSONObject(inner) else null
-                    } catch (e: Exception) { null }
-                    val cf = r?.optBoolean("cf") == true
-                    val form = r?.optBoolean("form") == true
-                    val elapsed = System.currentTimeMillis() - started
-                    // Cover ARRIBA salvo cuando hay CF interactivo (y aún no cayó el form): solo
-                    // entonces se baja para que el usuario pulse la casilla del Cloudflare.
-                    reportCover?.visibility = if (cf && !form) View.GONE else View.VISIBLE
-                    val estado = "cf=$cf form=$form capa=${if (cf && !form) "bajada" else "puesta"}"
-                    if (estado != ultimoEstado) { ultimoEstado = estado; log("${elapsed} ms: $estado ($res)") }
-                    when {
-                        form && !submitted -> { submitted = true; onReportFormReady(post, reason, comment) }
-                        elapsed > 90000 -> { toast("No se pudo completar la verificación"); cerrar() }
-                        else -> reportHandler.postDelayed(this, 150)
-                    }
+                val ahora = System.currentTimeMillis()
+                if (vigia.agotado(ahora)) { toast("No se pudo completar la verificación"); cerrar(); return }
+                reportCover?.visibility = if (vigia.tapaPuesta(ahora)) View.VISIBLE else View.GONE
+                val perdidasAntes = vigia.perdidas
+                vigia.siguientePregunta(ahora)?.let { pregunta ->
+                    if (vigia.perdidas > perdidasAntes) log("${ahora - started} ms: la pregunta anterior no contestó; se repite (perdidas: ${vigia.perdidas})")
+                    w.evaluateJavascript(
+                        """(function(){
+                            var b=document.body?document.body.innerText:'';
+                            var cf=/Un momento|Just a moment|Verificaci.n de seguridad|Verifique que/i.test((document.title||'')+b);
+                            var form=!!document.querySelector('textarea[name="reason"]');
+                            return JSON.stringify({cf:cf,form:form,url:location.href,title:(document.title||'')});
+                        })()"""
+                    ) { res -> alResponder(w, pregunta, res) }
                 }
+                reportHandler.postDelayed(this, 150)
+            }
+
+            private fun alResponder(w: android.webkit.WebView, pregunta: Int, res: String?) {
+                if (reportWeb !== w || submitted) return
+                val r = try {
+                    val inner = org.json.JSONTokener(res).nextValue() as? String
+                    if (inner != null) org.json.JSONObject(inner) else null
+                } catch (e: Exception) { null }
+                val cf = r?.optBoolean("cf") == true
+                val form = r?.optBoolean("form") == true
+                val ahora = System.currentTimeMillis()
+                if (!vigia.respuesta(pregunta, ahora, cf, form)) return
+                // Tapa ARRIBA salvo con CF interactivo y sin form: solo entonces se baja para
+                // que el usuario pulse la casilla del Cloudflare.
+                val tapa = vigia.tapaPuesta(ahora)
+                reportCover?.visibility = if (tapa) View.VISIBLE else View.GONE
+                val estado = "cf=$cf form=$form capa=${if (tapa) "puesta" else "bajada"}"
+                if (estado != ultimoEstado) { ultimoEstado = estado; log("${ahora - started} ms: $estado ($res)") }
+                if (vigia.formulario) { submitted = true; onReportFormReady(post, reason, comment) }
             }
         }
         reportPoll = poll

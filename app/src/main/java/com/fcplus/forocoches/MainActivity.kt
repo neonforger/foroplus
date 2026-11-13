@@ -5835,12 +5835,29 @@ class MainActivity : AppCompatActivity() {
 
         wv.loadUrl("https://forocoches.com/foro/login.php")
         val empezo = System.currentTimeMillis()
+        // Sondeo por RELOJ y tapa solo con una respuesta reciente que vea el challenge: un
+        // callback de evaluateJavascript que no vuelve dejaba la tapa quitada con el foro a la
+        // vista y sin plazo (lo mismo que en reportar; VigiaVerificacion, 2026-11-13).
+        val vigia = VigiaVerificacion(inicio = empezo)
         var reintentado = false
         var ultimoTramoLog = -1L
         val poll = object : Runnable {
             override fun run() {
                 val w = loginCfWeb ?: return
-                w.evaluateJavascript(
+                val ahora = System.currentTimeMillis()
+                if (vigia.agotado(ahora)) {
+                    cerrarVerificacionLogin()
+                    loginError.text = ErrorLogin.mensaje("cloudflare")
+                    loginError.visibility = View.VISIBLE
+                    return
+                }
+                loginCfCover?.visibility = if (vigia.tapaPuesta(ahora)) View.VISIBLE else View.GONE
+                val perdidasAntes = vigia.perdidas
+                val pregunta = vigia.siguientePregunta(ahora)
+                if (vigia.perdidas > perdidasAntes) {
+                    android.util.Log.i("FC_LOGINCF", "t=${ahora - empezo}ms la pregunta anterior no contestó; se repite")
+                }
+                if (pregunta != null) w.evaluateJavascript(
                     """(function(){
                         var b=document.body?document.body.innerText:'';
                         var cf=/Un momento|Just a moment|Verificaci.n de seguridad|Verifique que|Attention Required/i.test((document.title||'')+b);
@@ -5851,6 +5868,7 @@ class MainActivity : AppCompatActivity() {
                             txt:b.replace(/\s+/g,' ').slice(0,220)});
                     })()"""
                 ) { res ->
+                    if (loginCfWeb !== w || reintentado) return@evaluateJavascript
                     val r = try {
                         val inner = org.json.JSONTokener(res).nextValue() as? String
                         if (inner != null) org.json.JSONObject(inner) else null
@@ -5859,7 +5877,9 @@ class MainActivity : AppCompatActivity() {
                     val form = r?.optBoolean("form") == true
                     val url = r?.optString("url").orEmpty()
                     val txt = r?.optString("txt").orEmpty()
-                    val pasado = System.currentTimeMillis() - empezo
+                    val alResponder = System.currentTimeMillis()
+                    if (!vigia.respuesta(pregunta, alResponder, cf, form)) return@evaluateJavascript
+                    val pasado = alResponder - empezo
                     // ÉXITO = el desafío ya no está, estemos donde estemos.
                     //
                     // Esperar a ver el formulario de login era el fallo: medido el 2026-09-11
@@ -5880,21 +5900,14 @@ class MainActivity : AppCompatActivity() {
                     }
                     // La tapa solo se baja con Cloudflare interactivo y sin formulario todavía:
                     // es la única ventana en la que el foro puede verse, y es a propósito.
-                    loginCfCover?.visibility = if (cf && !form) View.GONE else View.VISIBLE
-                    when {
-                        verificado && !reintentado -> {
-                            reintentado = true
-                            cerrarVerificacionLogin()
-                            submitLogin()
-                        }
-                        pasado > 90_000 -> {
-                            cerrarVerificacionLogin()
-                            loginError.text = ErrorLogin.mensaje("cloudflare")
-                            loginError.visibility = View.VISIBLE
-                        }
-                        else -> reportHandler.postDelayed(this, 150)
+                    loginCfCover?.visibility = if (vigia.tapaPuesta(alResponder)) View.VISIBLE else View.GONE
+                    if (verificado) {
+                        reintentado = true
+                        cerrarVerificacionLogin()
+                        submitLogin()
                     }
                 }
+                reportHandler.postDelayed(this, 150)
             }
         }
         loginCfPoll = poll
