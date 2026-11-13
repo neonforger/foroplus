@@ -146,11 +146,17 @@ export const claveCorazones = (cuentaId: string): string => "corazon:" + cuentaI
 
 /**
  * Quita del cartel de "la más querida" lo de una cuenta (al borrarla o banearla): por la columna
- * `cuenta` (desde 0006) o, en las filas de antes, por el nombre del autor. Va en el batch ANTES de
- * borrar o vaciar la fila de `cuentas`, que es de donde sale el nombre.
+ * `cuenta` (desde 0006) o, SOLO en las filas de antes (sin `cuenta`), por el nombre del autor. Va
+ * en el batch ANTES de borrar o vaciar la fila de `cuentas`, que es de donde sale el nombre.
+ * El `cuenta IS NULL` de la rama por nombre es imprescindible: sin él, una cuenta cuyo nombre de FC
+ * coincida con el `autor` de una fila CON dueño (p. ej. un nombre reutilizado en FC) borraría la fila
+ * de OTRA cuenta — un borrado entre cuentas gobernado por el nombre, no por el token.
  */
 export function borrarMasQuerida(db: D1Database, cuentaId: string): D1PreparedStatement {
   return db
-    .prepare("DELETE FROM mas_querida WHERE cuenta = ?1 OR autor = (SELECT nombre FROM cuentas WHERE id = ?1 AND nombre <> '')")
+    .prepare(
+      "DELETE FROM mas_querida WHERE cuenta = ?1 OR " +
+        "(cuenta IS NULL AND autor = (SELECT nombre FROM cuentas WHERE id = ?1 AND nombre <> ''))",
+    )
     .bind(cuentaId);
 }

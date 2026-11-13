@@ -6,8 +6,9 @@ import { cuentaDe, permisoVoto, yo } from "../auth";
 import { cancionDeOrigen, cancionPub, type FilaCancion } from "../canciones";
 import { nuevoId } from "../cripto";
 import {
-  claveCorazones, claveTope, codificar, CORAZONES_DIA, decodificar, ESPERA_CONVERSION_MS, itemFeed, POR_PAGINA, PUBLICACIONES_DIA, RE_ENLACE,
-  SELECT_FEED, TEXTO_MAX, VENTANA_TOPE_S, VIDA_MS, VISIBLE, VISIBLE_FEED, type FilaFeed, type ItemFeed, type MasQuerida,
+  claveCorazones, claveTope, codificar, CORAZONES_DIA, decodificar, ESPERA_CONVERSION_MS, itemFeed, POR_PAGINA, PUBLICACIONES_DIA,
+  publicacionesRestantes, RE_ENLACE, SELECT_FEED, TEXTO_MAX, VENTANA_TOPE_S, VIDA_MS, VISIBLE, VISIBLE_FEED,
+  type FilaFeed, type ItemFeed, type MasQuerida,
 } from "../feed";
 import { cuerpoJson, error, json } from "../http";
 import { permitido, puedeMontarTarjeta } from "../limites";
@@ -35,6 +36,10 @@ async function publicar(c: Contexto, o: OpcionesApp): Promise<Response> {
   const texto = crudo.trim();
   const largo = [...texto].length;
   if (largo < 1 || largo > TEXTO_MAX || RE_ENLACE.test(texto) || !nombreAceptable(texto)) return error("texto", 422);
+  // El tope del día se MIRA (sin gastarlo) ANTES de montar la tarjeta: con el cupo agotado no se sale a
+  // la red a terceros ni se guarda una canción nueva. El gasto real —atómico, contra la carrera— sigue
+  // el ÚLTIMO, solo en el camino de éxito, para que un montaje fallido no gaste cupo (igual que antes).
+  if ((await publicacionesRestantes(d.db, cuenta.id, ahora)) <= 0) return error("limite", 429);
   const r = await cancionDeOrigen(d, conDeezer ? { deezer: deezer as number } : { enlace: enlace as string }, () =>
     puedeMontarTarjeta(d.db, cuenta.id, ahora, o.tarjetasHora),
   );
