@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Bocadillo para escribir una nota privada sobre un usuario. Se abre desde el menú del post o
+     tocando la nota ya puesta; se guarda al tocar fuera (lo gestiona MainActivity.abrirNotaBubble). -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/bg_bubble"
+    android:elevation="10dp"
+    android:padding="16dp">
+
+    <TextView
+        android:id="@+id/nota_titulo"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:textColor="@color/fc_texto"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:layout_marginBottom="8dp" />
+
+    <EditText
+        android:id="@+id/nota_edit"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_campo"
+        android:padding="12dp"
+        android:gravity="top|start"
+        android:minLines="2"
+        android:maxLines="6"
+        android:maxLength="500"
+        android:inputType="textMultiLine|textCapSentences"
+        android:hint="Escribe una nota privada…"
+        android:textColorHint="@color/fc_texto_3"
+        android:textColor="@color/fc_texto"
+        android:textSize="14sp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Se guarda al tocar fuera · solo en tu móvil"
+        android:textSize="11sp"
+        android:textColor="@color/fc_texto_3"
+        android:layout_marginTop="8dp" />
+
+</LinearLayout>

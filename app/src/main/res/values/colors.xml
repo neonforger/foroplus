@@ -107,5 +107,8 @@
     <color name="fc_cita_fondo_tarjeta">#F4F4F6</color>
     <!-- Rojo suave: cuadrito del sobre sin leer y pastilla del icono activo. -->
     <color name="fc_rojo_suave">#FBE9EC</color>
+    <!-- Fondo de la nota privada bajo el nick (tinte ámbar translúcido, "post-it"). -->
+    <color name="fc_nota_fondo">#1FE0A020</color>
+
 
 </resources>
