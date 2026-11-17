@@ -1,6 +1,23 @@
 {
   "versiones": [
     {
+      "code": 57,
+      "nombre": "1.18.0",
+      "fecha": "2026-11-17",
+      "notas": [
+        "Historial: los últimos 30 hilos que has abierto, para volver a cualquiera de un toque. Está en tu panel (toca tu avatar) y se guarda solo en tu móvil",
+        "Tira hacia arriba al final de la última página de un hilo para ver si han escrito más, sin salir del hilo ni volver arriba del todo",
+        "Contactos: añade o quita a alguien de tus contactos de ForoCoches desde su ficha o desde el menú de un mensaje, y elígelo de tu lista al escribir un privado",
+        "Lupa en la actividad de un usuario: busca dentro de sus mensajes, de los títulos de sus hilos o de los hilos en los que participa",
+        "Búsquedas más fluidas: las páginas de resultados se van cargando solas mientras lees, y si ForoCoches frena las búsquedas la app te dice cuándo volver a probar en vez de quedarse en blanco",
+        "Modo oscuro a tu gusto: gris (el de siempre), oscuro o negro puro, en Opciones → Apariencia",
+        "Música: ya puede compartir canciones cualquiera, sin mínimo de antigüedad de la cuenta, y la pestaña se puede esconder o mover desde Opciones → Personalizar → Subforos de arriba",
+        "Al citar varios mensajes a la vez, puedes contestar debajo de cada cita por separado: Opciones → Al publicar → Responder bajo cada cita",
+        "Si acabas de instalar la app, una introducción rápida con lo más útil. Puedes volver a verla cuando quieras desde Opciones → Ver la introducción",
+        "Arreglos: un hilo borrado ya no vuelve a aparecer cada vez que das atrás, y al volver a los mensajes o hilos de un usuario sigues donde estabas"
+      ]
+    },
+    {
       "code": 56,
       "nombre": "1.17.0",
       "fecha": "2026-11-14",
