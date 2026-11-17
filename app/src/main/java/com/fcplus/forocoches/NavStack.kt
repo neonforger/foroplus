@@ -137,6 +137,18 @@ class NavStack(private val maxDepth: Int = 20) {
         return entries.last()
     }
 
+    /**
+     * Un hilo que no se pudo abrir (borrado, vacío) y del que se vuelve a la lista: se quita de
+     * la pila. Si se quedaba, el siguiente hilo se apilaba ENCIMA y su "atrás" volvía a abrir el
+     * borrado, con su aviso, una y otra vez (Miguel, 2026-11-14). Si el hilo era la raíz (abierto
+     * desde un enlace de fuera), se cambia por [lista], la que queda a la vista. Devuelve si tocó algo.
+     */
+    fun quitarHiloFallido(lista: Screen): Boolean {
+        if (entries.lastOrNull() !is Screen.Thread) return false
+        if (entries.size > 1) entries.removeAt(entries.size - 1) else entries[0] = lista
+        return true
+    }
+
     /** Estado completo, de la raíz a la actual (para depurar y para los tests). */
     fun snapshot(): List<Screen> = entries.toList()
 }

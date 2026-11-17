@@ -14,6 +14,35 @@ class NavStackTest {
     private val perfil = Screen.Member("908941")
 
     @Test
+    fun `el caso de Miguel - un hilo borrado no se queda en la pila y el atras del siguiente vuelve a la lista`() {
+        val nav = NavStack()
+        nav.root(inicio)
+        nav.push(hilo)                       // FC dice "Ningún Tema especificado"
+        assertTrue(nav.quitarHiloFallido(inicio))  // y la app vuelve a la lista
+        val otro = Screen.Thread("https://forocoches.com/foro/showthread.php?t=2", 1)
+        nav.push(otro)
+        assertEquals(inicio, nav.pop())      // antes devolvía el borrado y saltaba el aviso
+    }
+
+    @Test
+    fun `quitar un hilo fallido no toca lo que no es un hilo`() {
+        val nav = NavStack()
+        nav.root(inicio)
+        assertFalse(nav.quitarHiloFallido(inicio))
+        nav.push(perfil)
+        assertFalse(nav.quitarHiloFallido(inicio))
+        assertEquals(listOf(inicio, perfil), nav.snapshot())
+    }
+
+    @Test
+    fun `un hilo borrado abierto desde fuera, como raiz, se cambia por la lista que queda a la vista`() {
+        val nav = NavStack()
+        nav.root(hilo)
+        assertTrue(nav.quitarHiloFallido(inicio))
+        assertEquals(listOf(inicio), nav.snapshot())
+    }
+
+    @Test
     fun `recien creada no tiene nada y el atras sale de la app`() {
         val nav = NavStack()
         assertNull(nav.current)

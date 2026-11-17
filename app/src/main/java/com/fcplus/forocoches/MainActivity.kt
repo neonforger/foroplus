@@ -7333,7 +7333,7 @@ class MainActivity : AppCompatActivity() {
                 // una página cargada (pasando de página) se queda a la vista para seguir
                 // leyéndola; si no, de vuelta a la lista.
                 toast("Este hilo ya no existe: lo han borrado")
-                if (postAdapter.itemCount == 0) showNative()
+                if (postAdapter.itemCount == 0) { nav.quitarHiloFallido(Screen.ThreadList(listSource, currentForumId)); showNative() }
             }
             else -> {
                 android.util.Log.w("FC_SHELL", "thread error: $reason (styleid=$skinStyleid)")
@@ -7348,6 +7348,7 @@ class MainActivity : AppCompatActivity() {
                     // el HTML no es el que sabemos leer. Decirlo, en vez del genérico "no se
                     // pudo cargar", que es lo que dejó a un tester a ciegas.
                     toast(skinWarning() ?: "No se pudo cargar el hilo")
+                    nav.quitarHiloFallido(Screen.ThreadList(listSource, currentForumId))   // ver NavStack.quitarHiloFallido: si no, el atrás lo reabre
                     showNative()
                 }
             }
