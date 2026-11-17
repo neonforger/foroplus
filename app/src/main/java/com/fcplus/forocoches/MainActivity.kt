@@ -1740,7 +1740,18 @@ class MainActivity : AppCompatActivity() {
         if (usuario.isEmpty()) { toast("Todavía no sé quién es este usuario"); return }
         if (!isLoggedIn()) { showLogin(); return }
         if (remember) nav.push(Screen.UserActivity(usuario, modo, enHilo))
-        reiniciarPaginacionMensajes()
+        // Volviendo (atrás) a la MISMA actividad aún cargada no se pide nada: la lista conserva
+        // sus páginas y su scroll (ver Restauracion.hayQueRehacerActividad).
+        val claveCargada = when {
+            modo == "posts" && currentNoticesKind == "userposts" -> Restauracion.claveActividad(actividadUsuario, "posts", actividadEnHilo)
+            modo != "posts" && (listSource == "user-started" || listSource == "user-threads") ->
+                Restauracion.claveActividad(actividadUsuario, actividadModo, actividadEnHilo)
+            else -> null
+        }
+        val hayFilas = if (modo == "posts") noticeAdapter.itemCount > 0 else listLoaded && adapter.itemCount > 0
+        val rehacer = remember || Restauracion.hayQueRehacerActividad(
+            Restauracion.claveActividad(usuario, modo, enHilo), claveCargada, hayFilas)
+        if (rehacer) reiniciarPaginacionMensajes() else restaurarNoticias = false
         actividadUsuario = usuario
         actividadModo = modo
         actividadEnHilo = enHilo
@@ -1765,6 +1776,7 @@ class MainActivity : AppCompatActivity() {
             bottomNav.visibility = View.VISIBLE
             noticesHeader.text =
                 if (enHilo.isEmpty()) "@$usuario · mensajes" else "@$usuario · en este hilo"
+            if (!rehacer) { noticesLoading.visibility = View.GONE; return }
             noticeAdapter.submit(emptyList())
             noticesEmpty.visibility = View.GONE
             noticesLoading.visibility = View.VISIBLE
@@ -1781,6 +1793,7 @@ class MainActivity : AppCompatActivity() {
         myThreadsBase = ""
         forumTabs.visibility = View.GONE
         ponerTitulo(if (modo == "started") "@$usuario · hilos suyos" else "@$usuario · participa")
+        if (!rehacer) { showNative(); fabNewThread.visibility = View.GONE; return }
         listLoaded = false
         adapter.submit(emptyList())
         showNative()

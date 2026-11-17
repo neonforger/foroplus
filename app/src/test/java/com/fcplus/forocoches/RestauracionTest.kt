@@ -185,4 +185,27 @@ class RestauracionTest {
             )
         )
     }
+
+    // ── Actividad de un usuario (Juan, 2026-11-13) ───────────────────────────
+
+    @Test
+    fun `volver a sus mensajes con la lista aun cargada no la rehace`() {
+        val clave = Restauracion.claveActividad("Juan", "posts", "")
+        assertFalse(Restauracion.hayQueRehacerActividad(clave, clave, hayFilas = true))
+    }
+
+    @Test
+    fun `si lo cargado es otra cosa, otro usuario u otro modo, se rehace`() {
+        val clave = Restauracion.claveActividad("Juan", "posts", "")
+        assertTrue(Restauracion.hayQueRehacerActividad(clave, null, hayFilas = true))
+        assertTrue(Restauracion.hayQueRehacerActividad(clave, Restauracion.claveActividad("Miguel", "posts", ""), true))
+        assertTrue(Restauracion.hayQueRehacerActividad(clave, Restauracion.claveActividad("Juan", "started", ""), true))
+        assertTrue(Restauracion.hayQueRehacerActividad(clave, Restauracion.claveActividad("Juan", "posts", "123"), true))
+    }
+
+    @Test
+    fun `una lista vacia o que no llego a cargar se pide otra vez`() {
+        val clave = Restauracion.claveActividad("Juan", "started", "")
+        assertTrue(Restauracion.hayQueRehacerActividad(clave, clave, hayFilas = false))
+    }
 }

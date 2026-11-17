@@ -81,4 +81,20 @@ object Restauracion {
         sourceGuardado == "popurri" -> false
         else -> fidGuardado > 0 && fidGuardado != fidCargado
     }
+
+    /** La clave de una actividad de usuario ("sus mensajes", "sus hilos", "en este hilo"). */
+    fun claveActividad(usuario: String, modo: String, enHilo: String): String = "$usuario|$modo|$enHilo"
+
+    /**
+     * ¿Hay que volver a pedir la actividad de un usuario al retroceder a ella?
+     *
+     * Solo si lo que hay cargado no es ya esa actividad. Antes se rehacía SIEMPRE desde la
+     * página 1, y con el scroll infinito la fila en la que ibas ya no estaba: volvías arriba del
+     * todo cada vez que entrabas en un mensaje y dabas atrás (Juan, 2026-11-13). Si sigue
+     * cargada, la lista conserva sus páginas y su scroll tal cual.
+     *
+     * @param claveCargada null = lo que hay a la vista no es la actividad de nadie.
+     */
+    fun hayQueRehacerActividad(claveGuardada: String, claveCargada: String?, hayFilas: Boolean): Boolean =
+        !hayFilas || claveCargada != claveGuardada
 }
