@@ -672,6 +672,8 @@ class MainActivity : AppCompatActivity() {
         private const val TAG_POPURRI = -1
         private const val TAG_MAS18 = -2
         private const val TAG_MUSICA = -3
+        /** La clave de Música en el orden/ocultos de la barra de arriba (los subforos usan su fid). */
+        private const val CLAVE_MUSICA = "musica"
         private val LISTAS_DE_SUBFORO = setOf("home", "top", "popurri")
     }
 
@@ -3382,10 +3384,23 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /** Clave → nombre visible de cada elemento de la barra que se está organizando. */
+    /**
+     * Clave → nombre visible de cada elemento de la barra que se está organizando. En la de
+     * arriba, Música va como una fila más (la primera de fábrica, marcada) mientras el servidor
+     * esté encendido: se esconde y se ordena igual que un subforo (dueño, 2026-11-17).
+     */
     private fun catalogoDeBarra(nav: Boolean): List<Pair<String, String>> =
         if (nav) navClaves.map { (clave, _) -> clave to (navNombres[clave] ?: clave) }
-        else subforosConocidos.map { (fid, nombre) -> fid.toString() to nombre }
+        else (if (enganchesMusica.servidorActivo()) listOf(CLAVE_MUSICA to "Música") else emptyList()) +
+            subforosConocidos.map { (fid, nombre) -> fid.toString() to nombre }
+
+    /** Lo que cuenta para "tiene que quedar al menos uno": arriba, solo los subforos (Música no basta). */
+    private fun catalogoMinimoDeBarra(nav: Boolean): List<String> =
+        catalogoDeBarra(nav).map { it.first }.filterNot { !nav && it == CLAVE_MUSICA }
+
+    /** Índice de la pestaña Música entre lo visible de arriba, o null si está escondida o apagada. */
+    private fun indiceMusicaEnBarra(): Int? =
+        OrdenBarra.indiceVisible(catalogoDeBarra(false).map { it.first }, ordenDeBarra(false), ocultosDeBarra(false), CLAVE_MUSICA)
 
     private fun prefOrdenBarra(nav: Boolean) = if (nav) PREF_NAV_ORDEN else PREF_TABS_ORDEN
     private fun prefOcultosBarra(nav: Boolean) = if (nav) PREF_NAV_OCULTOS else PREF_TABS_OCULTOS
@@ -3448,8 +3463,11 @@ class MainActivity : AppCompatActivity() {
         if (organizandoNav) { alternarEnBarraAbajo(clave); return }
         val nav = organizandoNav
         val fijos = fijosDeBarra(nav)
-        val nuevos = OrdenBarra.alternarOculto(
-            catalogoDeBarra(nav).map { it.first }, ocultosDeBarra(nav), clave, fijos
+        val nuevos = if (!nav && clave == CLAVE_MUSICA) {
+            // Música se enciende y apaga siempre: no cuenta para "al menos uno".
+            ocultosDeBarra(nav).let { if (clave in it) it - clave else it + clave }
+        } else OrdenBarra.alternarOculto(
+            catalogoMinimoDeBarra(nav), ocultosDeBarra(nav), clave, fijos
         )
         // Un toque que no hace nada y no dice por qué es peor que no poder tocar.
         if (nuevos == null) {
@@ -4206,7 +4224,8 @@ class MainActivity : AppCompatActivity() {
         // La sección +18 apagada (Opciones o config remota) estando dentro: no hay pestaña a la
         // que volver, así que la lista pasa a Inicio ANTES de pintar.
         // Lo mismo con Música si el servidor se apaga (config remota nueva) estando dentro.
-        if ((listSource == "mas18" && configMas18() == null) || (listSource == "musica" && !enganchesMusica.servidorActivo())) {
+        // Y si la has escondido estando dentro, igual que al esconder el subforo que lees.
+        if ((listSource == "mas18" && configMas18() == null) || (listSource == "musica" && indiceMusicaEnBarra() == null)) {
             listSource = "home"
             refrescarTitulo()
             pintarBotonTop()
@@ -4253,21 +4272,24 @@ class MainActivity : AppCompatActivity() {
             idxPopurri = desplazamiento
             desplazamiento += 1
         }
-        // Música sale para todo el mundo, sin activarla en Opciones (spec), mientras el servidor esté
-        // encendido en la config: Música es solo el feed y sin servidor no hay nada que enseñar.
-        val hayMusica = enganchesMusica.servidorActivo()
-        val idxMusica = if (hayMusica) desplazamiento else -1
-        if (hayMusica) {
+        // Música sale para todo el mundo mientras el servidor esté encendido en la config (sin
+        // servidor no hay nada que enseñar), salvo que la hayas desmarcado en "Subforos de arriba".
+        // Se ordena junto a los subforos: [posMusica] es delante de qué subforo visible va.
+        val posMusica = indiceMusicaEnBarra()
+        var idxMusica = -1
+        val ponerMusica = {
+            idxMusica = forumTabs.tabCount
             forumTabs.addTab(forumTabs.newTab().setText("Música").also { it.tag = TAG_MUSICA }, false)
-            desplazamiento += 1
         }
         val enSeccion = listSource == "popurri" || listSource == "mas18" || listSource == "musica"
         visibles.forEachIndexed { idx, f ->
+            if (idx == posMusica) ponerMusica()
             val tab = forumTabs.newTab().setText(f.name)
             tab.tag = f.fid
             forumTabs.addTab(tab, false)
-            if (f.fid == currentForumId && !enSeccion) selectIdx = idx + desplazamiento
+            if (f.fid == currentForumId && !enSeccion) selectIdx = forumTabs.tabCount - 1
         }
+        if (posMusica != null && idxMusica < 0) ponerMusica()   // detrás de todos los subforos
         sitios.tabTemporalFid = BarraTemporal.NINGUNO
         if (temporal != null) {
             forumTabs.addTab(forumTabs.newTab().setText(temporal.name).also { it.tag = temporal.fid }, false)

@@ -66,6 +66,14 @@ object OrdenBarra {
         return m
     }
 
+    /**
+     * Dónde cae [clave] entre lo que se ve: su índice en [visibles], o null si está oculta o no
+     * está en el catálogo. Lo usa la pestaña de Música, que se organiza junto a los subforos pero
+     * se pinta aparte: este índice dice delante de qué subforo visible va.
+     */
+    fun indiceVisible(catalogo: List<String>, orden: List<String>, ocultos: Set<String>, clave: String): Int? =
+        visibles(catalogo, orden, ocultos).indexOf(clave).takeIf { it >= 0 }
+
     fun leer(csv: String): List<String> =
         csv.split(',').map { it.trim() }.filter { it.isNotEmpty() }.distinct()
 

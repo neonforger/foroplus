@@ -121,6 +121,30 @@ class OrdenBarraTest {
         assertEquals(listOf("2"), OrdenBarra.leer(",2, ,"))
     }
 
+    // ── Música entre los subforos ─────────────────────────────────────────────
+
+    @Test
+    fun `Música va la primera de fábrica y se ve`() {
+        val cat = listOf("musica", "2", "17")
+        assertEquals(0, OrdenBarra.indiceVisible(cat, emptyList(), emptySet(), "musica"))
+    }
+
+    @Test
+    fun `Música arrastrada detrás de un subforo cae detrás de él`() {
+        val cat = listOf("musica", "2", "17")
+        assertEquals(1, OrdenBarra.indiceVisible(cat, listOf("2", "musica", "17"), emptySet(), "musica"))
+        // Si el subforo de delante se esconde, Música sube un puesto.
+        assertEquals(0, OrdenBarra.indiceVisible(cat, listOf("2", "musica", "17"), setOf("2"), "musica"))
+    }
+
+    @Test
+    fun `Música escondida no tiene sitio`() {
+        val cat = listOf("musica", "2", "17")
+        assertEquals(null, OrdenBarra.indiceVisible(cat, emptyList(), setOf("musica"), "musica"))
+        // Sin servidor no está en el catálogo: tampoco.
+        assertEquals(null, OrdenBarra.indiceVisible(listOf("2", "17"), emptyList(), emptySet(), "musica"))
+    }
+
     @Test
     fun `una preferencia con repetidos no duplica pestañas`() {
         assertEquals(listOf("2", "17"), OrdenBarra.leer("2,17,2"))
