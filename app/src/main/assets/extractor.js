@@ -2443,6 +2443,103 @@
   window.fcIgnoreAdd = function (usuario) { ignoreWrite('add', usuario); };
   window.fcIgnoreRemove = function (usuario) { ignoreWrite('remove', usuario); };
 
+  // ── Contactos de la cuenta (la "buddy list" de vBulletin) ──────────────────
+  // Medido por CDP el 2026-11-17 (solo GET):
+  //  · La lista vive en profile.php?do=buddylist: mismo molde que la de ignorados
+  //    (#buddylist_change_form con las filas dentro de #buddylist, #buddylist_add_form por nombre).
+  //  · La ficha móvil de un usuario NO trae enlace de contactos (solo el de ignorar), así que
+  //    "¿ya es contacto?" se sabe leyendo la lista, no la ficha.
+  //  · profile.php?do=addlist&userlist=buddy&u=UID (GET) pinta una confirmación ("¿Estás seguro
+  //    que quieres agregar a X a tus Contactos?") con un form POST a do=doaddlist que lleva
+  //    securitytoken, do, userlist=buddy, userid y url, y dos submits: confirm=Si / deny=No.
+  //    do=removelist es idéntico con do=doremovelist.
+  // Se va por la confirmación (por uid) y no por el formulario de nombre: el uid es inequívoco
+  // y es lo mismo que haría quien pulsa "Sí" en la web. La lista se entrega en HTML CRUDO y la
+  // parsea Kotlin (ContactosParser), igual que la de ignorados.
+  function contactosDoc() {
+    return fetch('https://forocoches.com/foro/profile.php?do=buddylist&_fp=' + Date.now(),
+      { credentials: 'same-origin' }).then(function (r) { return r.text(); });
+  }
+
+  // El formulario de confirmación de FC para ESE uid y ESA lista, o null. Se comprueba el
+  // userid del propio form: si FC cambia la página, mejor no enviar nada que enviar otra cosa.
+  function formConfirmarLista(doc, accion, uid, lista) {
+    var fs = [].slice.call(doc.querySelectorAll('form'));
+    for (var i = 0; i < fs.length; i++) {
+      var f = fs[i];
+      var d = f.querySelector('input[name="do"]');
+      var u = f.querySelector('input[name="userid"]');
+      var l = f.querySelector('input[name="userlist"]');
+      if (d && d.value === accion && u && u.value === String(uid) && l && l.value === lista) return f;
+    }
+    return null;
+  }
+
+  // El texto de error de una página de FC (#st-error-main-error-message), primera frase.
+  function errorDePagina(doc) {
+    var el = doc.querySelector('#st-error-main-error-message');
+    var txt = el ? el.textContent.replace(/\s+/g, ' ').trim() : '';
+    var punto = txt.indexOf('. ');
+    return punto > 20 ? txt.slice(0, punto + 1) : txt;
+  }
+
+  function sesionDe(doc) {
+    var tok = doc.querySelector('input[name="securitytoken"]');
+    return !!tok && tok.value !== 'guest';
+  }
+
+  window.fcLoadContactos = function () {
+    contactosDoc()
+      .then(function (html) {
+        var doc = new DOMParser().parseFromString(html, 'text/html');
+        AndroidShell.onContactos(JSON.stringify({ ok: true, session: sesionDe(doc), html: html }));
+      })
+      .catch(function (e) { AndroidShell.onContactos(JSON.stringify({ ok: false, error: String(e) })); });
+  };
+
+  function contactoWrite(accion, uid) {
+    var u = String(uid || '').trim();
+    function entrega(ok, html, error) {
+      var doc = new DOMParser().parseFromString(html || '', 'text/html');
+      AndroidShell.onContactos(JSON.stringify({
+        ok: ok, session: sesionDe(doc), html: html || '', action: accion, uid: u, error: error || ''
+      }));
+    }
+    if (!/^\d+$/.test(u) || u === '0') { entrega(false, '', 'uid'); return; }
+    var paso = accion === 'add' ? 'addlist' : 'removelist';
+    fetch('https://forocoches.com/foro/profile.php?do=' + paso + '&userlist=buddy&u=' + u +
+          '&_fp=' + Date.now(), { credentials: 'same-origin' })
+      .then(function (r) {
+        if (esChallengeCf(r)) return { err: 'cloudflare' };
+        return r.text().then(function (h0) {
+          var d0 = new DOMParser().parseFromString(h0, 'text/html');
+          if (/just a moment|attention required|un momento/i.test(d0.title || '')) return { err: 'cloudflare' };
+          var f = formConfirmarLista(d0, 'do' + paso, u, 'buddy');
+          if (!f) return { err: sesionDe(d0) ? (errorDePagina(d0) || 'no-form') : 'login' };
+          // El "Sí" es un submit (copyFormFields no los copia): se pone a mano, como lo manda
+          // el navegador al pulsarlo. El "No" (deny) NO va: vBulletin lo leería como cancelar.
+          var params = copyFormFields(f, { confirm: 'Si' }, ['deny']);
+          var action = new URL(f.getAttribute('action') || 'profile.php', 'https://forocoches.com/foro/').href;
+          return fetch(action, {
+            method: 'POST', credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: params.toString()
+          }).then(function (r) { return r.text(); }).then(function (post) { return { post: post }; });
+        });
+      })
+      .then(function (res) {
+        if (res.err) { entrega(false, '', res.err); return; }
+        // Con evidencia: Kotlin mira en la lista RECIÉN traída si quedó como debía, y si no,
+        // enseña el motivo que dio FC al enviar.
+        var motivo = errorDePagina(new DOMParser().parseFromString(res.post || '', 'text/html'));
+        return contactosDoc().then(function (h1) { entrega(true, h1, motivo); });
+      })
+      .catch(function (e) { entrega(false, '', String(e)); });
+  }
+
+  window.fcContactoAdd = function (uid) { contactoWrite('add', uid); };
+  window.fcContactoRemove = function (uid) { contactoWrite('remove', uid); };
+
   // ── Login desde UI nativa (Fase 3) ─────────────────────────────────────────
   // Mismo principio que fcSubmitReply: traemos el form REAL de login de FC, copiamos
   // sus campos (securitytoken incluido) y solo rellenamos usuario y contraseña. El

@@ -2771,18 +2771,42 @@
                     android:orientation="vertical"
                     android:padding="16dp">
 
-                    <EditText
-                        android:id="@+id/pm_compose_to"
-                        style="@style/Campo"
+                    <!-- "Para" + elegir de tus contactos de FC (ContactosController). -->
+                    <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:inputType="text"
-                        android:maxLines="1"
-                        android:textSize="15sp"
-                        android:hint="Para (usuario de ForoCoches)"
-                        android:textColor="@color/fc_texto"
-                        android:textColorHint="@color/fc_texto_3"
-                        android:importantForAutofill="no" />
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <EditText
+                            android:id="@+id/pm_compose_to"
+                            style="@style/Campo"
+                            android:layout_width="0dp"
+                            android:layout_weight="1"
+                            android:layout_height="wrap_content"
+                            android:inputType="text"
+                            android:maxLines="1"
+                            android:textSize="15sp"
+                            android:hint="Para (usuario de ForoCoches)"
+                            android:textColor="@color/fc_texto"
+                            android:textColorHint="@color/fc_texto_3"
+                            android:importantForAutofill="no" />
+
+                        <TextView
+                            android:id="@+id/pm_compose_contactos"
+                            android:layout_width="wrap_content"
+                            android:layout_height="48dp"
+                            android:layout_marginStart="8dp"
+                            android:gravity="center"
+                            android:paddingStart="8dp"
+                            android:paddingEnd="8dp"
+                            android:text="Contactos"
+                            android:textSize="14sp"
+                            android:fontFamily="sans-serif-medium"
+                            android:textColor="@color/fc_rojo"
+                            android:contentDescription="Elegir destinatario de tus contactos"
+                            android:background="?attr/selectableItemBackground" />
+                    </LinearLayout>
 
                     <EditText
                         android:id="@+id/pm_compose_subject"
@@ -3012,6 +3036,21 @@
                         style="@style/FilaEnlace"
                         android:text="Sus mensajes" />
                 </LinearLayout>
+
+                <!-- Añadir/quitar de tus contactos de FC (ContactosController). Escondido hasta
+                     que se sabe si ya lo es y solo con sesión. -->
+                <TextView
+                    android:id="@+id/member_contacto"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:layout_marginTop="8dp"
+                    android:gravity="center"
+                    android:text="Añadir a contactos"
+                    android:textSize="14sp"
+                    android:fontFamily="sans-serif-medium"
+                    android:textColor="@color/fc_texto"
+                    android:visibility="gone"
+                    android:background="?attr/selectableItemBackground" />
 
                 <!-- Ignorar desde el perfil: escribe en la lista de ForoCoches, no solo en la app. -->
                 <TextView
