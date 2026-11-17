@@ -130,6 +130,14 @@ class OptionsController(
 
         fun signatureEnabled(prefs: SharedPreferences): Boolean =
             prefs.getBoolean(ClavesPorCuenta.clave(PREF_SIGNATURE, uidActivo(prefs)), false)
+
+        /**
+         * Responder bajo cada cita al multicitar (ver [RespuestaBajoCita]). **Apagado por defecto**
+         * (dueño, 2026-11-17): la demo daba mucho peso visual al composer y no a todos les gusta
+         * (Juan en contra, Hermione y javier a favor), así que es un ajuste y no la forma de citar.
+         */
+        const val PREF_BAJO_CITA = "responder_bajo_cita"
+        fun responderBajoCita(prefs: SharedPreferences): Boolean = prefs.getBoolean(PREF_BAJO_CITA, false)
     }
 
     private val fontBarra: Slider = panel.findViewById(R.id.opt_font_barra)
@@ -147,6 +155,7 @@ class OptionsController(
     private val igInput: EditText = panel.findViewById(R.id.opt_ig_input)
     private val igChips: LinearLayout = panel.findViewById(R.id.opt_ig_chips)
     private val signSwitch: SwitchCompat = panel.findViewById(R.id.opt_sign_switch)
+    private val bajoCitaSwitch: SwitchCompat = panel.findViewById(R.id.opt_bajo_cita_switch)
     private val ultimoSwitch: SwitchCompat = panel.findViewById(R.id.opt_ultimo_switch)
     private val mas18Switch: SwitchCompat = panel.findViewById(R.id.opt_mas18_switch)
     private val ocultarMas18Switch: SwitchCompat = panel.findViewById(R.id.opt_ocultar_mas18_switch)
@@ -190,6 +199,10 @@ class OptionsController(
         // Nada que repintar: la firma solo se consulta al enviar, así que no hace falta callback.
         signSwitch.setOnCheckedChangeListener { _, checked ->
             prefs.edit().putBoolean(ClavesPorCuenta.clave(PREF_SIGNATURE, uidActivo(prefs)), checked).apply()
+        }
+        // Tampoco hay que repintar: el composer lo mira cada vez que pinta las citas.
+        bajoCitaSwitch.setOnCheckedChangeListener { _, checked ->
+            prefs.edit().putBoolean(PREF_BAJO_CITA, checked).apply()
         }
         ultimoSwitch.setOnCheckedChangeListener { _, checked ->
             if (checked == ultimoEnLista(prefs)) return@setOnCheckedChangeListener   // lo pinta bind()
@@ -335,6 +348,7 @@ class OptionsController(
         titleBarra.value = tituloSpEntero(prefs).toFloat()
         pintarPrevia()
         signSwitch.isChecked = signatureEnabled(prefs)
+        bajoCitaSwitch.isChecked = responderBajoCita(prefs)
         ultimoSwitch.isChecked = ultimoEnLista(prefs)
         mas18Switch.isChecked = mas18Activa(prefs)
         ocultarMas18Switch.isChecked = ocultarMas18(prefs)

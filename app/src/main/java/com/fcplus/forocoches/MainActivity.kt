@@ -229,6 +229,8 @@ class MainActivity : AppCompatActivity() {
      * sobreviviría ni a cerrar el panel de respuesta.
      */
     private val replyQuoteEdits = HashMap<String, String>()
+    /** pid → lo escrito en el hueco bajo esa cita (ajuste "Responder bajo cada cita"). */
+    private val respuestasBajoCita = HashMap<String, String>()
 
     // ── Editor BBCode + smilies (Bloque A) ──
     private lateinit var bbcode: BbcodeEditor
@@ -4746,6 +4748,7 @@ class MainActivity : AppCompatActivity() {
         replyInput.setText("")
         replyQuotes.keys.retainAll(viajan)
         replyQuoteEdits.keys.retainAll(viajan)
+        respuestasBajoCita.clear()   // es texto escrito, y el texto no viaja de hilo (ver CitasPendientes)
         citasProvisionales.clear()
         quotesThreadTid = ""
         citasCambiadas()
@@ -4805,7 +4808,7 @@ class MainActivity : AppCompatActivity() {
     /** "+" en un post: alterna su cita en la respuesta en curso (sin abrir el panel). */
     private fun toggleMultiquote(post: PostItem) {
         val added = if (replyQuotes.containsKey(post.pid)) {
-            replyQuotes.remove(post.pid); replyQuoteEdits.remove(post.pid); false
+            replyQuotes.remove(post.pid); replyQuoteEdits.remove(post.pid); soltarRespuesta(post.pid); false
         } else {
             replyQuotes[post.pid] = post; quotesThreadTid = currentThreadTid
             pedirCitaReal(post.pid); true
@@ -5060,7 +5063,7 @@ class MainActivity : AppCompatActivity() {
     /** FAB: nuevo hilo en el subforo actual (asunto + editor). */
     private fun openNewThread() {
         replyQuotes.clear()
-        replyQuoteEdits.clear()
+        replyQuoteEdits.clear(); respuestasBajoCita.clear()
         citasProvisionales.clear()
         citasBbcode.clear()
         citasCambiadas()
@@ -5198,7 +5201,7 @@ class MainActivity : AppCompatActivity() {
     private fun startEdit(post: PostItem) {
         editingPid = post.pid
         replyQuotes.clear()
-        replyQuoteEdits.clear()
+        replyQuoteEdits.clear(); respuestasBajoCita.clear()
         citasProvisionales.clear()
         citasBbcode.clear()
         replyInput.setText("")   // se rellena al cargar el BBCode real
@@ -5252,6 +5255,7 @@ class MainActivity : AppCompatActivity() {
             val sobreviven = CitasPendientes.alCerrarSinEnviar(replyQuotes.keys, citasProvisionales)
             replyQuotes.keys.retainAll(sobreviven)
             replyQuoteEdits.keys.retainAll(sobreviven)
+            respuestasBajoCita.keys.retainAll(sobreviven)
             citasProvisionales.clear()
             citasCambiadas()
         }
@@ -5283,6 +5287,10 @@ class MainActivity : AppCompatActivity() {
     /** Reconstruye las tarjetas de cita del panel a partir de replyQuotes. */
     private fun renderReplyQuotes() {
         pintarEnviarComposer()
+        val bajoCita = bajoCitaActivo()
+        volcarRespuestasSiInactivo(bajoCita)
+        // Con un hueco bajo cada cita, la caja de siempre es el cierre para todos.
+        replyInput.hint = if (bajoCita) "Cierre (opcional)…" else "Escribe tu respuesta…"
         replyQuotesContainer.removeAllViews()
         val inflater = layoutInflater
         // Las citas como TEXTO, para recortarlas con formato o ponerlas donde quieras (ver
@@ -5305,11 +5313,71 @@ class MainActivity : AppCompatActivity() {
             card.findViewById<View>(R.id.quote_remove).setOnClickListener {
                 replyQuotes.remove(post.pid)
                 replyQuoteEdits.remove(post.pid)
+                soltarRespuesta(post.pid)
                 citasCambiadas()
                 renderReplyQuotes()
             }
+            if (bajoCita) (card as LinearLayout).addView(cajaBajoCita(post))
             replyQuotesContainer.addView(card)
         }
+    }
+
+    /** Si el composer va con un hueco de respuesta bajo cada cita (ajuste + dos citas o más). */
+    private fun bajoCitaActivo(): Boolean =
+        replyMode != "edit" && replyMode != "newthread" &&
+            RespuestaBajoCita.activo(OptionsController.responderBajoCita(shellPrefs), replyQuotes.size)
+
+    /**
+     * Si ya no toca responder bajo cada cita (queda una sola o se apagó el ajuste), lo escrito bajo
+     * las citas pasa a la caja de siempre: quitar una cita no puede costar texto escrito.
+     */
+    private fun volcarRespuestasSiInactivo(activo: Boolean) {
+        if (activo || respuestasBajoCita.isEmpty()) return
+        val orden = replyQuotes.keys.toList()
+        val textos = orden.mapNotNull { respuestasBajoCita[it] } +
+            respuestasBajoCita.filterKeys { it !in orden }.values
+        respuestasBajoCita.clear()
+        val nuevo = RespuestaBajoCita.aLaCaja(textos, replyInput.text.toString())
+        if (nuevo != replyInput.text.toString().trim()) {
+            replyInput.setText(nuevo)
+            replyInput.setSelection(replyInput.text.length)
+        }
+    }
+
+    /** Se quita una cita: su respuesta no se tira, va a la caja de siempre. */
+    private fun soltarRespuesta(pid: String) {
+        val r = respuestasBajoCita.remove(pid)?.trim().orEmpty()
+        if (r.isEmpty()) return
+        replyInput.setText(RespuestaBajoCita.aLaCaja(listOf(r), replyInput.text.toString()))
+        replyInput.setSelection(replyInput.text.length)
+    }
+
+    /** El hueco para responder a [post] debajo de su tarjeta (ver [RespuestaBajoCita]). */
+    private fun cajaBajoCita(post: PostItem): EditText = EditText(this).apply {
+        hint = if (post.author.isNotEmpty()) "Responde a @${post.author}…" else "Responde a esta cita…"
+        setText(respuestasBajoCita[post.pid].orEmpty())
+        textSize = 15f
+        setTextColor(color(R.color.fc_texto))
+        setHintTextColor(color(R.color.fc_texto_3))
+        inputType = android.text.InputType.TYPE_CLASS_TEXT or
+            android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE or android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+        importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO
+        gravity = android.view.Gravity.TOP
+        minHeight = dp(44)
+        background = null
+        setPadding(dp(2), dp(10), dp(10), 0)
+        layoutParams = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+        )
+        // Un toque en el hueco escribe; no abre el recorte de la cita como el resto de la tarjeta.
+        addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+            override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+            override fun afterTextChanged(s: android.text.Editable?) {
+                val t = s?.toString().orEmpty()
+                if (t.isBlank()) respuestasBajoCita.remove(post.pid) else respuestasBajoCita[post.pid] = t
+            }
+        })
     }
 
     /** El botón "Editar la cita como texto" de encima de las citas (hilos y privados). */
@@ -5340,10 +5408,14 @@ class MainActivity : AppCompatActivity() {
      */
     private fun citasATexto() {
         if (replyQuotes.isEmpty()) return
-        val bloques = replyQuotes.values.map { quoteBlock(it) }
+        // Con respuestas bajo las citas, cada una pasa a texto pegada a su cita.
+        val bloques = replyQuotes.values.map { p ->
+            val r = respuestasBajoCita[p.pid]?.trim().orEmpty()
+            if (r.isEmpty()) quoteBlock(p) else quoteBlock(p).trimEnd() + SALTO + r + SALTO + SALTO
+        }
         val (nuevo, cursor) = CitaBbcode.aTexto(bloques, replyInput.text.toString())
         replyQuotes.clear()
-        replyQuoteEdits.clear()
+        replyQuoteEdits.clear(); respuestasBajoCita.clear()
         citasProvisionales.clear()
         citasCambiadas()
         renderReplyQuotes()
@@ -5481,8 +5553,16 @@ class MainActivity : AppCompatActivity() {
         if (currentThreadTid.isEmpty()) { toast("No se pudo identificar el hilo"); return }
         // Mensaje final = citas (BBCode) + texto del usuario + firma invisible de la app
         // (el usuario no la ve en el editor; se añade al enviar, con aire por encima).
-        val quotes = replyQuotes.values.joinToString("") { quoteBlock(it) }
-        var msg = (quotes + body).trim()
+        var msg = if (bajoCitaActivo()) {
+            // Cada respuesta pasa por lo mismo que la caja (sin cajitas U+FFFC, enlaces en tarjeta).
+            RespuestaBajoCita.armar(replyQuotes.values.map { p ->
+                val r = TextoPlano.sinCajitas(respuestasBajoCita[p.pid].orEmpty())
+                quoteBlock(p) to EnlacesEmbebibles.conTarjetas(r)
+            }, body)
+        } else {
+            val quotes = replyQuotes.values.joinToString("") { quoteBlock(it) }
+            (quotes + body).trim()
+        }
         if (msg.isEmpty()) { toast("Escribe algo antes de enviar"); return }
         msg = withSignature(msg)
         startSending("Enviando…")
@@ -5660,8 +5740,7 @@ class MainActivity : AppCompatActivity() {
         if (ok) {
             replyInput.setText("")
             replyQuotes.clear()
-            replyQuoteEdits.clear()
-        replyQuoteEdits.clear()
+            replyQuoteEdits.clear(); respuestasBajoCita.clear()
             citasCambiadas()
             hideReply()
             quickInput.setText("")

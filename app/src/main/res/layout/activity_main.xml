@@ -2249,6 +2249,38 @@
                             android:text="Añade en pequeñito «Enviado desde ForoPlus» al final de lo que publicas. Apágalo y tus mensajes salen sin nada."
                             android:textSize="12sp"
                             android:textColor="@color/fc_texto_3" />
+
+                        <!-- Responder bajo cada cita en la multicita (opcional; apagado por defecto) -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:layout_marginTop="22dp">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="Responder bajo cada cita"
+                                android:textSize="13sp"
+                                android:textStyle="bold"
+                                android:textColor="@color/fc_rojo"
+                                android:letterSpacing="0.03" />
+
+                            <androidx.appcompat.widget.SwitchCompat
+                                android:id="@+id/opt_bajo_cita_switch"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content" />
+                        </LinearLayout>
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="Cuando citas a varios, cada cita lleva su hueco para responder debajo y la caja de abajo queda como cierre. Con una sola cita, todo sigue igual."
+                            android:textSize="12sp"
+                            android:textColor="@color/fc_texto_3" />
                     </LinearLayout>
                 </LinearLayout>
             </ScrollView>
