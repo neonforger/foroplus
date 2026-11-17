@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- La lupa de la actividad de un usuario (LupaActividadController): un campo bajo la cabecera de
+     "@x · mensajes" / "hilos suyos" / "participa". Mismo aspecto que la lupa del hilo (busca_bar),
+     con su raya debajo; las dos se encienden y apagan juntas, solo desde el controlador. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@color/fc_fondo"
+    android:visibility="gone">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="4dp"
+        android:paddingEnd="4dp">
+
+        <ImageView
+            android:layout_width="40dp"
+            android:layout_height="24dp"
+            android:src="@drawable/ic_search"
+            android:importantForAccessibility="no" />
+
+        <EditText
+            android:id="@+id/lupa_actividad_texto"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:background="@null"
+            android:inputType="text"
+            android:imeOptions="actionSearch|flagNoExtractUi"
+            android:singleLine="true"
+            android:textSize="15sp"
+            android:textColor="@color/fc_texto"
+            android:textColorHint="@color/fc_texto_3" />
+
+        <ImageButton
+            android:id="@+id/lupa_actividad_cerrar"
+            android:layout_width="44dp"
+            android:layout_height="48dp"
+            android:src="@drawable/ic_cerrar"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Cerrar la búsqueda" />
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/fc_divisoria" />
+</LinearLayout>

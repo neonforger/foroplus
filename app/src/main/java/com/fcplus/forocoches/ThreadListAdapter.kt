@@ -208,6 +208,9 @@ class ThreadListAdapter(
         notifyDataSetChanged()
     }
 
+    /** Lo que hay pintado ahora mismo. Lo guarda la lupa de la actividad de un usuario. */
+    fun items(): List<ThreadItem> = items.toList()
+
     /** Añade una página más (scroll infinito), saltando hilos ya mostrados. */
     fun append(list: List<ThreadItem>) {
         var added = 0

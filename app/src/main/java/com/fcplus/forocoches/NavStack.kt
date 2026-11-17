@@ -28,7 +28,12 @@ sealed class Screen {
          */
         val porMensajes: Boolean = false,
         /** Solo "search": de quién son los resultados ("" = de todo el foro). */
-        val usuario: String = ""
+        val usuario: String = "",
+        /**
+         * Solo "search" por títulos con usuario: los hilos donde PARTICIPA (lupa de
+         * "@x · participa"), no los que abrió. Sin esto, volver atrás la rehacía como "hilos suyos".
+         */
+        val participa: Boolean = false
     ) : Screen()
 
     /** Citas o menciones aisladas. [kind] es "quotes" o "mentions". */
