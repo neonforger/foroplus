@@ -137,6 +137,9 @@ class OptionsController(
     private val temaClaro: TextView = panel.findViewById(R.id.opt_tema_claro)
     private val temaOscuro: TextView = panel.findViewById(R.id.opt_tema_oscuro)
     private val temaSistema: TextView = panel.findViewById(R.id.opt_tema_sistema)
+    private val tonos: List<TextView> = listOf(R.id.opt_tono_gris, R.id.opt_tono_oscuro, R.id.opt_tono_negro)
+        .map { panel.findViewById(it) }
+    private val tonoNota: TextView = panel.findViewById(R.id.opt_tono_nota)
     private val estiloCompacta: View = panel.findViewById(R.id.opt_estilo_compacta)
     private val estiloTarjetas: View = panel.findViewById(R.id.opt_estilo_tarjetas)
     private val previaTitulo: TextView = panel.findViewById(R.id.opt_previa_titulo)
@@ -214,6 +217,12 @@ class OptionsController(
         temaOscuro.setOnClickListener { setTema(TemaApp.OSCURO) }
         temaSistema.setOnClickListener { setTema(TemaApp.SISTEMA) }
         paintTema(TemaApp.guardado(prefs))
+        tonos.forEachIndexed { i, tv -> tv.setOnClickListener { setTono(TonoOscuro.OPCIONES[i]) } }
+        paintTono(TonoOscuro.guardado(prefs))
+        // En claro el tono no se ve: se dice, para que tocarlo y no ver nada no parezca un fallo.
+        tonoNota.text = if (TemaApp.esOscuro(panel.resources.configuration.uiMode))
+            "Negro puro gasta menos batería en pantallas AMOLED."
+        else "Solo se nota con el tema oscuro."
         estiloCompacta.setOnClickListener { setEstilo(EstiloApp.COMPACTA) }
         estiloTarjetas.setOnClickListener { setEstilo(EstiloApp.TARJETAS) }
         paintEstilo(EstiloApp.guardado(prefs))
@@ -272,7 +281,7 @@ class OptionsController(
     private fun pintarResumenes() {
         ponerResumen(catApariencia, ResumenOpciones.apariencia(
             TemaApp.guardado(prefs), fontSpEntero(prefs), tituloSpEntero(prefs),
-            EstiloApp.guardado(prefs)))
+            EstiloApp.guardado(prefs), TonoOscuro.guardado(prefs)))
         ponerResumen(catFiltros, ResumenOpciones.filtros(
             palabras = keywordRepo.getKeywords().size,
             palabrasActivas = keywordRepo.isEnabled(),
@@ -399,6 +408,14 @@ class OptionsController(
         paintEstilo(estilo)
         if (EstiloApp.elegir(prefs, estilo)) onEstiloChanged()
     }
+
+    private fun setTono(tono: String) {
+        // Se pinta ANTES de recrear, por lo mismo que en setTema. Recrea igual que el estilo.
+        paintTono(tono)
+        if (TonoOscuro.elegir(prefs, tono)) onEstiloChanged()
+    }
+
+    private fun paintTono(tono: String) = Segmentado.pintar(tonos, TonoOscuro.OPCIONES.indexOf(tono))
 
     /** Las dos tarjetas de estilo: la elegida con borde rojo, su nombre en rojo y el ✓. */
     private fun paintEstilo(estilo: String) {

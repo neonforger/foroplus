@@ -174,7 +174,7 @@ class CuentaPanelController(
             override fun separador() {
                 val d = activity.resources.displayMetrics.density
                 cuentaFilas.addView(View(activity).apply {
-                    setBackgroundColor(color(R.color.fc_divisoria))
+                    setBackgroundColor(AtributosTema.color(activity, R.attr.fcDivisoria))
                     layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT,
                         d.toInt().coerceAtLeast(1)).apply {
                         val m = (20 * d).toInt()

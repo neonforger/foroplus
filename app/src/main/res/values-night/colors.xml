@@ -2,8 +2,11 @@
 <!-- Modo oscuro. MISMOS nombres que values/colors.xml: si aquí falta uno, Android usa el claro
      y ese elemento se queda blanco en medio de una pantalla negra sin que falle nada.
 
-     No es un negro puro: el #000 con texto blanco produce halos y cansa en pantallas OLED con
-     texto largo, que es exactamente lo que es un hilo del foro. -->
+     Por defecto no es un negro puro: el #000 con texto blanco produce halos y cansa en pantallas
+     OLED con texto largo, que es exactamente lo que es un hilo del foro. Quien lo prefiera puede
+     elegir otro tono en Opciones → Apariencia (TonoOscuro, colores fc_tono_* al final). Las
+     SUPERFICIES no se usan con @color sino con su atributo de tema (?attr/fcFondo…, attrs.xml):
+     si no, no seguirían al tono. -->
 <resources>
 
     <color name="fc_fondo">#121214</color>
@@ -75,5 +78,29 @@
     <!-- Nota privada: un pelín más de cuerpo en oscuro para que se vea. -->
     <color name="fc_nota_fondo">#33E0A020</color>
 
+
+    <!-- Tono del modo oscuro (TonoOscuro). El de por defecto, "gris oscuro", son los fc_* de
+         arriba. "Oscuro" es un paso hacia el negro y "Negro" es el negro puro de las pantallas
+         AMOLED. En cada tono las superficies van un punto por encima del fondo (fondo < tarjeta <
+         cita/chip < raya) para que tarjetas, citas y divisorias se sigan distinguiendo; los
+         textos y el rojo no cambian (ContrasteTest los valida sobre los tres). -->
+    <color name="fc_tono_oscuro_fondo">#0A0A0B</color>
+    <color name="fc_tono_oscuro_superficie">#151518</color>
+    <color name="fc_tono_oscuro_divisoria">#26262B</color>
+    <color name="fc_tono_oscuro_chip">#222227</color>
+    <color name="fc_tono_oscuro_cita_fondo">#1B1B20</color>
+    <color name="fc_tono_oscuro_fondo_tarjetas">#0A0A0B</color>
+    <color name="fc_tono_oscuro_tarjeta">#161619</color>
+    <color name="fc_tono_oscuro_tarjeta_borde">#26262B</color>
+    <color name="fc_tono_oscuro_cita_fondo_tarjeta">#222227</color>
+    <color name="fc_tono_negro_fondo">#000000</color>
+    <color name="fc_tono_negro_superficie">#121214</color>
+    <color name="fc_tono_negro_divisoria">#222226</color>
+    <color name="fc_tono_negro_chip">#1C1C20</color>
+    <color name="fc_tono_negro_cita_fondo">#16161A</color>
+    <color name="fc_tono_negro_fondo_tarjetas">#000000</color>
+    <color name="fc_tono_negro_tarjeta">#0F0F11</color>
+    <color name="fc_tono_negro_tarjeta_borde">#222226</color>
+    <color name="fc_tono_negro_cita_fondo_tarjeta">#1C1C20</color>
 
 </resources>

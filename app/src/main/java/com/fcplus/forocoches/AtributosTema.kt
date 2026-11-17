@@ -38,6 +38,16 @@ object AtributosTema {
         return if (tv.resourceId != 0) ContextCompat.getColor(ctx, tv.resourceId) else tv.data
     }
 
+    /**
+     * Aplica al tema de [ctx] el tono del modo oscuro guardado (ver [TonoOscuro]). Lo usa
+     * MainActivity antes de inflar, y los diálogos con tema propio (FC.PantallaCompleta): ese
+     * tema hereda del base y, al aplicarse, devuelve las superficies al gris de fábrica.
+     */
+    fun aplicarTono(ctx: Context) {
+        val prefs = ctx.getSharedPreferences("shell_prefs", Context.MODE_PRIVATE)
+        TonoOscuro.overlay(TonoOscuro.guardado(prefs))?.let { ctx.theme.applyStyle(it, true) }
+    }
+
     fun bool(ctx: Context, attr: Int): Boolean {
         val tv = resolver(ctx, attr) ?: return false
         return tv.type == TypedValue.TYPE_INT_BOOLEAN && tv.data != 0

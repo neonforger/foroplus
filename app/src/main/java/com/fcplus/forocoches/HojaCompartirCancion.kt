@@ -83,6 +83,8 @@ class HojaCompartirCancion(
         eleccion = null
         resultados = emptyList()
         val d = Dialog(act, R.style.FC_PantallaCompleta)
+        // FC.PantallaCompleta hereda del tema base y devuelve las superficies al gris: el tono, otra vez.
+        AtributosTema.aplicarTono(d.context)
         val v = LayoutInflater.from(d.context).inflate(R.layout.hoja_compartir_cancion, null)
         vista = v
         buscarCampo = v.findViewById(R.id.compartir_buscar)

@@ -1168,7 +1168,7 @@ class PostAdapter(
                 // Destapado: se deja el contenido, pero con fondo, para que se vea dónde
                 // empieza y dónde acaba lo que estaba tapado.
                 sb.setSpan(
-                    android.text.style.BackgroundColorSpan(col(tv, R.color.fc_chip)),
+                    android.text.style.BackgroundColorSpan(AtributosTema.color(tv.context, R.attr.fcChip)),
                     ini, fin, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
                 )
                 continue
@@ -1188,7 +1188,7 @@ class PostAdapter(
                 }
             }, ini, ini + Spoilers.AVISO.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
             sb.setSpan(
-                android.text.style.BackgroundColorSpan(col(tv, R.color.fc_chip)),
+                android.text.style.BackgroundColorSpan(AtributosTema.color(tv.context, R.attr.fcChip)),
                 ini, ini + Spoilers.AVISO.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
             )
         }

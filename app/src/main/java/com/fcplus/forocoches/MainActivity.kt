@@ -1920,7 +1920,7 @@ class MainActivity : AppCompatActivity() {
     private fun pintarPastilla(tv: TextView, elegida: Boolean) {
         tv.background = android.graphics.drawable.GradientDrawable().apply {
             cornerRadius = 99f * resources.displayMetrics.density
-            setColor(ContextCompat.getColor(this@MainActivity, if (elegida) R.color.fc_rojo else R.color.fc_chip))
+            setColor(if (elegida) ContextCompat.getColor(this@MainActivity, R.color.fc_rojo) else AtributosTema.color(this@MainActivity, R.attr.fcChip))
         }
         tv.setTextColor(ContextCompat.getColor(this, if (elegida) R.color.fc_sobre_rojo else R.color.fc_texto_2))
         tv.setTypeface(null, if (elegida) android.graphics.Typeface.BOLD else android.graphics.Typeface.NORMAL)
@@ -2711,7 +2711,7 @@ class MainActivity : AppCompatActivity() {
             val elegida = kind == currentNoticesKind
             v.text = if (n > 0) "$nombre · $n" else nombre
             v.backgroundTintList = android.content.res.ColorStateList.valueOf(
-                color(if (elegida) R.color.fc_rojo else R.color.fc_chip))
+                if (elegida) color(R.color.fc_rojo) else AtributosTema.color(this@MainActivity, R.attr.fcChip))
             v.setTextColor(color(if (elegida) R.color.fc_sobre_rojo else R.color.fc_texto_2))
         }
     }
@@ -3611,6 +3611,8 @@ class MainActivity : AppCompatActivity() {
         // Tiene que ir ANTES de inflar nada; cambiarlo luego recrea la actividad.
         EstiloApp.overlay(EstiloApp.guardado(getSharedPreferences(PREFS, MODE_PRIVATE)))
             ?.let { theme.applyStyle(it, true) }
+        // Tono del modo oscuro (TonoOscuro): otro overlay, después del de estilo.
+        AtributosTema.aplicarTono(this)
         setContentView(R.layout.activity_main)
         // Los emoticonos de ForoPlus se pintan desde el APK, nunca desde la red.
         val assetsApp = applicationContext.assets
@@ -3758,7 +3760,14 @@ class MainActivity : AppCompatActivity() {
      */
     private fun applyWindowInsets() {
         val root = findViewById<View>(R.id.root_container)
-        root.setBackgroundColor(color(R.color.fc_fondo))
+        val fondo = AtributosTema.color(this, R.attr.fcFondo)
+        root.setBackgroundColor(fondo)
+        // La ventana y las barras del sistema, con el fondo del tono (TonoOscuro): el tema las
+        // declara con ?attr/fcFondo, pero la ventana puede haberlas leído antes de que el
+        // overlay se aplicara en onCreate. Se ponen a mano para no depender de ese orden.
+        window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(fondo))
+        @Suppress("DEPRECATION")
+        run { window.statusBarColor = fondo; window.navigationBarColor = fondo }
         ViewCompat.setOnApplyWindowInsetsListener(root) { v, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
@@ -5971,7 +5980,7 @@ class MainActivity : AppCompatActivity() {
         val ll = android.widget.LinearLayout(this).apply {
             orientation = android.widget.LinearLayout.VERTICAL
             gravity = android.view.Gravity.CENTER
-            setBackgroundColor(color(R.color.fc_fondo))
+            setBackgroundColor(AtributosTema.color(this@MainActivity, R.attr.fcFondo))
             isClickable = true; isFocusable = true
             setPadding(dp(32), dp(32), dp(32), dp(32))
         }

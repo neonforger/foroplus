@@ -34,6 +34,22 @@ class ResumenOpcionesTest {
     }
 
     @Test
+    fun `apariencia con un tono que no es el gris lo dice pegado al tema`() {
+        assertEquals("Tema oscuro · negro puro · estilo tarjetas · letra normal",
+            ResumenOpciones.apariencia(TemaApp.OSCURO, 15, 15, EstiloApp.TARJETAS, TonoOscuro.NEGRO))
+        assertEquals("Tema del sistema · tono oscuro · letra normal",
+            ResumenOpciones.apariencia(TemaApp.SISTEMA, 15, 15, tono = TonoOscuro.OSCURO))
+    }
+
+    @Test
+    fun `apariencia con el gris o en claro no dice nada del tono`() {
+        assertEquals("Tema oscuro · letra normal",
+            ResumenOpciones.apariencia(TemaApp.OSCURO, 15, 15, tono = TonoOscuro.GRIS))
+        assertEquals("Tema claro · letra normal",
+            ResumenOpciones.apariencia(TemaApp.CLARO, 15, 15, tono = TonoOscuro.NEGRO))
+    }
+
+    @Test
     fun `el tema del sistema se nombra como tal`() {
         assertEquals("Tema del sistema · letra pequeña · títulos grandes",
             ResumenOpciones.apariencia(TemaApp.SISTEMA, 13, 18))

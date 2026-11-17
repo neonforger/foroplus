@@ -33,6 +33,8 @@ object SelectorSitio {
         alElegir: (Int) -> Unit,
     ) {
         val d = Dialog(ctx, R.style.FC_PantallaCompleta)
+        // FC.PantallaCompleta hereda del tema base y devuelve las superficies al gris: el tono, otra vez.
+        AtributosTema.aplicarTono(d.context)
         val v = LayoutInflater.from(d.context).inflate(R.layout.dialog_selector_sitio, null)
         val lista = v.findViewById<LinearLayout>(R.id.sel_lista)
         val vacio = v.findViewById<TextView>(R.id.sel_vacio)
