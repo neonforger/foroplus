@@ -3530,6 +3530,9 @@ class MainActivity : AppCompatActivity() {
         novedadesPanel = findViewById(R.id.novedades_panel)
         findViewById<View>(R.id.novedades_back).setOnClickListener { goBack() }
         optionsPanel.findViewById<View>(R.id.opt_novedades).setOnClickListener { showNovedades() }
+        optionsPanel.findViewById<View>(R.id.opt_intro).setOnClickListener {
+            verIntroduccion.launch(android.content.Intent(this, IntroActivity::class.java))
+        }
         val nombre = try { packageManager.getPackageInfo(packageName, 0).versionName } catch (_: Exception) { null }
         options.ponerVersion(
             if (nombre.isNullOrEmpty()) "ForoPlus" else "ForoPlus $nombre (${versionCodeInstalado()})")
@@ -3852,6 +3855,11 @@ class MainActivity : AppCompatActivity() {
         // Tono del modo oscuro (TonoOscuro): otro overlay, después del de estilo.
         AtributosTema.aplicarTono(this)
         setContentView(R.layout.activity_main)
+        // La introducción, solo en una instalación nueva y una vez (ver Introduccion).
+        if (savedInstanceState == null &&
+            Introduccion.alArrancar(esInstalacionNueva(), Introduccion.yaVista(shellPrefs))) {
+            verIntroduccion.launch(android.content.Intent(this, IntroActivity::class.java))
+        }
         // Los emoticonos de ForoPlus se pintan desde el APK, nunca desde la red.
         val assetsApp = applicationContext.assets
         EmoticonosForoPlus.lector = { f -> assetsApp.open("emoticonos/$f").use { it.readBytes() } }
@@ -5005,6 +5013,19 @@ class MainActivity : AppCompatActivity() {
      * Selector del sistema para elegir una foto. **No pide permisos**: el contenido llega por
      * `content://` y solo se puede leer el fichero que la persona haya elegido.
      */
+    /**
+     * Al volver de la introducción se releen los dos ajustes que su última página puede tocar
+     * (Música en la barra de arriba y la sección +18), como cuando cambian en Opciones.
+     */
+    private val verIntroduccion = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
+    ) {
+        if (!::forumTabs.isInitialized) return@registerForActivityResult
+        listLoaded = false
+        aplicarBarra(false)
+        recargarListaPorFiltros()
+    }
+
     private val pedirFoto = registerForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.GetContent()
     ) { uri -> if (uri != null) subirFoto(uri) }

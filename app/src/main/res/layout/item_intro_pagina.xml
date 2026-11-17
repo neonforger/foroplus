@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Una página de la introducción. Con scroll propio: en un móvil pequeño o con la letra del
+     sistema grande, la captura y el texto no caben y no se puede cortar nada. -->
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="16dp">
+
+        <!-- Portada: el icono de la app. El resto de páginas, su captura. -->
+        <ImageView
+            android:id="@+id/intro_icono"
+            android:layout_width="112dp"
+            android:layout_height="112dp"
+            android:layout_marginBottom="28dp"
+            android:src="@mipmap/ic_launcher_round"
+            android:contentDescription="@null"
+            android:visibility="gone" />
+
+        <ImageView
+            android:id="@+id/intro_captura"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:maxHeight="340dp"
+            android:adjustViewBounds="true"
+            android:scaleType="fitCenter"
+            android:padding="1dp"
+            android:layout_marginBottom="24dp"
+            android:background="@drawable/bg_intro_captura"
+            android:contentDescription="Captura de la app" />
+
+        <TextView
+            android:id="@+id/intro_titulo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="25sp"
+            android:textStyle="bold"
+            android:textColor="@color/fc_texto"
+            android:lineSpacingExtra="2dp" />
+
+        <TextView
+            android:id="@+id/intro_texto"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:textSize="16sp"
+            android:textColor="@color/fc_texto_2"
+            android:lineSpacingExtra="4dp" />
+
+        <TextView
+            android:id="@+id/intro_donde"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:textSize="13sp"
+            android:textColor="@color/fc_texto_3" />
+
+        <!-- Solo en la última página: los interruptores de lo extra y el grupo de Telegram. -->
+        <LinearLayout
+            android:id="@+id/intro_extras"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginTop="18dp"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:id="@+id/intro_fila_musica"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:minHeight="56dp">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Música"
+                        android:textSize="15sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/fc_texto" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Comparte lo que escuchas y mira qué ponen los demás. Dura 24 h."
+                        android:textSize="13sp"
+                        android:textColor="@color/fc_texto_2" />
+                </LinearLayout>
+
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/intro_sw_musica"
+                    android:layout_width="wrap_content"
+                    android:layout_height="48dp"
+                    android:layout_marginStart="12dp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/intro_fila_mas18"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:minHeight="56dp">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Sección +18"
+                        android:textSize="15sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/fc_texto" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Hilos para adultos en su propia pestaña. Viene apagada."
+                        android:textSize="13sp"
+                        android:textColor="@color/fc_texto_2" />
+                </LinearLayout>
+
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/intro_sw_mas18"
+                    android:layout_width="wrap_content"
+                    android:layout_height="48dp"
+                    android:layout_marginStart="12dp" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/intro_telegram"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:minHeight="52dp"
+                android:gravity="center_vertical"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:drawablePadding="12dp"
+                android:text="Únete a la comunidad en Telegram: novedades, fallos y propuestas"
+                android:textSize="14sp"
+                android:textColor="@color/fc_texto"
+                android:background="@drawable/bg_intro_captura" />
+        </LinearLayout>
+    </LinearLayout>
+</ScrollView>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Botón redondo de "anterior" en la introducción, del color de los chips del tono. -->
+<ripple xmlns:android="http://schemas.android.com/apk/res/android" android:color="@color/fc_ripple">
+    <item>
+        <shape android:shape="oval">
+            <solid android:color="?attr/fcChip" />
+        </shape>
+    </item>
+</ripple>

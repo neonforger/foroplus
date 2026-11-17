@@ -262,6 +262,8 @@ class OptionsController(
         categoria(panel.findViewById(R.id.opt_coffee), R.drawable.ic_opt_cafe,
             "Invítame a un café", "ForoPlus es gratis y sin publicidad", flecha = false)
         categoria(catAcerca, R.drawable.ic_opt_acerca, "Acerca de", "Novedades de cada versión")
+        categoria(panel.findViewById(R.id.opt_intro), R.drawable.ic_opt_acerca, "Ver la introducción",
+            "Lo básico de la app en cinco pantallas")
         categoria(catMusicaBorrar, R.drawable.ic_musica, panel.context.getString(R.string.opt_musica_borrar),
             "Tu cuenta, tus canciones y tus corazones del servidor", flecha = false)
         catMusicaBorrar.setOnClickListener { onBorrarCuentaMusica { pintarMusicaBorrar() } }
