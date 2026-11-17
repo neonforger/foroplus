@@ -406,6 +406,8 @@ class MainActivity : AppCompatActivity() {
                 musica.ocultar()
                 listRefresh.visibility = View.VISIBLE
             }
+            // La lupa de "@x · hilos suyos/participa" solo existe sobre esas listas y sus resultados.
+            pintarLupaHilos()
         }
     /** Música: el panel que sustituye a la lista con la pestaña "Música" (ver [showMusica]). */
     private lateinit var musica: MusicaController
@@ -553,6 +555,15 @@ class MainActivity : AppCompatActivity() {
     private var searchQuery = ""           // término del buscador (listSource = "search")
     private var searchTitleOnly = true
     private var searchUser = ""            // de quién son los resultados ("" = de todo el foro)
+    private var searchParticipa = false    // por títulos con usuario: donde participa (lupa)
+    /** Lupas de la actividad de un usuario ([LupaActividad]): en sus mensajes y en sus hilos. */
+    private lateinit var lupaMensajes: LupaActividadController
+    private lateinit var lupaHilos: LupaActividadController
+    /** Lo que había cargado al lanzar la lupa, para volver a ello sin pedirlo otra vez. */
+    private var mensajesGuardados: ActividadGuardada<NoticeItem>? = null
+    private var hilosGuardados: ActividadGuardada<ThreadItem>? = null
+    /** Última página de hilos pedida (para saber si un "empty" es el final, ver [FinDeLista]). */
+    private var paginaPedida = 1
     /** El buscador abierto espera sugerencias de nombres; null si no hay buscador abierto. */
     private var alLlegarSugerencias: ((String) -> Unit)? = null
     private var loadingThreadPage = false
@@ -1411,6 +1422,7 @@ class MainActivity : AppCompatActivity() {
                     searchQuery = p.palabras
                     searchUser = p.usuario
                     searchTitleOnly = p.porTitulos
+                    searchParticipa = false
                     recordarBusqueda(p.palabras)
                     sheet.dismiss()
                     runSearch()
@@ -1618,16 +1630,17 @@ class MainActivity : AppCompatActivity() {
      * buscaste, tirando la lista entera.
      */
     private fun runSearch(apilar: Boolean = true) {
-        if (apilar) nav.push(
-            Screen.ThreadList("search", query = searchQuery, porMensajes = !searchTitleOnly, usuario = searchUser)
-        )
+        if (apilar) nav.push(pantallaDeBusqueda())
         // Buscar en los mensajes devuelve MENSAJES, y esos no caben en el listado de hilos:
         // se pintan en el panel de avisos, que es el que ya sabe dibujar un mensaje suelto.
         if (!searchTitleOnly) { mostrarBusquedaPorMensajes(); return }
         listSource = "search"
         myThreadsBase = ""
         forumTabs.visibility = View.GONE
-        ponerTitulo(BusquedaPorUsuario.cabecera(searchQuery, searchUser, porMensajes = false))
+        ponerTitulo(
+            if (searchParticipa) LupaActividad.cabeceraParticipa(searchQuery, searchUser)
+            else BusquedaPorUsuario.cabecera(searchQuery, searchUser, porMensajes = false)
+        )
         listLoaded = false
         adapter.submit(emptyList())
         showNative()
@@ -1735,7 +1748,11 @@ class MainActivity : AppCompatActivity() {
     ) {
         if (usuario.isEmpty()) { toast("Todavía no sé quién es este usuario"); return }
         if (!isLoggedIn()) { showLogin(); return }
-        if (remember) nav.push(Screen.UserActivity(usuario, modo, enHilo))
+        if (remember) {
+            nav.push(Screen.UserActivity(usuario, modo, enHilo))
+            // Se entra de nuevas: lo guardado por una lupa anterior ya no es de esta visita.
+            mensajesGuardados = null; hilosGuardados = null
+        }
         reiniciarPaginacionMensajes()
         actividadUsuario = usuario
         actividadModo = modo
@@ -1761,6 +1778,8 @@ class MainActivity : AppCompatActivity() {
             bottomNav.visibility = View.VISIBLE
             noticesHeader.text =
                 if (enHilo.isEmpty()) "@$usuario · mensajes" else "@$usuario · en este hilo"
+            // Vuelta desde los resultados de la lupa: la lista entera tal cual estaba.
+            if (!remember && restaurarMensajesGuardados(usuario, enHilo)) return
             noticeAdapter.submit(emptyList())
             noticesEmpty.visibility = View.GONE
             noticesLoading.visibility = View.VISIBLE
@@ -1777,11 +1796,143 @@ class MainActivity : AppCompatActivity() {
         myThreadsBase = ""
         forumTabs.visibility = View.GONE
         ponerTitulo(if (modo == "started") "@$usuario · hilos suyos" else "@$usuario · participa")
+        if (!remember && restaurarHilosGuardados(usuario, modo)) return
         listLoaded = false
         adapter.submit(emptyList())
         showNative()
         fabNewThread.visibility = View.GONE
         requestThreadList(1)
+    }
+
+    // ── Lupa de la actividad de un usuario (ver LupaActividad) ───────────────
+
+    private fun configurarLupasActividad() {
+        // Mensajes: icono propio en la cabecera del panel de avisos. Hilos: el icono es la lupa
+        // de siempre de la cabecera del listado (ver el click de native_search).
+        lupaMensajes = LupaActividadController.bajoCabeceraConIcono(noticesHeader, "Buscar en sus mensajes",
+            alBuscar = { buscarConLupa(it, enMensajes = true) }, alCerrarResultados = { goBack() })
+        lupaHilos = LupaActividadController.bajoCabecera(nativeHeader,
+            alBuscar = { buscarConLupa(it, enMensajes = false) }, alCerrarResultados = { goBack() })
+        pintarLupaHilos()
+    }
+
+    /** Lupa del panel de avisos: en "sus mensajes" y en sus resultados; en lo demás, nada. */
+    private fun pintarLupaMensajes() {
+        if (!::lupaMensajes.isInitialized) return
+        val pista = LupaActividad.pista("posts")
+        when {
+            currentNoticesKind == "userposts" -> lupaMensajes.pintar(
+                LupaActividad.disponible(isLoggedIn(), "posts", actividadEnHilo), pista, null,
+                clave = "posts@$actividadUsuario")
+            currentNoticesKind == "searchposts" && searchUser.isNotEmpty() ->
+                lupaMensajes.pintar(isLoggedIn(), pista, searchQuery)
+            else -> lupaMensajes.pintar(false, pista, null)
+        }
+    }
+
+    /** Modo de la lista de hilos que se ve ahora, para la lupa ("started"/"threads"), o "". */
+    private fun modoLupaHilos(): String = when {
+        listSource == "user-started" || listSource == "user-threads" -> actividadModo
+        listSource == "search" && searchTitleOnly && searchUser.isNotEmpty() ->
+            if (searchParticipa) "threads" else "started"
+        else -> ""
+    }
+
+    private fun pintarLupaHilos() {
+        if (!::lupaHilos.isInitialized) return
+        val modo = modoLupaHilos()
+        val pista = LupaActividad.pista(modo)
+        when {
+            modo.isEmpty() -> lupaHilos.pintar(false, pista, null)
+            listSource == "search" -> lupaHilos.pintar(isLoggedIn(), pista, searchQuery)
+            else -> lupaHilos.pintar(LupaActividad.disponible(isLoggedIn(), modo, ""), pista, null,
+                clave = "$modo@$actividadUsuario")
+        }
+    }
+
+    private fun pantallaDeBusqueda() = Screen.ThreadList(
+        "search", query = searchQuery, porMensajes = !searchTitleOnly, usuario = searchUser,
+        participa = searchParticipa
+    )
+
+    /**
+     * Buscar con la lupa. Desde la lista entera se guarda lo cargado y se APILA la búsqueda
+     * (atrás vuelve a la lista); desde unos resultados se afina y se SUSTITUYE (atrás no te
+     * pasea por cada intento).
+     */
+    private fun buscarConLupa(texto: String, enMensajes: Boolean) {
+        val lupa = if (enMensajes) lupaMensajes else lupaHilos
+        val desdeResultados = lupa.enResultados
+        val usuario = if (desdeResultados) searchUser else actividadUsuario
+        val modo = if (enMensajes) "posts" else if (desdeResultados) modoLupaHilos() else actividadModo
+        when (val p = LupaActividad.decidir(texto, usuario, modo)) {
+            is LupaActividad.Peticion.NoVale -> toast(p.motivo)
+            is LupaActividad.Peticion.Buscar -> {
+                if (!isLoggedIn()) { showLogin(); return }   // gotcha 3
+                if (!desdeResultados) guardarActividad(enMensajes)
+                searchQuery = p.texto
+                searchUser = p.usuario
+                searchTitleOnly = p.porTitulos
+                searchParticipa = p.participa
+                if (desdeResultados) { nav.replaceTop(pantallaDeBusqueda()); runSearch(apilar = false) }
+                else runSearch()
+            }
+        }
+    }
+
+    private fun guardarActividad(enMensajes: Boolean) {
+        if (enMensajes) {
+            val lm = noticesList.layoutManager as LinearLayoutManager
+            val pos = lm.findFirstVisibleItemPosition().coerceAtLeast(0)
+            mensajesGuardados = ActividadGuardada(
+                actividadUsuario, "posts", actividadEnHilo, noticeAdapter.items(), mensajesPagina,
+                mensajesBase, mensajesAgotada, pos, lm.findViewByPosition(pos)?.top ?: 0
+            )
+        } else {
+            val lm = threadList.layoutManager as LinearLayoutManager
+            val pos = lm.findFirstVisibleItemPosition().coerceAtLeast(0)
+            hilosGuardados = ActividadGuardada(
+                actividadUsuario, actividadModo, "", adapter.items(), currentPage,
+                myThreadsBase.ifEmpty { null }, listaAgotada, pos, lm.findViewByPosition(pos)?.top ?: 0
+            )
+        }
+    }
+
+    private fun restaurarMensajesGuardados(usuario: String, enHilo: String): Boolean {
+        val g = ActividadGuardada.tomar(mensajesGuardados, usuario, "posts", enHilo) ?: return false
+        mensajesGuardados = null
+        noticeAdapter.ahora = System.currentTimeMillis()
+        noticeAdapter.fechas = HashMap(fechasNoticias)
+        noticeAdapter.submit(g.filas)
+        mensajesBase = g.base
+        mensajesPagina = g.pagina
+        mensajesAgotada = g.agotada
+        mensajesCargando = false
+        restaurarNoticias = false
+        noticesEmpty.visibility = View.GONE
+        noticesLoading.visibility = View.GONE
+        noticesMarkAll.visibility = View.GONE
+        val lm = noticesList.layoutManager as LinearLayoutManager
+        noticesList.post { lm.scrollToPositionWithOffset(g.posicion, g.desplazamiento) }
+        return true
+    }
+
+    private fun restaurarHilosGuardados(usuario: String, modo: String): Boolean {
+        val g = ActividadGuardada.tomar(hilosGuardados, usuario, modo, "") ?: return false
+        hilosGuardados = null
+        adapter.submit(g.filas)
+        currentPage = g.pagina
+        myThreadsBase = g.base ?: ""
+        listaAgotada = g.agotada
+        loadingPage = false
+        listLoaded = true
+        listLoading.visibility = View.GONE
+        listEmpty.visibility = View.GONE
+        showNative()
+        fabNewThread.visibility = View.GONE
+        val lm = threadList.layoutManager as LinearLayoutManager
+        threadList.post { lm.scrollToPositionWithOffset(g.posicion, g.desplazamiento) }
+        return true
     }
 
     private fun showParticipatedList() {
@@ -2608,8 +2759,7 @@ class MainActivity : AppCompatActivity() {
             noticesEmpty.text = when (currentNoticesKind) {
                 "quotes" -> "No tienes citas recientes"
                 "userposts" -> "Este usuario no tiene mensajes visibles"
-                "searchposts" -> "Ningún mensaje contiene \"$searchQuery\"" +
-                    (if (searchUser.isEmpty()) "" else " de @$searchUser")
+                "searchposts" -> LupaActividad.vacio(searchQuery, searchUser, porTitulos = false)
                 else -> "No tienes menciones recientes"
             }
         }
@@ -2701,6 +2851,7 @@ class MainActivity : AppCompatActivity() {
 
     /** Citas | Menciones encima de la lista, solo en esas dos pantallas. */
     private fun pintarPastillas() {
+        pintarLupaMensajes()   // la otra pieza de la cabecera que depende de qué se enseña
         if (!::pastillaCitas.isInitialized) return
         val enAvisos = currentNoticesKind == "quotes" || currentNoticesKind == "mentions"
         findViewById<View>(R.id.notices_pastillas).visibility = if (enAvisos) View.VISIBLE else View.GONE
@@ -4027,7 +4178,11 @@ class MainActivity : AppCompatActivity() {
         configurarPanelCuenta()
         configurarPastillas()
         pintarAvatarCuenta()
-        findViewById<View>(R.id.native_search).setOnClickListener { showSearchSheet() }
+        // En "@x · hilos suyos/participa" (y sus resultados) la lupa busca en lo de @x.
+        findViewById<View>(R.id.native_search).setOnClickListener {
+            if (lupaHilos.disponible) lupaHilos.alternar() else showSearchSheet()
+        }
+        configurarLupasActividad()
         // Desde una subpantalla, ← vuelve a las categorías; desde las categorías, cierra.
         findViewById<View>(R.id.options_back).setOnClickListener { if (!options.volver()) hideOptions() }
         configurePmPanels()
@@ -6690,6 +6845,8 @@ class MainActivity : AppCompatActivity() {
             // mensajes la repetía en el modo que tuviera el interruptor en ese momento.
             "search" -> {
                 searchTitleOnly = !s.porMensajes
+                val estabaParticipa = searchParticipa
+                searchParticipa = s.participa
                 if (s.porMensajes) {
                     // El panel de avisos no cachea nada suyo: se rehace siempre, igual que
                     // "sus mensajes" (showUserActivity) cuando vuelves a él.
@@ -6698,8 +6855,8 @@ class MainActivity : AppCompatActivity() {
                     restaurarNoticias = true      // volver a la fila en la que ibas
                     runSearch(apilar = false)
                 } else if (Restauracion.hayQueRehacerBusqueda(
-                        BusquedaPorUsuario.clave(s.query, s.usuario), listSource,
-                        BusquedaPorUsuario.clave(searchQuery, searchUser), listLoaded)) {
+                        LupaActividad.clave(s.query, s.usuario, s.participa), listSource,
+                        LupaActividad.clave(searchQuery, searchUser, estabaParticipa), listLoaded)) {
                     // La clave lleva el usuario: "tesla de @x" no es lo mismo que "tesla".
                     searchQuery = s.query
                     searchUser = s.usuario
@@ -7722,6 +7879,7 @@ class MainActivity : AppCompatActivity() {
             listaAgotada = false
             ultimosPosteadores.reiniciar()   // lista nueva: lo que esperaba turno ya no se ve
         }
+        paginaPedida = page
         loadingPage = true
         if (page <= 1 && !listRefresh.isRefreshing) listLoading.visibility = View.VISIBLE
         listEmpty.visibility = View.GONE
@@ -7733,7 +7891,7 @@ class MainActivity : AppCompatActivity() {
             // trae u=0) y busca; para paginar reusa la URL con searchid (myThreadsBase).
             "search" -> "window.fcSearch&&fcSearch('${jsEscape(searchQuery)}',${searchTitleOnly}," +
                 "'${jsEscape(if (page > 1 && myThreadsBase.isNotEmpty()) myThreadsBase + "&page=$page" else "")}'," +
-                "'${jsEscape(searchUser)}')"
+                "'${jsEscape(searchUser)}',$searchParticipa)"
             "mine", "participated" -> {
                 val mode = if (listSource == "mine") "started" else "participated"
                 val pageUrl = if (page > 1 && myThreadsBase.isNotEmpty())
@@ -7982,9 +8140,16 @@ class MainActivity : AppCompatActivity() {
                 webView.loadUrl(buildListUrl(1))
             }
             else -> {
+                // Una página siguiente sin hilos también es el final (ver FinDeLista): sin esto
+                // cada gesto hacia abajo volvía a pedir la misma.
+                if (FinDeLista.agotadaTrasError(reason, paginaPedida, adapter.itemCount > 0)) listaAgotada = true
                 if (adapter.itemCount == 0) {
                     listEmpty.visibility = View.VISIBLE
-                    listEmpty.text = "No se pudo cargar el listado.\nDesliza para reintentar."
+                    // En una búsqueda, "empty" es que FC no encontró nada: no es un fallo, y
+                    // se dicen los límites de su buscador (gotchas 62 y 65).
+                    listEmpty.text = if (reason == "empty" && listSource == "search")
+                        LupaActividad.vacio(searchQuery, searchUser, porTitulos = true)
+                    else "No se pudo cargar el listado.\nDesliza para reintentar."
                 }
                 android.util.Log.w("FC_SHELL", "thread list error: $reason")
             }
@@ -8867,6 +9032,11 @@ class MainActivity : AppCompatActivity() {
         // "Sus mensajes" no es una pantalla de la pila: es el MISMO hilo mirado de otra forma.
         // Atrás te devuelve al hilo donde estabas, no a la lista.
         if (vistaDerivada.isNotEmpty() && isThreadVisible) { salirDeSusMensajes(); return }
+
+        // La lupa de "@x · mensajes/hilos" abierta sobre la lista entera también se CIERRA.
+        // Sobre unos resultados no: ahí atrás es volver a la lista (cerrarSiSoloCampo lo sabe).
+        if (!isThreadVisible && ::lupaMensajes.isInitialized &&
+            (lupaMensajes.cerrarSiSoloCampo() || lupaHilos.cerrarSiSoloCampo())) return
 
         // Navegación de verdad: se deshace la pila, sea cual sea la pantalla.
         val destino = nav.pop()

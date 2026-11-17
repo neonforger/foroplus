@@ -2905,7 +2905,11 @@
   // 2026-09-21 con `showposts=1`: FC añade `highlight=<consulta>` a cada enlace, así que el
   // selector de parseUserPosts vale tal cual, y llegan 100 anclas para 25 mensajes (gotcha 38,
   // de ahí que deduplicar por `p=` no sea opcional).
-  window.fcSearch = function (query, titleOnly, pageUrl, usuario) {
+  //
+  // `participa` (solo por títulos y con usuario): los hilos en los que ESCRIBIÓ, no solo los
+  // que abrió. Es la lupa de "@x · participa" (2026-11-17): manda `starteronly=0` en vez de 1,
+  // igual que "Mensajes de usuario" en el formulario de FC. Pendiente de medir en el foro.
+  window.fcSearch = function (query, titleOnly, pageUrl, usuario, participa) {
     var porMensajes = !titleOnly;
     // Los dos modos pintan en PANTALLAS distintas, así que sus errores tienen que viajar por
     // el canal de su pantalla: por el de la lista o por el del panel de avisos.
@@ -2956,7 +2960,7 @@
         // de la ficha. Por títulos, starteronly=1 = los hilos que ABRIÓ; por mensajes, los suyos.
         if (usuario) {
           body.set('searchuser', usuario); body.set('exactname', '1');
-          body.set('starteronly', titleOnly ? '1' : '0');
+          body.set('starteronly', titleOnly && !participa ? '1' : '0');
         }
         return fetch('https://forocoches.com/foro/search.php?do=process', {
           method: 'POST', credentials: 'same-origin',
