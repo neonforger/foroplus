@@ -52,8 +52,13 @@ class ShellBridge(
      * El coche del perfil, leído o escrito para la verificación de Música. Ver [MotorCocheFC]: la
      * espera un hilo de fondo con un cerrojo, así que NO se salta al hilo de la interfaz.
      */
-    private val onCocheResult: (String) -> Unit = {}
+    private val onCocheResult: (String) -> Unit = {},
+    /** Tus contactos de FC (lista o resultado de añadir/quitar). Ver [ContactosController]. */
+    private val onContactosResult: (String) -> Unit = {}
 ) {
+    @JavascriptInterface
+    fun onContactos(json: String) = onContactosResult(json)
+
     @JavascriptInterface
     fun onCoche(json: String) = onCocheResult(json)
 

@@ -2048,6 +2048,9 @@ class MainActivity : AppCompatActivity() {
         pmComposePanel = findViewById(R.id.pm_compose_panel)
         pmComposeTitle = findViewById(R.id.pm_compose_title)
         pmComposeTo = findViewById(R.id.pm_compose_to)
+        findViewById<View>(R.id.pm_compose_contactos).setOnClickListener {
+            contactos.elegirDestinatario(pmComposeTo)
+        }
         pmComposeQuotes = findViewById(R.id.pm_compose_quotes)
         pmComposeSubject = findViewById(R.id.pm_compose_subject)
         pmComposeMessage = findViewById(R.id.pm_compose_message)
@@ -2190,6 +2193,9 @@ class MainActivity : AppCompatActivity() {
             pmComposeTo.setText("")
             pmComposeSubject.setText("")
         }
+        // "Contactos" acompaña al "Para": fuera en una respuesta (no hay "Para") y sin sesión.
+        findViewById<View>(R.id.pm_compose_contactos).visibility =
+            if (mode == "reply" || !isLoggedIn()) View.GONE else View.VISIBLE
         pmComposeMessage.requestFocus()
         // Y se abre el teclado, como hace el composer de los hilos. Sin esto la pantalla salía
         // con el campo enfocado pero sin teclado, que es medio camino a ninguna parte.
@@ -2431,6 +2437,9 @@ class MainActivity : AppCompatActivity() {
             if (yaIgnorado(currentMemberUsername)) escribirIgnorado("remove", currentMemberUsername)
             else confirmarIgnorar(currentMemberUsername)
         }
+        findViewById<View>(R.id.member_contacto).setOnClickListener {
+            contactos.alternar(currentMemberUid, currentMemberUsername)
+        }
     }
 
     private fun yaIgnorado(usuario: String) =
@@ -2483,6 +2492,7 @@ class MainActivity : AppCompatActivity() {
         memberFirma.visibility = View.GONE
         memberSobreMi.visibility = View.GONE
         memberPmBtn.visibility = View.VISIBLE   // el "no admite MPs" del perfil anterior no vale aquí
+        findViewById<View>(R.id.member_contacto).visibility = View.GONE   // se pinta al llegar la ficha
         memberPanel.visibility = View.VISIBLE
         isMemberVisible = true
         bottomNav.visibility = View.VISIBLE
@@ -2521,6 +2531,7 @@ class MainActivity : AppCompatActivity() {
         // los acepta es peor que dejar que FC diga que no.
         memberPmBtn.visibility = if (o.optString("mpPosible") == "no") View.GONE else View.VISIBLE
         pintarBotonIgnorar()
+        contactos.pintarBoton(findViewById(R.id.member_contacto), currentMemberUid, username)
         // El avatar se elige por PERTENENCIA al uid, nunca por orden: la primera imagen de la
         // página es la de la cabecera (la tuya). Si el perfil no trae ninguna suya, se usa la
         // que ya conocíamos de su post; y si tampoco, ninguna (queda la inicial de color).
@@ -4082,7 +4093,8 @@ class MainActivity : AppCompatActivity() {
                 onLastPosterResult = { json -> runOnUiThread { onLastPosterJson(json) } },
                 onUserSuggestionsResult = { json -> runOnUiThread { alLlegarSugerencias?.invoke(json) } },
                 // Sin saltar a la interfaz: lo espera un hilo de fondo con un cerrojo (MotorCocheFC).
-                onCocheResult = { json -> motorCoche.alLlegar(json) }
+                onCocheResult = { json -> motorCoche.alLlegar(json) },
+                onContactosResult = { json -> runOnUiThread { contactos.alLlegar(json) } }
             ),
             "AndroidShell"
         )
@@ -5337,6 +5349,12 @@ class MainActivity : AppCompatActivity() {
             if (post.author.isNotEmpty() && isLoggedIn()) {
                 menu.menu.add(0, 5, 1, "Ignorar a ${post.author}")
             }
+            // Contactos: la acción contraria a lo que ya pasa. Hace falta su uid REAL (gotcha 1);
+            // si aún no se sabe la lista, se ofrece añadir y se pide para la próxima vez.
+            if (isLoggedIn() && post.author.isNotEmpty() && Contactos.uidValido(post.uid)) {
+                contactos.asegurarLista()
+                menu.menu.add(0, 9, 1, Contactos.etiqueta(contactos.esContacto(post.uid) == true))
+            }
         }
         // Nota privada sobre el autor (solo en este móvil): crear o editar. Va con las acciones
         // del autor; no tiene sentido en los mensajes propios.
@@ -5359,6 +5377,11 @@ class MainActivity : AppCompatActivity() {
                 6 -> { copiarMensaje(post); true }
                 7 -> { mostrarSusMensajesEnHilo(post.author, currentThreadTid); true }
                 8 -> { abrirNotaBubble(post, anchor); true }
+                9 -> {
+                    if (contactos.esContacto(post.uid) == true) contactos.quitar(post.uid, post.author)
+                    else contactos.anadir(post.uid, post.author)
+                    true
+                }
                 else -> false
             }
         }
@@ -5424,6 +5447,23 @@ class MainActivity : AppCompatActivity() {
             cambiandoDeCuenta = { cambiandoDeCuenta },
             toast = ::toast,
             escaparJs = ::jsEscape
+        )
+    }
+
+    /** Tus contactos de FC (ficha, menú ⋮ y "Para" de un MP): vive en [ContactosController]. */
+    private val contactos: ContactosController by lazy {
+        ContactosController(
+            activity = this,
+            ejecutarJs = { js -> webView.evaluateJavascript(js, null) },
+            logueado = ::isLoggedIn,
+            cuentaActiva = { uidActivo },
+            cambiandoDeCuenta = { cambiandoDeCuenta },
+            toast = ::toast,
+            alCambiar = {
+                if (isMemberVisible) contactos.pintarBoton(
+                    findViewById(R.id.member_contacto), currentMemberUid, currentMemberUsername
+                )
+            }
         )
     }
 
