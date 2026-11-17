@@ -9,6 +9,7 @@ import android.view.View
 import android.webkit.CookieManager
 import android.webkit.WebView
 import android.widget.EditText
+import android.widget.FrameLayout
 import android.widget.LinearLayout
 import androidx.appcompat.widget.SwitchCompat
 import android.widget.ImageButton
@@ -514,6 +515,10 @@ class MainActivity : AppCompatActivity() {
     // (página resaltada, nº total de páginas) con la que se pintaron los chips ahora
     // mismo; null si la barra está oculta. Evita reconstruir en cada frame de scroll.
     private var pageBarState: Pair<Int, Int>? = null
+    /** Tirar desde abajo en la última página (ver [RefrescoDesdeAbajo]). */
+    private lateinit var refrescoAbajo: RefrescoDesdeAbajo
+    /** Lo que había antes de recargar desde abajo: mensajes y páginas. Null = no hay. */
+    private var refrescoAbajoAntes: IntArray? = null
     private var replaceOnLoad = false      // salto de página: la respuesta REEMPLAZA la lista
     private var pendingScrollPid = ""      // post al que saltar tras cargar (citas, deep links)
     // Solo lo pone el ATRAS: desplazamiento fino del ancla. Distinto de null = restauracion,
@@ -589,6 +594,14 @@ class MainActivity : AppCompatActivity() {
     private var listLoaded = false
     private var currentPage = 1
     private var loadingPage = false      // evita ráfagas de peticiones con scroll rápido
+        set(v) {
+            field = v
+            // La rueda del final, solo para la página 2 en adelante (la 1 tiene la suya en medio).
+            // Con post: se pone a true desde onScrolled.
+            if (::threadList.isInitialized) threadList.post { cargandoMasLista.visible = loadingPage && paginaPedida > 1 }
+        }
+    /** La rueda al final de la lista de hilos (ver [CargandoMasAdapter]). */
+    private val cargandoMasLista = CargandoMasAdapter()
     /** URL de la última lista de subforo pedida; "" si la lista actual es de otro tipo. Ver [PeticionLista]. */
     private var listaEsperada = ""
     /**
@@ -1729,7 +1742,15 @@ class MainActivity : AppCompatActivity() {
     // por mensajes). Ver PaginacionMensajes: solo sobre un searchid, y se para cuando FC repite.
     private var mensajesBase: String? = null
     private var mensajesPagina = 1
+    /** La rueda del final de la lista sigue a este estado (ver [CargandoMasAdapter]). */
+    private val cargandoMasMensajes = CargandoMasAdapter()
     private var mensajesCargando = false
+        set(v) {
+            field = v
+            // Con post: esto se pone a true desde onScrolled, y desde ahí no se toca la lista
+            // (gotcha de Android).
+            if (::noticesList.isInitialized) noticesList.post { cargandoMasMensajes.visible = mensajesCargando }
+        }
     private var mensajesAgotada = false
 
     private fun reiniciarPaginacionMensajes() {
@@ -2764,11 +2785,15 @@ class MainActivity : AppCompatActivity() {
         val esPaginaSiguiente = mensajesCargando && noticeAdapter.itemCount > 0
         if (esPaginaSiguiente) {
             mensajesCargando = false
-            if (p.error.isNotEmpty()) return   // el próximo scroll lo vuelve a intentar
+            if (p.error.isNotEmpty()) {   // el próximo scroll lo vuelve a intentar
+                LimiteBusqueda.mensaje(p.error)?.let { avisarLimiteBusqueda(it) }
+                return
+            }
             val nuevos = PaginacionMensajes.nuevos(noticeAdapter.urls(), filasDeMensajes(p.items))
             if (nuevos.isEmpty()) { mensajesAgotada = true; return }   // gotcha 37
             mensajesPagina++
             noticeAdapter.append(nuevos)
+            adelantarMensajes()
             return
         }
         mensajesCargando = false
@@ -2796,6 +2821,7 @@ class MainActivity : AppCompatActivity() {
             noticeAdapter.submit(emptyList())
             noticesEmpty.visibility = View.VISIBLE
             noticesEmpty.text = when {
+                LimiteBusqueda.mensaje(p.error) != null -> LimiteBusqueda.mensaje(p.error)
                 currentNoticesKind != "searchposts" -> "No se pudo consultar la actividad de este usuario"
                 p.error == "login" -> "La búsqueda de ForoCoches requiere iniciar sesión"
                 else -> "No se pudo completar la búsqueda"
@@ -2834,6 +2860,30 @@ class MainActivity : AppCompatActivity() {
                 else -> "No tienes menciones recientes"
             }
         }
+        adelantarMensajes()
+    }
+
+    /**
+     * Ir por delante de quien lee: con la página 1 pintada se pide ya la siguiente, sin esperar a
+     * que llegue al final (el dueño, 2026-11-17: esperar abajo a que llegue "no me gusta"). El
+     * portero de search.php las espacia (HUECO_BUSQUEDA_MS en extractor.js), así que esto no pide
+     * más rápido: pide ANTES. Y como mucho seis pantallas por delante de quien lee
+     * ([PaginacionMensajes.hayQuePedir]): quien la deja abierta no la baja entera él solo.
+     */
+    private fun adelantarMensajes() {
+        noticesList.post {
+            if (!isNoticesVisible || mensajesCargando || mensajesAgotada || mensajesBase == null) return@post
+            if (quedanPocosMensajesPorVer()) pedirMasMensajes()
+        }
+    }
+
+    /** Solo LEE la lista (vale desde onScrolled). Las filas por pantalla, de lo que se ve ahora. */
+    private fun quedanPocosMensajesPorVer(): Boolean {
+        val lm = noticesList.layoutManager as? LinearLayoutManager ?: return false
+        val primera = lm.findFirstVisibleItemPosition()
+        val ultima = lm.findLastVisibleItemPosition()
+        val porPantalla = if (primera >= 0 && ultima >= primera) ultima - primera + 1 else 1
+        return PaginacionMensajes.hayQuePedir(noticeAdapter.itemCount, ultima, porPantalla)
     }
 
     /**
@@ -2995,7 +3045,28 @@ class MainActivity : AppCompatActivity() {
      * quedarse sin enlaces un instante (hasta que llegue la lista de la cuenta nueva) a usar
      * los viejos.
      */
+    /**
+     * El motor guarda unos minutos el token de search.php y quién eres (ver `paginaBusqueda` en
+     * extractor.js). Cambiar las cookies no recarga su página, así que hay que decírselo.
+     */
+    /**
+     * Con la lista ya pintada, el freno se dice en un toast — pero uno cada 15 s como mucho:
+     * mientras dura, cada gesto hacia abajo vuelve a llegar aquí (sin ir a la red).
+     */
+    private var ultimoAvisoLimite = 0L
+    private fun avisarLimiteBusqueda(mensaje: String) {
+        val ahora = System.currentTimeMillis()
+        if (ahora - ultimoAvisoLimite < 15_000) return
+        ultimoAvisoLimite = ahora
+        toast(mensaje)
+    }
+
+    private fun olvidarBusqueda() {
+        webView.evaluateJavascript("window.fcOlvidarBusqueda&&fcOlvidarBusqueda()", null)
+    }
+
     private fun olvidarIdentidadPintada() {
+        olvidarBusqueda()
         lineaPerfil = ""
         desdePerfil = ""
         cifrasPerfil = emptyList()
@@ -3071,6 +3142,7 @@ class MainActivity : AppCompatActivity() {
         aceptarUidNuevo = false
         SesionFC.borrar(CookieManager.getInstance()) {
             SesionFC.poner(CookieManager.getInstance(), anteriores)
+            olvidarBusqueda()
             CookieManager.getInstance().flush()
             sendingLogin = false
             loginSubmit.text = "Iniciar sesión"
@@ -3357,6 +3429,7 @@ class MainActivity : AppCompatActivity() {
         uidEsperado = uid
         SesionFC.borrar(CookieManager.getInstance()) {
             SesionFC.poner(CookieManager.getInstance(), guardadas)
+            olvidarBusqueda()
             uidActivo = ""
             // Mismo instante en que cambian las cookies, y en disco: si no, NotificationChecker/
             // NotificationService (que no ven esta variable en memoria, leen shell_prefs desde
@@ -3427,6 +3500,7 @@ class MainActivity : AppCompatActivity() {
                         // cambio, este revert llegaría tarde y pisaría sus cookies.
                         if (miGeneracion != generacionCambio) return@revertir
                         SesionFC.poner(CookieManager.getInstance(), anteriores)
+                        olvidarBusqueda()
                         uidActivo = anterior
                         // Revert también en disco: se vació al empezar el cambio (ver arriba),
                         // y aquí las cookies vuelven a ser las de la cuenta anterior.
@@ -4184,17 +4258,14 @@ class MainActivity : AppCompatActivity() {
             openThreadNative(n.url, n.title, markReadUnknown = true)
         }
         noticesList.layoutManager = LinearLayoutManager(this)
-        noticesList.adapter = noticeAdapter
+        noticesList.adapter = androidx.recyclerview.widget.ConcatAdapter(noticeAdapter, cargandoMasMensajes)
         // Mensajes de un usuario / de una búsqueda: la página siguiente BAJO DEMANDA, como el
         // listado (regla anti-crawler). Desde onScrolled no se toca ninguna vista (gotcha de
         // Android): solo se lanza la petición; lo que llega se pinta en onNotices.
         noticesList.addOnScrollListener(object : RecyclerView.OnScrollListener() {
             override fun onScrolled(rv: RecyclerView, dx: Int, dy: Int) {
                 if (dy <= 0 || mensajesCargando || mensajesAgotada || mensajesBase == null) return
-                val lm = rv.layoutManager as? LinearLayoutManager ?: return
-                if (noticeAdapter.itemCount > 0 && lm.findLastVisibleItemPosition() >= noticeAdapter.itemCount - 6) {
-                    pedirMasMensajes()
-                }
+                if (quedanPocosMensajesPorVer()) pedirMasMensajes()
             }
         })
         contextoBar = findViewById(R.id.contexto_bar)
@@ -4320,7 +4391,7 @@ class MainActivity : AppCompatActivity() {
         }
         val layoutManager = LinearLayoutManager(this)
         threadList.layoutManager = layoutManager
-        threadList.adapter = adapter
+        threadList.adapter = androidx.recyclerview.widget.ConcatAdapter(adapter, cargandoMasLista)
         listRefresh.setColorSchemeColors(color(R.color.fc_rojo))
         listRefresh.setOnRefreshListener { requestThreadList(1) }
 
@@ -4352,7 +4423,9 @@ class MainActivity : AppCompatActivity() {
             override fun onScrolled(rv: RecyclerView, dx: Int, dy: Int) {
                 if (dy <= 0 || loadingPage || !listLoaded || listaAgotada) return
                 val last = layoutManager.findLastVisibleItemPosition()
-                if (adapter.itemCount > 0 && last >= adapter.itemCount - 8) {
+                val pedir = if (esListaDeBusqueda()) quedanPocosHilosPorVer()
+                    else adapter.itemCount > 0 && last >= adapter.itemCount - 8
+                if (pedir) {
                     if (listSource == "mas18") mas18Auto = 0
                     requestThreadList(currentPage + 1)
                 }
@@ -4680,6 +4753,14 @@ class MainActivity : AppCompatActivity() {
                 postList.post(pintarIndicadores)
             }
         })
+        refrescoAbajo = RefrescoDesdeAbajo(
+            postList, threadRefresh.parent as FrameLayout,
+            puedeEmpezar = {
+                isThreadVisible && !loadingThreadPage && copiaAbierta.isEmpty() && vistaDerivada.isEmpty() &&
+                    TirarDesdeAbajo.disponible(threadPage, threadPageCount, postAdapter.itemCount > 0)
+            },
+            alTirar = { recargarDesdeAbajo() }
+        )
         quickReplyBar = findViewById(R.id.quick_reply_bar)
         quickInput = findViewById(R.id.quick_input)
         // Al ir a escribir, las barras tienen que estar a la vista (si se habían escondido).
@@ -6213,6 +6294,7 @@ class MainActivity : AppCompatActivity() {
             cookiesAntesDeAnadir = emptyMap()
             SesionFC.borrar(CookieManager.getInstance()) {
                 SesionFC.poner(CookieManager.getInstance(), anteriores)
+                olvidarBusqueda()
                 CookieManager.getInstance().flush()
             }
         }
@@ -6502,6 +6584,7 @@ class MainActivity : AppCompatActivity() {
 
     /** Se cierra el panel y se refresca todo con la sesión nueva. */
     private fun entrarTrasLogin(pedirIdentidad: Boolean) {
+        olvidarBusqueda()
         verificacionLoginIntentada = false
         loginParaOtraCuenta = false
         // Ha entrado: las cookies de la cuenta anterior ya están a salvo en su cofre
@@ -7428,6 +7511,21 @@ class MainActivity : AppCompatActivity() {
         if (startPage > 1) { replaceOnLoad = true; requestThreadPage(startPage) } else requestThreadPage(1)
     }
 
+    /**
+     * Recarga la última página SIN moverte de donde estás: lo nuevo aparece debajo. Con la URL
+     * cambiada (`_fp`): si no, el Varnish de FC (gotcha 10) devuelve la copia de hace un minuto
+     * y "no hay mensajes nuevos" sería mentira.
+     */
+    private fun recargarDesdeAbajo() {
+        if (!engineReady || loadingThreadPage || currentThreadUrl.isEmpty()) { terminarRecargaDesdeAbajo(); return }
+        refrescoAbajoAntes = intArrayOf(postAdapter.itemCount, threadPageCount)
+        loadingThreadPage = true
+        val url = threadPageUrl(threadPage) + "&_fp=" + System.currentTimeMillis()
+        webView.evaluateJavascript("window.fcLoadThread&&fcLoadThread('${jsEscape(url)}')", null)
+    }
+
+    private fun terminarRecargaDesdeAbajo() = refrescoAbajo.terminar()
+
     private fun requestThreadPage(page: Int) {
         // Leyendo una copia, las páginas salen del fichero: es el sentido de haberla guardado.
         if (copiaAbierta.isNotEmpty()) { pintarPaginaDeCopia(page); return }
@@ -7498,8 +7596,10 @@ class MainActivity : AppCompatActivity() {
         }
         threadPageCount = t.pageCount
         threadPage = t.page
-        // Página nueva: se empieza a leer con todo a la vista.
-        mostrarBarrasHilo()
+        // Página nueva: se empieza a leer con todo a la vista. Salvo al recargar desde abajo, que
+        // no es página nueva: desplegar la cabecera ahí empujaba la lista hacia abajo justo al
+        // soltar (el "entrecorte" del vídeo del dueño, 2026-11-17).
+        if (refrescoAbajoAntes == null) mostrarBarrasHilo()
         showThreadPageInfo(t.page)
 
         // Autor del hilo (para recuadrar sus mensajes). Se lee de t.posts SIN filtrar: si el
@@ -7540,11 +7640,26 @@ class MainActivity : AppCompatActivity() {
         // Paginación clásica: la página cargada SUSTITUYE a la anterior y se empieza por
         // arriba. Ya no hay append (scroll infinito) ni prepend (carga hacia atrás): en la
         // lista solo conviven posts de una misma página.
-        postAdapter.submit(visible)
-        postList.scrollToPosition(0)
+        val antes = refrescoAbajoAntes
+        refrescoAbajoAntes = null
+        if (antes != null) {
+            // Recarga desde abajo: SOLO se añade lo nuevo, debajo, donde estaba la rueda. Nada de
+            // submit: repintaba el hilo entero (fotos otra vez, citas y spoilers cerrados, el vídeo
+            // parado) y luego había que recolocarte a mano — eso era el gesto "bugueado" que vio
+            // el dueño. Lo editado en mensajes que ya se ven no se refresca; para eso, el de arriba.
+            postAdapter.append(visible)
+            terminarRecargaDesdeAbajo()
+            // Lo nuevo de esta página ya se ve llegar; lo que no se ve es una página nueva.
+            TirarDesdeAbajo.aviso(antes[1], t.pageCount)?.let { toast(it) }
+        } else {
+            // Página nueva o recarga normal: si quedaba la lista subida por un tirón, a su sitio.
+            refrescoAbajo.reiniciar()
+            postAdapter.submit(visible)
+            postList.scrollToPosition(0)
+        }
         // Con la lupa abierta se busca también en la página nueva, y se salta a la primera
         // salvo que esta carga ya vaya a llevarte a un mensaje concreto.
-        buscador.paginaNueva(saltar = !pendingIrAlFinal && !pendingScrollToLast &&
+        buscador.paginaNueva(saltar = antes == null && !pendingIrAlFinal && !pendingScrollToLast &&
             pendingScrollPid.isEmpty() && !buscandoMiMensaje)
         if (pendingIrAlFinal) {
             pendingIrAlFinal = false
@@ -7603,6 +7718,10 @@ class MainActivity : AppCompatActivity() {
 
     private fun onThreadError(reason: String) {
         loadingThreadPage = false
+        if (refrescoAbajoAntes != null) {
+            refrescoAbajoAntes = null
+            terminarRecargaDesdeAbajo()
+        }
         replaceOnLoad = false
         pendingScrollToLast = false
         buscandoMiMensaje = false
@@ -8113,6 +8232,28 @@ class MainActivity : AppCompatActivity() {
         lanzarUltimos(siguientes)
     }
 
+    /** Las listas que salen de search.php: van con el portero y se adelantan (ver adelantarMensajes). */
+    private fun esListaDeBusqueda(): Boolean = listSource in setOf(
+        "search", "mine", "participated", "user-started", "user-threads"
+    )
+
+    /** Solo LEE la lista (vale desde onScrolled): seis pantallas por delante como mucho. */
+    private fun quedanPocosHilosPorVer(): Boolean {
+        val lm = threadList.layoutManager as? LinearLayoutManager ?: return false
+        val primera = lm.findFirstVisibleItemPosition()
+        val ultima = lm.findLastVisibleItemPosition()
+        val porPantalla = if (primera >= 0 && ultima >= primera) ultima - primera + 1 else 1
+        return PaginacionMensajes.hayQuePedir(adapter.itemCount, ultima, porPantalla)
+    }
+
+    /** Como [adelantarMensajes], para las búsquedas que salen como hilos (por títulos, los suyos…). */
+    private fun adelantarLista() {
+        threadList.post {
+            if (!esListaDeBusqueda() || loadingPage || !listLoaded || listaAgotada || adapter.itemCount == 0) return@post
+            if (quedanPocosHilosPorVer()) requestThreadList(currentPage + 1)
+        }
+    }
+
     private fun requestThreadList(page: Int) {
         // Traza permanente, mismo motivo que la de los ignorados: si la paginación de una
         // lista de búsqueda deja de funcionar, el síntoma es que la lista "se acaba" — no hay
@@ -8300,6 +8441,7 @@ class MainActivity : AppCompatActivity() {
         // Una página que no aporta NI UN hilo nuevo es el final de los resultados, aunque FC
         // haya contestado 200 con contenido (ver [listaAgotada]).
         if (parsed.page > 1 && adapter.itemCount == antes) listaAgotada = true
+        adelantarLista()
         android.util.Log.i("FC_LIST", "llega $listSource pagina=${parsed.page} " +
             "nuevos=${adapter.itemCount - antes} enLista=${adapter.itemCount}" +
             (if (listaAgotada) " -> AGOTADA" else ""))
@@ -8399,13 +8541,19 @@ class MainActivity : AppCompatActivity() {
                 // Una página siguiente sin hilos también es el final (ver FinDeLista): sin esto
                 // cada gesto hacia abajo volvía a pedir la misma.
                 if (FinDeLista.agotadaTrasError(reason, paginaPedida, adapter.itemCount > 0)) listaAgotada = true
+                val limite = LimiteBusqueda.mensaje(reason)
                 if (adapter.itemCount == 0) {
                     listEmpty.visibility = View.VISIBLE
                     // En una búsqueda, "empty" es que FC no encontró nada: no es un fallo, y
                     // se dicen los límites de su buscador (gotchas 62 y 65).
-                    listEmpty.text = if (reason == "empty" && listSource == "search")
-                        LupaActividad.vacio(searchQuery, searchUser, porTitulos = true)
-                    else "No se pudo cargar el listado.\nDesliza para reintentar."
+                    listEmpty.text = when {
+                        limite != null -> limite
+                        reason == "empty" && listSource == "search" ->
+                            LupaActividad.vacio(searchQuery, searchUser, porTitulos = true)
+                        else -> "No se pudo cargar el listado.\nDesliza para reintentar."
+                    }
+                } else if (limite != null) {
+                    avisarLimiteBusqueda(limite)
                 }
                 android.util.Log.w("FC_SHELL", "thread list error: $reason")
             }

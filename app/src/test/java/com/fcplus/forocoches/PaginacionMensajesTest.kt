@@ -1,6 +1,7 @@
 package com.fcplus.forocoches
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -64,5 +65,19 @@ class PaginacionMensajesTest {
             title = "", who = "", text = ""
         )
         assertTrue(PaginacionMensajes.nuevos(pintados, listOf(llega)).isEmpty())
+    }
+
+    @Test fun `pide mientras lo que queda sin ver cabe en seis pantallas`() {
+        // 7 filas por pantalla: 6 pantallas = 42 filas.
+        assertTrue(PaginacionMensajes.hayQuePedir(total = 25, ultimaVisible = 6, filasPorPantalla = 7))
+        assertTrue(PaginacionMensajes.hayQuePedir(total = 50, ultimaVisible = 8, filasPorPantalla = 7))
+    }
+
+    @Test fun `deja de pedir con mas de seis pantallas por delante`() {
+        assertFalse(PaginacionMensajes.hayQuePedir(total = 75, ultimaVisible = 6, filasPorPantalla = 7))
+    }
+
+    @Test fun `lista vacia no pide`() {
+        assertFalse(PaginacionMensajes.hayQuePedir(total = 0, ultimaVisible = -1, filasPorPantalla = 7))
     }
 }

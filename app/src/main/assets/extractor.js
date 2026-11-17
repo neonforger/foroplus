@@ -2988,6 +2988,81 @@
       .catch(function (e) { AndroidShell.onListError(String(e)); });
   };
 
+  // ── El portero de search.php ─────────────────────────────────────────────────────────────
+  // Desde el 2026-11-17 Cloudflare limita las peticiones a search.php: 429 "Access denied |
+  // used Cloudflare to restrict access" con `Retry-After: 96`, mientras el resto del foro sigue
+  // en 200 (medido por CDP). Cuenta PETICIONES, no búsquedas, así que TODAS las de search.php
+  // pasan por aquí:
+  //  - entre una búsqueda y la siguiente hay un hueco mínimo (el scroll infinito las pedía
+  //    seguidas). Traer el token NO cuenta como búsqueda: es lo que hace la web antes de buscar;
+  //  - un 429 cierra el portero hasta que pase el Retry-After, y mientras se contesta SIN ir a
+  //    la red ('ratelimit:<segundos que faltan>'): insistir solo alarga el castigo.
+  // No se salta el límite (ni proxies ni reintentos en bucle): solo se gasta menos.
+  var portero = { hasta: 0, ultima: 0, cola: Promise.resolve() };
+  var HUECO_BUSQUEDA_MS = 5000;
+  function castigo() {
+    return 'ratelimit:' + Math.max(1, Math.ceil((portero.hasta - Date.now()) / 1000));
+  }
+  function fetchBusqueda(url, opts, preparacion) {
+    // La cola ordena las SALIDAS, no espera a las respuestas: una petición colgada no tapona.
+    var salida = portero.cola.then(function () {
+      if (Date.now() < portero.hasta) throw castigo();
+      var espera = preparacion ? 0 : Math.max(0, portero.ultima + HUECO_BUSQUEDA_MS - Date.now());
+      return new Promise(function (ok) { setTimeout(ok, espera); });
+    }).then(function () {
+      if (Date.now() < portero.hasta) throw castigo();
+      if (!preparacion) portero.ultima = Date.now();
+    });
+    portero.cola = salida.catch(function () {});
+    return salida.then(function () {
+      return fetch(url, Object.assign({ credentials: 'same-origin' }, opts || {}));
+    }).then(function (r) {
+      if (r.status === 429) {
+        var ra = parseInt(r.headers.get('Retry-After') || '', 10);
+        portero.hasta = Date.now() + (ra > 0 ? ra : 60) * 1000;
+        throw castigo();
+      }
+      return r;
+    });
+  }
+
+  // El token (y quién eres) de la página de búsqueda, reusado unos minutos: cada búsqueda nueva
+  // se traía search.php solo para sacarlo, y eso eran DOS peticiones por búsqueda. Sale del HTML
+  // TRAÍDO, NUNCA del DOM vivo, que es la página del arranque y puede ser de otra cuenta
+  // (gotcha 31). Cambiar de cuenta NO recarga la página del motor (solo cambia las cookies), así
+  // que Kotlin llama a fcOlvidarBusqueda al cambiar de cuenta, cerrar sesión o entrar.
+  var paginaBusquedaCache = { token: '', id: null, cuando: 0 };
+  window.fcOlvidarBusqueda = function () { paginaBusquedaCache = { token: '', id: null, cuando: 0 }; };
+  // Dos búsquedas lanzadas a la vez con la caché vacía traían el token DOS veces (medido en el
+  // móvil el 2026-11-17): la que ya está en camino se comparte.
+  var paginaBusquedaEnCamino = null;
+  function paginaBusqueda(nueva) {
+    var c = paginaBusquedaCache;
+    if (!nueva && c.token && Date.now() - c.cuando < 5 * 60 * 1000) return Promise.resolve(c);
+    if (paginaBusquedaEnCamino) return paginaBusquedaEnCamino;
+    var p = paginaBusquedaEnCamino = fetchBusqueda('https://forocoches.com/foro/search.php', null, true)
+      .then(function (r) { return r.text(); })
+      .then(function (html) {
+        var doc = new DOMParser().parseFromString(html, 'text/html');
+        var el = doc.querySelector('input[name="securitytoken"]');
+        var t = el ? el.value : '';
+        paginaBusquedaCache = {
+          token: (t && t !== 'guest') ? t : '', id: ownIdentity(doc), cuando: Date.now()
+        };
+        return paginaBusquedaCache;
+      });
+    var soltar = function () { if (paginaBusquedaEnCamino === p) paginaBusquedaEnCamino = null; };
+    p.then(soltar, soltar);
+    return p;
+  }
+
+  /** Lo que llega de un fetch de búsqueda, como texto y con la URL final (la del searchid). */
+  function traerBusqueda(url, opts) {
+    return fetchBusqueda(url, opts).then(function (r) {
+      return r.text().then(function (h) { return { h: h, u: r.url || url }; });
+    });
+  }
+
   // Buscador. Reusa la MISMA búsqueda de vBulletin que Mis hilos/Participados: POST a
   // search.php?do=process. OJO: FC exige sesión para buscar — de invitado el token es
   // 'guest', no existe el formulario y devuelve la home.
@@ -3035,19 +3110,15 @@
       }));
     }
     if (pageUrl) {
-      fetch(pageUrl, { credentials: 'same-origin' })
-        .then(function (r) { return r.text().then(function (h) { return { h: h, u: r.url || pageUrl }; }); })
+      traerBusqueda(pageUrl)
         .then(function (res) { emit(new DOMParser().parseFromString(res.h, 'text/html'), res.u); })
         .catch(function (e) { fallo(String(e)); });
       return;
     }
-    fetch('https://forocoches.com/foro/search.php', { credentials: 'same-origin' })
-      .then(function (r) { return r.text(); })
-      .then(function (html) {
-        var sdoc = new DOMParser().parseFromString(html, 'text/html');
-        var tokEl = sdoc.querySelector('input[name="securitytoken"]');
-        var token = tokEl ? tokEl.value : '';
-        if (!token || token === 'guest') { fallo('login'); return null; }
+    paginaBusqueda(false)
+      .then(function (pb) {
+        var token = pb.token;
+        if (!token) { fallo('login'); return null; }
         var body = new URLSearchParams();
         body.set('do', 'process'); body.set('securitytoken', token);
         body.set('query', query); body.set('titleonly', titleOnly ? '1' : '0');
@@ -3059,10 +3130,10 @@
           body.set('searchuser', usuario); body.set('exactname', '1');
           body.set('starteronly', titleOnly && !participa ? '1' : '0');
         }
-        return fetch('https://forocoches.com/foro/search.php?do=process', {
-          method: 'POST', credentials: 'same-origin',
+        return traerBusqueda('https://forocoches.com/foro/search.php?do=process', {
+          method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body.toString()
-        }).then(function (r) { return r.text().then(function (h) { return { h: h, u: r.url }; }); });
+        });
       })
       .then(function (res) {
         if (!res) return;
@@ -3074,22 +3145,10 @@
   // Sugerencias de nombres para el campo de usuario del buscador: el MISMO autocompletado de la
   // web (vbulletin_ajax_namesugg.js → POST ajax.php?do=usersearch con `fragment`; contesta a
   // partir de 3 letras, con hasta 15 <user userid="N">nombre</user>). Pide el securitytoken de la
-  // sesión: se saca de search.php y se reusa unos minutos, NUNCA del DOM vivo, que es la página
-  // del arranque y puede ser de otra cuenta (gotcha 31). Si FC no contesta con nombres (token
-  // caducado), se pide token nuevo y se reintenta una vez. Medido por CDP el 2026-10-07.
-  var tokenSugerencias = { valor: '', cuando: 0 };
+  // sesión, el de paginaBusqueda (compartido con el buscador). Si FC no contesta con nombres
+  // (token caducado), se pide token nuevo y se reintenta una vez. Medido por CDP el 2026-10-07.
   function tokenParaSugerir(nuevo) {
-    if (!nuevo && tokenSugerencias.valor && Date.now() - tokenSugerencias.cuando < 5 * 60 * 1000) {
-      return Promise.resolve(tokenSugerencias.valor);
-    }
-    return fetch('https://forocoches.com/foro/search.php', { credentials: 'same-origin' })
-      .then(function (r) { return r.text(); })
-      .then(function (html) {
-        var el = new DOMParser().parseFromString(html, 'text/html').querySelector('input[name="securitytoken"]');
-        var t = el ? el.value : '';
-        tokenSugerencias = { valor: (t && t !== 'guest') ? t : '', cuando: Date.now() };
-        return tokenSugerencias.valor;
-      });
+    return paginaBusqueda(nuevo).then(function (pb) { return pb.token; });
   }
 
   window.fcSugerirUsuarios = function (fragmento) {
@@ -3258,10 +3317,7 @@
     if (tid) extra += '&searchthreadid=' + encodeURIComponent(tid);
     var url = pageUrl || ('https://forocoches.com/foro/search.php?do=process&exactname=1' +
                           '&searchuser=' + encodeURIComponent(usuario) + extra);
-    fetch(url, { credentials: 'same-origin' })
-      .then(function (r) {
-        return r.text().then(function (h) { return { h: h, u: r.url || url }; });
-      })
+    traerBusqueda(url)
       .then(function (res) {
         var doc = new DOMParser().parseFromString(res.h, 'text/html');
         var cf = /just a moment|attention required|un momento/i.test(doc.title || '');
@@ -3304,25 +3360,20 @@
     }
     // Paginación: la URL con searchid ya identifica la búsqueda; solo hace falta traerla.
     if (pageUrl) {
-      fetch(pageUrl, { credentials: 'same-origin' })
-        .then(function (r) { return r.text().then(function (h) { return { h: h, u: r.url || pageUrl }; }); })
+      traerBusqueda(pageUrl)
         .then(function (res) { emit(new DOMParser().parseFromString(res.h, 'text/html'), res.u); })
         .catch(function (e) { AndroidShell.onListError(String(e)); });
       return;
     }
     // Página 1: resolver identidad (uid + usuario) y el token de búsqueda del HTML traído.
-    fetch('https://forocoches.com/foro/search.php', { credentials: 'same-origin' })
-      .then(function (r) { return r.text(); })
-      .then(function (html) {
-        var sdoc = new DOMParser().parseFromString(html, 'text/html');
-        var id = ownIdentity(sdoc);
-        var tokEl = sdoc.querySelector('input[name="securitytoken"]');
-        var token = tokEl ? tokEl.value : '';
+    paginaBusqueda(false)
+      .then(function (pb) {
+        var id = pb.id || {};
+        var token = pb.token;
         if (mode === 'started' && id.uid) {
           // Hilos iniciados: finduser por UID (GET), formato de hilos garantizado.
           var gurl = 'https://forocoches.com/foro/search.php?do=finduser&u=' + id.uid + '&starteronly=1';
-          return fetch(gurl, { credentials: 'same-origin' })
-            .then(function (r) { return r.text().then(function (h) { return { h: h, u: r.url || gurl }; }); });
+          return traerBusqueda(gurl);
         }
         // Participados (o sin uid): búsqueda por nombre de usuario, agrupada en hilos.
         if (!id.user || !token) { AndroidShell.onListError('empty'); return null; }
@@ -3332,10 +3383,10 @@
         body.set('searchuser', id.user); body.set('exactname', '1');
         body.set('starteronly', mode === 'started' ? '1' : '0');
         body.set('showposts', '0'); body.set('dosearch', 'Buscar');
-        return fetch('https://forocoches.com/foro/search.php?do=process', {
-          method: 'POST', credentials: 'same-origin',
+        return traerBusqueda('https://forocoches.com/foro/search.php?do=process', {
+          method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body.toString()
-        }).then(function (r) { return r.text().then(function (h) { return { h: h, u: r.url }; }); });
+        });
       })
       .then(function (res) {
         if (!res) return;

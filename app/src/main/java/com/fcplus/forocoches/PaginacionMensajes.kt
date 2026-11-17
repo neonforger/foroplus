@@ -43,4 +43,19 @@ object PaginacionMensajes {
         val vistos = yaPintados.mapTo(HashSet()) { clave(it) }
         return llegan.filter { vistos.add(clave(it.url)) }
     }
+
+    /** Cuántas pantallas por delante de quien lee se van pidiendo páginas, como mucho (dueño, 2026-11-17). */
+    const val PANTALLAS_ADELANTO = 6
+
+    /**
+     * ¿Se pide ya la página siguiente? Solo si lo que queda sin ver por debajo cabe en
+     * [PANTALLAS_ADELANTO] pantallas. Así, quien deja la búsqueda abierta no la va bajando entera
+     * él solo (eso es lo que hace un bot, y lo que gasta el límite de Cloudflare): las páginas se
+     * piden porque alguien baja, solo que un poco antes de que llegue.
+     */
+    fun hayQuePedir(total: Int, ultimaVisible: Int, filasPorPantalla: Int): Boolean {
+        if (total <= 0) return false
+        val sinVer = total - 1 - ultimaVisible.coerceAtLeast(0)
+        return sinVer < PANTALLAS_ADELANTO * filasPorPantalla.coerceAtLeast(1)
+    }
 }

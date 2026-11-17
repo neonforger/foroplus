@@ -625,7 +625,8 @@
                 <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
                     android:id="@+id/thread_refresh"
                     android:layout_width="match_parent"
-                    android:layout_height="match_parent">
+                    android:layout_height="match_parent"
+                    android:background="?attr/fcFondoLista">
 
                     <!-- Sin `android:scrollbars`: esa barra es SOLO un indicador y no se puede
                          arrastrar (un tester se quejó de justo eso). La sustituye
