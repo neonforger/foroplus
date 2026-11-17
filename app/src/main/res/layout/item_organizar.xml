@@ -8,7 +8,7 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:background="@color/fc_fondo">
+    android:background="?attr/fcFondo">
 
     <!-- Encabezado de sección ("BARRA DE ABAJO · 4 HUECOS" / "EN EL PANEL DEL AVATAR"): solo en
          la barra de abajo, encima de la primera fila de cada parte. -->
@@ -31,7 +31,7 @@
     android:layout_height="wrap_content"
     android:orientation="horizontal"
     android:gravity="center_vertical"
-    android:background="@color/fc_fondo"
+    android:background="?attr/fcFondo"
     android:paddingStart="18dp"
     android:paddingEnd="8dp">
 

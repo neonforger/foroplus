@@ -31,7 +31,7 @@
         android:layout_height="1dp"
         android:layout_marginTop="6dp"
         android:layout_marginBottom="6dp"
-        android:background="@color/fc_divisoria" />
+        android:background="?attr/fcDivisoria" />
 
     <TextView
         android:id="@+id/cuentas_anadir"

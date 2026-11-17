@@ -9,13 +9,18 @@ object ResumenOpciones {
 
 
     /** [spMensajes] y [spTitulos], ya leídos con [TamanoTexto.leer]. */
-    fun apariencia(tema: String, spMensajes: Int, spTitulos: Int, estilo: String = EstiloApp.COMPACTA): String {
+    fun apariencia(
+        tema: String, spMensajes: Int, spTitulos: Int, estilo: String = EstiloApp.COMPACTA,
+        tono: String = TonoOscuro.GRIS
+    ): String {
         val nombreTema = when (tema) {
             TemaApp.CLARO -> "Tema claro"
             TemaApp.OSCURO -> "Tema oscuro"
             else -> "Tema del sistema"
         }
         val partes = mutableListOf(nombreTema)
+        // El tono va pegado al tema, que es de lo que habla; el gris (de fábrica) no se dice.
+        TonoOscuro.resumen(tono, tema)?.let { partes.add(it) }
         // La compacta es la de fábrica: decirlo sería ruido.
         if (estilo == EstiloApp.TARJETAS) partes.add("estilo tarjetas")
         val letra = TamanoTexto.palabra(spMensajes)

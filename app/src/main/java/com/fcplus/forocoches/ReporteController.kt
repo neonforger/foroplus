@@ -212,7 +212,7 @@ class ReporteController(
         val ll = android.widget.LinearLayout(activity).apply {
             orientation = android.widget.LinearLayout.VERTICAL
             gravity = android.view.Gravity.CENTER
-            setBackgroundColor(color(R.color.fc_fondo))
+            setBackgroundColor(AtributosTema.color(activity, R.attr.fcFondo))
             isClickable = true; isFocusable = true // absorbe toques: no se toca el WebView de debajo
             setPadding(dp(32), dp(32), dp(32), dp(32))
         }

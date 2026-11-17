@@ -75,5 +75,5 @@
     <View
         android:layout_width="match_parent"
         android:layout_height="?attr/fcDivisoriaAlto"
-        android:background="@color/fc_divisoria" />
+        android:background="?attr/fcDivisoria" />
 </LinearLayout>

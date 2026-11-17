@@ -8,7 +8,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@color/fc_fondo">
+    android:background="?attr/fcFondo">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -85,7 +85,7 @@
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"
-        android:background="@color/fc_divisoria" />
+        android:background="?attr/fcDivisoria" />
 
     <!-- Lo elegido y lo que falta para compartirlo. -->
     <LinearLayout

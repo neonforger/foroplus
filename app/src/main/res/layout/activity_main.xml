@@ -20,14 +20,14 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:orientation="vertical"
-            android:background="@color/fc_fondo">
+            android:background="?attr/fcFondo">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:background="@color/fc_fondo">
+                android:background="?attr/fcFondo">
 
                 <TextView
                     android:id="@+id/native_header"
@@ -102,7 +102,7 @@
                 style="?attr/fcPestanas"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="@color/fc_fondo"
+                android:background="?attr/fcFondo"
                 android:elevation="2dp"
                 app:tabMode="scrollable" />
 
@@ -252,7 +252,7 @@
             android:id="@+id/thread_panel"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:background="@color/fc_fondo"
+            android:background="?attr/fcFondo"
             android:visibility="gone">
             <!-- Fase de lectura (2026-10-11, pedido en Telegram): todo lo de arriba se esconde al
                  bajar leyendo y vuelve al subir un poco (scroll|enterAlways|snap). Lo hace el
@@ -262,7 +262,7 @@
                 android:id="@+id/thread_appbar"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="@color/fc_fondo"
+                android:background="?attr/fcFondo"
                 app:elevation="2dp">
 
             <LinearLayout
@@ -285,7 +285,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:background="@color/fc_fondo"
+                android:background="?attr/fcFondo"
                 android:elevation="2dp"
                 android:paddingStart="4dp"
                 android:paddingEnd="4dp"
@@ -402,7 +402,7 @@
                 android:id="@+id/contexto_bar"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="@color/fc_cita_fondo"
+                android:background="?attr/fcCita"
                 android:paddingStart="16dp"
                 android:paddingEnd="16dp"
                 android:paddingTop="9dp"
@@ -464,7 +464,7 @@
                     android:layout_marginTop="9dp"
                     android:max="100"
                     android:progressTint="@color/fc_rojo"
-                    android:progressBackgroundTint="@color/fc_divisoria" />
+                    android:progressBackgroundTint="?attr/fcDivisoria" />
             </LinearLayout>
 
             <!-- Barra de encuesta: solo visible en hilos que la tienen. Abre sheet_poll.
@@ -513,7 +513,7 @@
                 android:id="@+id/poll_bar_divider"
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
-                android:background="@color/fc_divisoria"
+                android:background="?attr/fcDivisoria"
                 android:visibility="gone" />
             </LinearLayout>
 
@@ -526,7 +526,7 @@
                 android:layout_height="52dp"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:background="@color/fc_fondo"
+                android:background="?attr/fcFondo"
                 android:paddingStart="4dp"
                 android:paddingEnd="4dp"
                 android:visibility="gone">
@@ -594,7 +594,7 @@
                 android:id="@+id/busca_bar_raya"
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
-                android:background="@color/fc_divisoria"
+                android:background="?attr/fcDivisoria"
                 android:visibility="gone" />
             </com.google.android.material.appbar.AppBarLayout>
 
@@ -761,21 +761,21 @@
                 android:layout_height="wrap_content"
                 android:layout_gravity="bottom"
                 android:orientation="vertical"
-                android:background="@color/fc_fondo"
+                android:background="?attr/fcFondo"
                 app:layout_behavior="com.google.android.material.behavior.HideBottomViewOnScrollBehavior">
 
             <View
                 android:id="@+id/page_bar_divider"
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
-                android:background="@color/fc_divisoria"
+                android:background="?attr/fcDivisoria"
                 android:visibility="gone" />
 
             <HorizontalScrollView
                 android:id="@+id/page_bar"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="@color/fc_superficie"
+                android:background="?attr/fcSuperficie"
                 android:scrollbars="none"
                 android:fillViewport="true"
                 android:visibility="gone">
@@ -806,7 +806,7 @@
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="bottom"
-                android:background="@color/fc_fondo"
+                android:background="?attr/fcFondo"
                 android:elevation="6dp"
                 android:paddingStart="10dp"
                 android:paddingEnd="6dp"
@@ -880,7 +880,7 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:orientation="vertical"
-            android:background="@color/fc_fondo"
+            android:background="?attr/fcFondo"
             android:visibility="gone">
 
             <LinearLayout
@@ -888,7 +888,7 @@
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:background="@color/fc_fondo"
+                android:background="?attr/fcFondo"
                 android:elevation="2dp"
                 android:paddingStart="6dp"
                 android:paddingEnd="10dp"
@@ -1027,7 +1027,7 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:orientation="vertical"
-                            android:background="@color/fc_chip"
+                            android:background="?attr/fcChip"
                             android:padding="12dp"
                             android:visibility="gone">
 
@@ -1136,7 +1136,7 @@
             <HorizontalScrollView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="@color/fc_chip"
+                android:background="?attr/fcChip"
                 android:elevation="4dp"
                 android:scrollbars="none">
 
@@ -1238,7 +1238,7 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:orientation="vertical"
-            android:background="@color/fc_fondo"
+            android:background="?attr/fcFondo"
             android:visibility="gone">
 
             <LinearLayout
@@ -1247,7 +1247,7 @@
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
                 android:elevation="2dp"
-                android:background="@color/fc_fondo">
+                android:background="?attr/fcFondo">
 
                 <TextView
                     android:id="@+id/notices_header"
@@ -1360,7 +1360,7 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:orientation="vertical"
-            android:background="@color/fc_fondo"
+            android:background="?attr/fcFondo"
             android:visibility="gone">
 
             <LinearLayout
@@ -1368,7 +1368,7 @@
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:background="@color/fc_fondo"
+                android:background="?attr/fcFondo"
                 android:elevation="2dp"
                 android:paddingStart="6dp"
                 android:paddingEnd="10dp"
@@ -1527,7 +1527,7 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:orientation="vertical"
-            android:background="@color/fc_fondo"
+            android:background="?attr/fcFondo"
             android:visibility="gone">
 
             <LinearLayout
@@ -1535,7 +1535,7 @@
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:background="@color/fc_fondo"
+                android:background="?attr/fcFondo"
                 android:elevation="2dp"
                 android:paddingStart="6dp"
                 android:paddingEnd="10dp"
@@ -1612,7 +1612,7 @@
                             android:layout_height="?attr/fcDivisoriaAlto"
                             android:layout_marginTop="8dp"
                             android:layout_marginBottom="8dp"
-                            android:background="@color/fc_divisoria" />
+                            android:background="?attr/fcDivisoria" />
 
                         <LinearLayout
                             android:layout_width="match_parent"
@@ -1652,6 +1652,23 @@
                             <TextView android:id="@+id/opt_tema_oscuro" style="@style/SegmentoOpcion" android:text="Oscuro" />
                             <TextView android:id="@+id/opt_tema_sistema" style="@style/SegmentoOpcion" android:text="Sistema" />
                         </LinearLayout>
+
+                        <!-- Tono del modo oscuro (TonoOscuro): gris de siempre, un paso más oscuro
+                             o negro puro. En claro se enseña igual, con la nota de que no se ve. -->
+                        <TextView style="@style/OptSection" android:text="Tono del modo oscuro" />
+                        <LinearLayout style="@style/Segmentado">
+                            <TextView android:id="@+id/opt_tono_gris" style="@style/SegmentoOpcion" android:text="Gris oscuro" />
+                            <TextView android:id="@+id/opt_tono_oscuro" style="@style/SegmentoOpcion" android:text="Oscuro" />
+                            <TextView android:id="@+id/opt_tono_negro" style="@style/SegmentoOpcion" android:text="Negro puro" />
+                        </LinearLayout>
+                        <TextView
+                            android:id="@+id/opt_tono_nota"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:text="Se nota con el tema oscuro. Negro puro gasta menos batería en pantallas AMOLED."
+                            android:textSize="13sp"
+                            android:textColor="@color/fc_texto_3" />
 
                         <!-- Estilo: misma app, distinta forma de pintarla (EstiloApp). -->
                         <TextView style="@style/OptSection" android:text="Estilo" />
@@ -2295,7 +2312,7 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:orientation="vertical"
-            android:background="@color/fc_fondo"
+            android:background="?attr/fcFondo"
             android:visibility="gone">
 
             <LinearLayout
@@ -2354,7 +2371,7 @@
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
-                android:background="@color/fc_divisoria" />
+                android:background="?attr/fcDivisoria" />
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/org_list"
@@ -2375,7 +2392,7 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:orientation="vertical"
-            android:background="@color/fc_fondo"
+            android:background="?attr/fcFondo"
             android:visibility="gone">
 
             <LinearLayout
@@ -2410,7 +2427,7 @@
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
-                android:background="@color/fc_divisoria" />
+                android:background="?attr/fcDivisoria" />
 
             <ScrollView
                 android:id="@+id/novedades_scroll"
@@ -2436,7 +2453,7 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:orientation="vertical"
-            android:background="@color/fc_fondo"
+            android:background="?attr/fcFondo"
             android:visibility="gone">
 
             <LinearLayout
@@ -2444,7 +2461,7 @@
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:background="@color/fc_fondo"
+                android:background="?attr/fcFondo"
                 android:elevation="2dp"
                 android:paddingStart="6dp"
                 android:paddingEnd="10dp"
@@ -2552,7 +2569,7 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:orientation="vertical"
-            android:background="@color/fc_fondo"
+            android:background="?attr/fcFondo"
             android:visibility="gone">
 
             <LinearLayout
@@ -2560,7 +2577,7 @@
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:background="@color/fc_fondo"
+                android:background="?attr/fcFondo"
                 android:elevation="2dp"
                 android:paddingStart="6dp"
                 android:paddingEnd="10dp"
@@ -2645,7 +2662,7 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:orientation="vertical"
-            android:background="@color/fc_fondo"
+            android:background="?attr/fcFondo"
             android:visibility="gone">
 
             <!-- Cabecera estándar (fase 3): atrás, título y debajo el total. -->
@@ -2655,7 +2672,7 @@
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
                 android:elevation="2dp"
-                android:background="@color/fc_fondo"
+                android:background="?attr/fcFondo"
                 android:paddingStart="6dp"
                 android:paddingEnd="16dp"
                 android:paddingTop="6dp"
@@ -2733,7 +2750,7 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:orientation="vertical"
-            android:background="@color/fc_fondo"
+            android:background="?attr/fcFondo"
             android:visibility="gone">
 
             <LinearLayout
@@ -2741,7 +2758,7 @@
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:background="@color/fc_fondo"
+                android:background="?attr/fcFondo"
                 android:elevation="2dp"
                 android:paddingStart="6dp"
                 android:paddingEnd="10dp"
@@ -2864,7 +2881,7 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:orientation="vertical"
-            android:background="@color/fc_fondo"
+            android:background="?attr/fcFondo"
             android:visibility="gone">
 
             <LinearLayout
@@ -2872,7 +2889,7 @@
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:background="@color/fc_fondo"
+                android:background="?attr/fcFondo"
                 android:elevation="2dp"
                 android:paddingStart="6dp"
                 android:paddingEnd="10dp"
@@ -3068,7 +3085,7 @@
             android:id="@+id/login_panel"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:background="@color/fc_fondo"
+            android:background="?attr/fcFondo"
             android:fillViewport="true"
             android:visibility="gone">
 
@@ -3214,7 +3231,7 @@
         android:id="@+id/bottom_nav"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@color/fc_fondo"
+        android:background="?attr/fcFondo"
         android:elevation="8dp"
         android:clipChildren="false"
         android:clipToPadding="false">

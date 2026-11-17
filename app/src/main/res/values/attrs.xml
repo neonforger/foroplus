@@ -60,4 +60,19 @@
     <attr name="fcNavPastillaPadV" format="dimension" />
     <!-- Fondo del número de la página actual en la barra de páginas del hilo. -->
     <attr name="fcPaginaActual" format="reference|color" />
+    <!-- Tono del modo oscuro (TonoOscuro): la familia de SUPERFICIES. El tema base les da los
+         valores de siempre (@color/fc_*: "gris oscuro" de noche y los claros de día) y los
+         overlays ThemeOverlay.FC.Tono.* los redefinen. Un layout, drawable o código que pinte
+         una superficie usa ESTOS y no el @color: el @color es fijo y saldría gris sobre negro.
+         Los de estilo (fcCitaFondo, fcFilaColor, fcFondoLista) apuntan a estos, así que estilo
+         y tono se combinan sin conocerse. -->
+    <attr name="fcFondo" format="reference|color" />
+    <attr name="fcSuperficie" format="reference|color" />
+    <attr name="fcDivisoria" format="reference|color" />
+    <attr name="fcChip" format="reference|color" />
+    <attr name="fcCita" format="reference|color" />
+    <attr name="fcFondoTarjetas" format="reference|color" />
+    <attr name="fcTarjeta" format="reference|color" />
+    <attr name="fcTarjetaBorde" format="reference|color" />
+    <attr name="fcCitaTarjeta" format="reference|color" />
 </resources>

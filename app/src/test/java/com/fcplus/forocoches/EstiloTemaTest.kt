@@ -174,6 +174,60 @@ class EstiloTemaTest {
         assertEquals(android.view.Gravity.TOP, gravedad(true))
     }
 
+    // ── Tono del modo oscuro (TonoOscuro): se combina con el estilo ──
+
+    private fun ctxTono(tarjetas: Boolean, tono: String): Context =
+        ctx(tarjetas).also { c -> TonoOscuro.overlay(tono)?.let { c.theme.applyStyle(it, true) } }
+
+    private fun hex(c: Context, attr: Int) = String.format("#%06X", 0xFFFFFF and AtributosTema.color(c, attr))
+
+    @Test
+    @org.robolectric.annotation.Config(qualifiers = "night")
+    fun `de noche el gris es el de siempre`() {
+        val c = ctxTono(false, TonoOscuro.GRIS)
+        assertEquals("#121214", hex(c, R.attr.fcFondo))
+        assertEquals("#232329", hex(c, R.attr.fcCitaFondo))
+        assertEquals("#2A2A30", hex(c, R.attr.fcChip))
+    }
+
+    @Test
+    @org.robolectric.annotation.Config(qualifiers = "night")
+    fun `de noche el negro puro llega a fondo, citas y filas en las dos formas`() {
+        val compacta = ctxTono(false, TonoOscuro.NEGRO)
+        assertEquals("#000000", hex(compacta, R.attr.fcFondo))
+        assertEquals("#000000", hex(compacta, R.attr.fcFilaColor))
+        assertEquals("#16161A", hex(compacta, R.attr.fcCitaFondo))
+        val tarjetas = ctxTono(true, TonoOscuro.NEGRO)
+        assertEquals("#000000", hex(tarjetas, R.attr.fcFondoLista))
+        assertEquals("#0F0F11", hex(tarjetas, R.attr.fcFilaColor))
+        assertEquals("#1C1C20", hex(tarjetas, R.attr.fcCitaFondo))
+        // Y el tono no le quita al estilo lo suyo.
+        assertEquals(true, AtributosTema.bool(tarjetas, R.attr.fcRecortarFila))
+    }
+
+    @Test
+    @org.robolectric.annotation.Config(qualifiers = "night")
+    fun `de noche un layout con superficies sigue al tono`() {
+        val c = ctxTono(true, TonoOscuro.OSCURO)
+        val padre = RecyclerView(c).apply { layoutManager = LinearLayoutManager(c) }
+        val v = LayoutInflater.from(padre.context).inflate(R.layout.item_post, padre, false)
+        assertNotNull(v)
+        assertEquals("#0A0A0B", hex(padre.context, R.attr.fcFondo))
+        assertEquals("#161619", hex(padre.context, R.attr.fcTarjeta))
+    }
+
+    @Test
+    fun `de dia el tono no cambia nada`() {
+        for (tono in TonoOscuro.OPCIONES) for (t in listOf(false, true)) {
+            val c = ctxTono(t, tono)
+            val base = ctx(t)
+            for (attr in listOf(R.attr.fcFondo, R.attr.fcChip, R.attr.fcDivisoria, R.attr.fcCitaFondo,
+                    R.attr.fcFilaColor, R.attr.fcTarjeta, R.attr.fcTarjetaBorde)) {
+                assertEquals("$tono/$t", hex(base, attr), hex(c, attr))
+            }
+        }
+    }
+
     @Test
     fun `cuadrito del sobre solo en tarjetas`() {
         assertEquals(null, AtributosTema.drawable(ctx(false), R.attr.fcSobreFondoNuevo))

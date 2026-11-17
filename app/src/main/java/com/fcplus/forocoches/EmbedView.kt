@@ -268,7 +268,7 @@ class EmbedView(context: Context) : FrameLayout(context) {
             setPadding(dp(14), dp(16), dp(14), dp(16))
             layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
                 .apply { topMargin = dp(6); bottomMargin = dp(2) }
-            background = roundedBg(col(R.color.fc_chip))
+            background = roundedBg(AtributosTema.color(context, R.attr.fcChip))
         }
     }
 
@@ -555,7 +555,7 @@ class EmbedView(context: Context) : FrameLayout(context) {
     // Spotify también: su tarjeta tiene las esquinas redondeadas y por ellas se veía el blanco.
     private fun fondoEmbed(kind: String): Int =
         if (esOscuro() && kind in setOf("twitter", "youtube", "video", "iframe", "spotify"))
-            col(R.color.fc_superficie) else Color.WHITE
+            AtributosTema.color(context, R.attr.fcSuperficie) else Color.WHITE
 
     private fun hex(color: Int) = String.format("#%06X", 0xFFFFFF and color)
 

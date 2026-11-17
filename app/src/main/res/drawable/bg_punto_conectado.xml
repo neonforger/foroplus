@@ -5,5 +5,5 @@
          fondo de una vista manda el tamaño de la vista. -->
     <size android:width="10dp" android:height="10dp" />
     <solid android:color="@color/fc_conectado" />
-    <stroke android:width="2dp" android:color="@color/fc_fondo" />
+    <stroke android:width="2dp" android:color="?attr/fcFondo" />
 </shape>

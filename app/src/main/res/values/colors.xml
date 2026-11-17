@@ -111,4 +111,26 @@
     <color name="fc_nota_fondo">#1FE0A020</color>
 
 
+    <!-- Tono del modo oscuro (TonoOscuro, overlays ThemeOverlay.FC.Tono.*). Solo cambian algo
+         de NOCHE (values-night): de día son alias de los colores de siempre, así que el tono
+         elegido no toca el modo claro. -->
+    <color name="fc_tono_oscuro_fondo">@color/fc_fondo</color>
+    <color name="fc_tono_oscuro_superficie">@color/fc_superficie</color>
+    <color name="fc_tono_oscuro_divisoria">@color/fc_divisoria</color>
+    <color name="fc_tono_oscuro_chip">@color/fc_chip</color>
+    <color name="fc_tono_oscuro_cita_fondo">@color/fc_cita_fondo</color>
+    <color name="fc_tono_oscuro_fondo_tarjetas">@color/fc_fondo_tarjetas</color>
+    <color name="fc_tono_oscuro_tarjeta">@color/fc_tarjeta</color>
+    <color name="fc_tono_oscuro_tarjeta_borde">@color/fc_tarjeta_borde</color>
+    <color name="fc_tono_oscuro_cita_fondo_tarjeta">@color/fc_cita_fondo_tarjeta</color>
+    <color name="fc_tono_negro_fondo">@color/fc_fondo</color>
+    <color name="fc_tono_negro_superficie">@color/fc_superficie</color>
+    <color name="fc_tono_negro_divisoria">@color/fc_divisoria</color>
+    <color name="fc_tono_negro_chip">@color/fc_chip</color>
+    <color name="fc_tono_negro_cita_fondo">@color/fc_cita_fondo</color>
+    <color name="fc_tono_negro_fondo_tarjetas">@color/fc_fondo_tarjetas</color>
+    <color name="fc_tono_negro_tarjeta">@color/fc_tarjeta</color>
+    <color name="fc_tono_negro_tarjeta_borde">@color/fc_tarjeta_borde</color>
+    <color name="fc_tono_negro_cita_fondo_tarjeta">@color/fc_cita_fondo_tarjeta</color>
+
 </resources>
