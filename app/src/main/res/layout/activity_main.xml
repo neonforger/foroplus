@@ -56,6 +56,18 @@
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:contentDescription="Hilos del momento" />
 
+                <!-- Borrar el historial de hilos visitados: solo sobre esa lista (lo enciende
+                     el setter de listSource). -->
+                <ImageView
+                    android:id="@+id/native_historial_borrar"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:padding="10dp"
+                    android:src="@drawable/ic_borrar"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Borrar historial"
+                    android:visibility="gone" />
+
                 <ImageView
                     android:id="@+id/native_search"
                     android:layout_width="44dp"
@@ -3291,6 +3303,12 @@
                 android:layout_weight="1" />
             <include
                 android:id="@+id/nav_descargas"
+                layout="@layout/nav_item"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1" />
+            <include
+                android:id="@+id/nav_historial"
                 layout="@layout/nav_item"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"

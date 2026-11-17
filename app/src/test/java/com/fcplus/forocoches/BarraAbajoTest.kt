@@ -14,7 +14,7 @@ class BarraAbajoTest {
     fun `de fabrica - Inicio, Avisos, Privados y Suscripciones abajo`() {
         val x = r()
         assertEquals(listOf("home", "avisos", "pm", "favs"), x.abajo)
-        assertEquals(listOf("mythreads", "participated", "mismensajes", "descargas"), x.panel)
+        assertEquals(listOf("mythreads", "participated", "mismensajes", "descargas", "historial"), x.panel)
     }
 
     @Test
@@ -97,7 +97,7 @@ class BarraAbajoTest {
         assertNull(BarraAbajo.ponerAbajo(r(), "descargas", sustituye = "home"))
         val x = BarraAbajo.ponerAbajo(r(), "descargas", sustituye = "pm")!!
         assertEquals(listOf("home", "avisos", "descargas", "favs"), x.abajo)
-        assertEquals(listOf("mythreads", "participated", "mismensajes", "pm"), x.panel)
+        assertEquals(listOf("mythreads", "participated", "mismensajes", "pm", "historial"), x.panel)
         assertEquals(listOf("avisos", "pm", "favs"), BarraAbajo.sustituibles(r()))
     }
 
@@ -108,6 +108,48 @@ class BarraAbajoTest {
         val x = BarraAbajo.trasArrastrar(antes, arrastrado)
         assertEquals(listOf("home", "descargas", "avisos", "pm"), x.abajo)
         assertEquals("favs", x.panel.first())
+    }
+
+    @Test
+    fun `Historial de fabrica va al panel aunque haya hueco abajo`() {
+        // Barra guardada por una versión de antes de Historial, con un hueco libre (pm al panel).
+        val guardado = r(
+            listOf("home", "avisos", "favs", "pm", "mythreads", "participated", "mismensajes", "descargas"),
+            setOf("pm", "mythreads", "participated", "mismensajes", "descargas")
+        )
+        assertEquals(listOf("home", "avisos", "favs"), guardado.abajo)
+        assertEquals("historial", guardado.panel.last())
+    }
+
+    @Test
+    fun `Historial al panel tambien en una instalacion nueva`() {
+        assertTrue("historial" in r().panel)
+        assertTrue("historial" !in r().abajo)
+    }
+
+    @Test
+    fun `Historial subido a la barra por el usuario se queda abajo al releer`() {
+        val conHueco = BarraAbajo.alPanel(r(), "pm")!!
+        val subido = BarraAbajo.ponerAbajo(conHueco, "historial")!!
+        assertEquals(listOf("home", "avisos", "favs", "historial"), subido.abajo)
+        val releido = BarraAbajo.reparto(BarraAbajo.orden(subido), BarraAbajo.ocultos(subido))
+        assertEquals(subido, releido)
+    }
+
+    @Test
+    fun `Historial subido sustituyendo a otro se queda abajo al releer`() {
+        val x = BarraAbajo.ponerAbajo(r(), "historial", sustituye = "favs")!!
+        assertEquals(listOf("home", "avisos", "pm", "historial"), x.abajo)
+        assertEquals(x, BarraAbajo.reparto(BarraAbajo.orden(x), BarraAbajo.ocultos(x)))
+    }
+
+    @Test
+    fun `Historial arrastrado a la barra se queda abajo al releer`() {
+        val arrastrado = listOf("home", "historial", "avisos", "pm", "favs", "mythreads",
+            "participated", "mismensajes", "descargas")
+        val x = BarraAbajo.trasArrastrar(r(), arrastrado)
+        assertEquals(listOf("home", "historial", "avisos", "pm"), x.abajo)
+        assertEquals(x, BarraAbajo.reparto(BarraAbajo.orden(x), BarraAbajo.ocultos(x)))
     }
 
     @Test

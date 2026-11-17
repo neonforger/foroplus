@@ -17,7 +17,8 @@ package com.fcplus.forocoches
  *    al panel. Así, un botón nuevo que traiga una versión (regla 1 de [OrdenBarra]: lo
  *    desconocido se ve) entra abajo si hay hueco y si no, al panel.
  * 2. Inicio ([FIJOS]) va siempre abajo: es la raíz de la navegación.
- * 3. **Migración de la barra vieja**, que lee lo guardado por las versiones anteriores sin
+ * 3. Lo de [AL_PANEL_DE_FABRICA] (Historial) va al panel hasta que el usuario lo coloque.
+ * 4. **Migración de la barra vieja**, que lee lo guardado por las versiones anteriores sin
  *    escribir nada: Citas (`quotes`) y Menciones (`notif`) se funden en **Avisos** (`avisos`),
  *    en el sitio de la primera de las dos, y solo va al panel si las dos estaban ocultas;
  *    Perfil (`profile`) sale del catálogo, porque ahora es el propio avatar.
@@ -29,10 +30,21 @@ object BarraAbajo {
     /** El catálogo en el orden de fábrica: los cuatro primeros son la barra por defecto. */
     val CATALOGO = listOf(
         "home", "avisos", "pm", "favs",
-        "mythreads", "participated", "mismensajes", "descargas"
+        "mythreads", "participated", "mismensajes", "descargas", "historial"
     )
 
     val FIJOS = setOf("home")
+
+    /**
+     * Botones que de fábrica van al PANEL aunque haya hueco abajo, mientras el usuario no los
+     * haya colocado él (es decir, mientras no estén en su orden guardado).
+     *
+     * Sin esto, la regla 1 ("lo nuevo entra abajo si hay hueco") metería Historial en la barra
+     * de quien tenga un hueco libre, y el dueño no quiere que la barra se llene de módulos: quien
+     * lo use mucho lo sube él (Opciones → Personalizar → Barra de abajo). En cuanto lo mueve,
+     * su orden lo incluye y manda lo que haya decidido.
+     */
+    val AL_PANEL_DE_FABRICA = setOf("historial")
 
     data class Reparto(val abajo: List<String>, val panel: List<String>)
 
@@ -58,8 +70,9 @@ object BarraAbajo {
 
     /** Lo que se pinta: abajo y en el panel, a partir de lo guardado (viejo o nuevo). */
     fun reparto(orden: List<String>, ocultos: Set<String>): Reparto {
-        val todo = OrdenBarra.completo(CATALOGO, migrarOrden(orden))
-        val enPanel = migrarOcultos(ocultos)
+        val migrado = migrarOrden(orden)
+        val todo = OrdenBarra.completo(CATALOGO, migrado)
+        val enPanel = migrarOcultos(ocultos) + AL_PANEL_DE_FABRICA.filterNot { it in migrado }
         val fijosAbajo = todo.count { it in FIJOS }
         val abajo = ArrayList<String>(HUECOS)
         var libres = HUECOS - fijosAbajo
