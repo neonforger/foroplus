@@ -65,7 +65,7 @@ class MainActivity : AppCompatActivity() {
     private val navBadges = HashMap<Int, TextView>()
     private val navIds = intArrayOf(
         R.id.nav_home, R.id.nav_avisos, R.id.nav_pm, R.id.nav_favs, R.id.nav_mythreads,
-        R.id.nav_participated, R.id.nav_mismensajes, R.id.nav_descargas
+        R.id.nav_participated, R.id.nav_mismensajes, R.id.nav_descargas, R.id.nav_historial
     )
     /** La vista entera de cada botón, para poder reordenarlos y quitarlos de la barra. */
     private val navItems = HashMap<Int, View>()
@@ -89,20 +89,23 @@ class MainActivity : AppCompatActivity() {
         "mythreads" to R.id.nav_mythreads,
         "participated" to R.id.nav_participated,
         "mismensajes" to R.id.nav_mismensajes,
-        "descargas" to R.id.nav_descargas
+        "descargas" to R.id.nav_descargas,
+        // Hilos visitados (javier hg, 2026-11-16). De fábrica en el panel: BarraAbajo.AL_PANEL_DE_FABRICA.
+        "historial" to R.id.nav_historial
     )
 
     /** Nombre e icono de cada destino: los usan la barra, el panel y la pantalla de organizar. */
     private val navNombres = mapOf(
         "home" to "Inicio", "avisos" to "Avisos", "pm" to "Privados", "favs" to "Suscripciones",
         "mythreads" to "Mis hilos", "participated" to "Participados",
-        "mismensajes" to "Mis mensajes", "descargas" to "Descargados"
+        "mismensajes" to "Mis mensajes", "descargas" to "Descargados", "historial" to "Historial"
     )
     private val navIconos = mapOf(
         "home" to R.drawable.ic_nav_home, "avisos" to R.drawable.ic_nav_bell,
         "pm" to R.drawable.ic_nav_pm, "favs" to R.drawable.ic_nav_star,
         "mythreads" to R.drawable.ic_nav_threads, "participated" to R.drawable.ic_nav_participated,
-        "mismensajes" to R.drawable.ic_mis_mensajes, "descargas" to R.drawable.ic_nav_descargas
+        "mismensajes" to R.drawable.ic_mis_mensajes, "descargas" to R.drawable.ic_nav_descargas,
+        "historial" to R.drawable.ic_nav_historial
     )
 
     /**
@@ -112,6 +115,9 @@ class MainActivity : AppCompatActivity() {
     private val navFijos = BarraAbajo.FIJOS
     private lateinit var adapter: ThreadListAdapter
     private val readThreads by lazy { ReadThreadsRepository(this) }
+    /** Hilos visitados, por cuenta (ver [HistorialController]). */
+    private val historial by lazy { HistorialController(AlmacenHistorial(shellPrefs) { uidActivo }) }
+    private lateinit var historialBorrar: View
 
     /** Preferencias de la app. Antes se pedían con getSharedPreferences en cada uso. */
     private val shellPrefs by lazy { getSharedPreferences(PREFS, MODE_PRIVATE) }
@@ -400,6 +406,9 @@ class MainActivity : AppCompatActivity() {
             // al setter, ninguna de las rutas que cambian de fuente la deja colgada.
             if (::mas18Cabecera.isInitialized)
                 mas18Cabecera.visibility = if (valor == "mas18") View.VISIBLE else View.GONE
+            // Lo mismo con la papelera del historial: solo sobre su lista.
+            if (::historialBorrar.isInitialized)
+                historialBorrar.visibility = if (valor == "historial") View.VISIBLE else View.GONE
             // Lo mismo con Música, que tapa la lista en vez de ser una: salir a cualquier otra
             // fuente quita su panel y devuelve la lista de hilos.
             if (antes == "musica" && valor != "musica" && ::musica.isInitialized) {
@@ -845,6 +854,8 @@ class MainActivity : AppCompatActivity() {
                 if (reselect) requestThreadList(1)
             }
             R.id.nav_descargas -> { showDescargados(); setSelectedNav(R.id.nav_descargas) }
+            // Local: no hace falta sesión (sin ella se ve lo abierto como invitado).
+            R.id.nav_historial -> { showHistorial(); pestana(Screen.ThreadList("historial")) }
             R.id.nav_favs -> if (isLoggedIn()) { showFavsList(); pestana(Screen.ThreadList("favs")) } else showLogin()
             R.id.nav_mythreads -> if (isLoggedIn()) { showMyThreadsList(); pestana(Screen.ThreadList("mine")) } else showLogin()
             R.id.nav_participated -> if (isLoggedIn()) { showParticipatedList(); pestana(Screen.ThreadList("participated")) } else showLogin()
@@ -917,6 +928,7 @@ class MainActivity : AppCompatActivity() {
         "favs" -> R.id.nav_favs
         "mine" -> R.id.nav_mythreads
         "participated" -> R.id.nav_participated
+        "historial" -> R.id.nav_historial
         else -> R.id.nav_home   // "search" y "top" incluidos: cuelgan de Inicio
     }
 
@@ -1795,6 +1807,37 @@ class MainActivity : AppCompatActivity() {
         fabNewThread.visibility = View.GONE
         setSelectedNav(R.id.nav_participated)
         requestThreadList(1)
+    }
+
+    /**
+     * Historial: los hilos que has abierto, en la MISMA lista nativa pero salidos del móvil (ver
+     * [HistorialController]). No pide nada al foro; [requestThreadList] lo repinta desde disco.
+     */
+    private fun showHistorial() {
+        listSource = "historial"
+        pintarBotonTop()
+        forumTabs.visibility = View.GONE
+        ponerTitulo("Historial")
+        listLoaded = false
+        adapter.submit(emptyList())
+        showNative()
+        fabNewThread.visibility = View.GONE
+        setSelectedNav(R.id.nav_historial)
+        requestThreadList(1)
+    }
+
+    /** Pinta el historial desde disco. Siempre la lista entera: son [HistorialHilos.TOPE] filas. */
+    private fun pintarHistorial() {
+        loadingPage = false
+        listLoading.visibility = View.GONE
+        listRefresh.isRefreshing = false
+        listaAgotada = true          // no hay página 2 que pedir al bajar
+        val filas = filtrarLista(historial.filas())
+        adapter.submit(filas)
+        listLoaded = true
+        currentPage = 1
+        listEmpty.text = HistorialController.TEXTO_VACIO
+        listEmpty.visibility = if (filas.isEmpty()) View.VISIBLE else View.GONE
     }
 
     // ── Mensajes privados nativos ─────────────────────────────────────────────
@@ -3639,6 +3682,11 @@ class MainActivity : AppCompatActivity() {
         bottomNav = findViewById(R.id.bottom_nav)
         forumTabs = findViewById(R.id.forum_tabs)
         navTop = findViewById(R.id.native_top)
+        historialBorrar = findViewById(R.id.native_historial_borrar)
+        historialBorrar.setOnClickListener {
+            historial.confirmarBorrar(this) { if (listSource == "historial") pintarHistorial() }
+        }
+        androidx.appcompat.widget.TooltipCompat.setTooltipText(historialBorrar, "Borrar historial")
         navTop.setOnClickListener { alternarTop() }
         androidx.appcompat.widget.TooltipCompat.setTooltipText(navTop, "Hilos del momento")
         threadPanel = findViewById(R.id.thread_panel)
@@ -3871,6 +3919,15 @@ class MainActivity : AppCompatActivity() {
     private fun configureShell() {
         adapter = ThreadListAdapter(
             onClick = { item ->
+                // El historial no trae respuestas: marcarlo con "" lo dejaría leído con 0 y el
+                // hilo saldría en negrita en su subforo. Si la app ya lo tenía apuntado (lo normal:
+                // se abrió aquí) no se toca; si no, se estima al llegar, como una cita (una
+                // estimación PISARÍA la cifra buena, que suele ser mayor).
+                if (listSource == "historial") {
+                    openThreadNative(item.url, item.title,
+                        markReadUnknown = readThreads.readReplies(item.tid) == null)
+                    return@ThreadListAdapter
+                }
                 // Al abrirlo queda leído con el nº de respuestas de ahora: si luego crece,
                 // isThreadUnread lo devuelve a negrita.
                 readThreads.markRead(item.tid, item.replies)
@@ -6672,6 +6729,8 @@ class MainActivity : AppCompatActivity() {
             "favs" -> showFavsList()
             "mine" -> showMyThreadsList()
             "participated" -> showParticipatedList()
+            // Se repinta al volver: el hilo del que vienes acaba de subir arriba.
+            "historial" -> showHistorial()
             "home", "top", "popurri" -> restaurarListaDeSubforo(s)
             // La sección +18 no usa el motor ni el subforo: se rehace entera. Apagada, a Inicio.
             "mas18" -> when {
@@ -7108,6 +7167,16 @@ class MainActivity : AppCompatActivity() {
         ThreadStarter.of(t.posts, t.page).takeIf { it.isNotEmpty() }?.let { starter ->
             postAdapter.starterAuthor = starter
             currentThreadTid.toLongOrNull()?.let { creatorCache.put(it, starter) }
+        }
+
+        // Historial: solo un hilo vivo que ha llegado con mensajes (ni copias, ni "sus
+        // mensajes", ni un hilo borrado o vacío), con el título real que da la página.
+        if (copiaAbierta.isEmpty() && vistaDerivada.isEmpty() && t.posts.isNotEmpty()) {
+            historial.apuntar(
+                currentThreadTid,
+                CompartirFC.tituloLimpio(t.title).ifEmpty { tituloHiloReal },
+                threadForumFid, threadForumName, postAdapter.starterAuthor
+            )
         }
 
         // Filtro de ignorados, mismas reglas que content.js: autor ignorado, post
@@ -7715,6 +7784,8 @@ class MainActivity : AppCompatActivity() {
         // lo que recarga "la lista" por su cuenta (cambiar un filtro en Opciones, el motor que
         // acaba de cargar) bajaría un subforo para nadie y encendería el aro de carga.
         if (listSource == "musica") return
+        // El historial sale del móvil: ni motor ni páginas (deslizar para recargar lo repinta).
+        if (listSource == "historial") { if (page <= 1) pintarHistorial(); return }
         // La sección +18 no pasa por el motor: baja su JSON de GitHub, así que no espera al WebView.
         if ((!engineReady && listSource != "mas18") || !PeticionLista.hayQuePedir(page, loadingPage) ||
             (page > 1 && listaAgotada)) return

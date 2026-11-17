@@ -10,7 +10,7 @@ package com.fcplus.forocoches
  */
 sealed class Screen {
     /**
-     * Listado nativo. [source] es "home"/"favs"/"mine"/"participated"/"search".
+     * Listado nativo. [source] es "home"/"favs"/"mine"/"participated"/"search"/"historial".
      *
      * [query] solo lo usa "search", y **tiene que viajar en la pila**: una lista de
      * resultados no se puede reconstruir sin saber qué se buscó. Antes la búsqueda no se

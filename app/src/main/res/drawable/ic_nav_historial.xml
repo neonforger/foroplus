@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Historial de hilos visitados: un reloj (esfera, agujas) con una flecha que vuelve atrás. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <!-- Esfera abierta por la izquierda, donde entra la flecha. -->
+    <path android:strokeColor="@android:color/white"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M5.2,9A8,8 0,1 1,5 15" />
+    <!-- Punta de la flecha. -->
+    <path android:fillColor="@android:color/white"
+        android:pathData="M2,8.2L7.6,8.2L4.2,12.8Z" />
+    <!-- Agujas. -->
+    <path android:strokeColor="@android:color/white"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M12.5,7.5L12.5,12L15.5,14" />
+</vector>

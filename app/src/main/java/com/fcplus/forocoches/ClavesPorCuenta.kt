@@ -29,7 +29,10 @@ object ClavesPorCuenta {
      */
     val CLAVES = listOf(
         "citas_vistas", "menciones_vistas", "vistas_quotes", "vistas_mentions",
-        "busquedas_recientes", "post_signature"
+        "busquedas_recientes", "post_signature",
+        // Los hilos que has abierto ([AlmacenHistorial]): lo que lees con una cuenta no tiene
+        // por qué verse desde la otra.
+        AlmacenHistorial.CLAVE
     )
 
     /**
