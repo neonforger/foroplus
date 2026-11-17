@@ -78,11 +78,11 @@ describe("POST /v1/publicaciones", () => {
     expect((await publicar(a, { texto: "Qué temazo, no?", enlace: enlaceDe(1) })).status).toBe(201);
   });
 
-  it("texto con palabra prohibida → 422 texto", async () => {
+  it("tacos en el texto → se publica (foro de adultos: sin filtro de palabras, dueño 2026-11-17)", async () => {
     const a = await shur();
     await cancion(1);
     const r = await publicar(a, { texto: "esto es de GILIPOLLAS", enlace: enlaceDe(1) });
-    expect([r.status, r.cuerpo]).toEqual([422, { error: "texto" }]);
+    expect(r.status).toBe(201);
   });
 
   it("séptima en 24 h → 429 limite", async () => {
@@ -107,6 +107,14 @@ describe("POST /v1/publicaciones", () => {
     await cancion(1);
     for (let i = 0; i < 10; i++) await publicar(a, { texto: "x".repeat(101), enlace: enlaceDe(1) });
     for (let i = 0; i < 6; i++) expect((await publicar(a, { texto: "n" + i, enlace: enlaceDe(1) })).status).toBe(201);
+  });
+
+  it("con DIAS_MIN_VOTO=0, cuenta de 1 día o con registro ilegible → publica", async () => {
+    const { permisoVoto } = await import("../src/auth");
+    const hoy = new Date("2026-11-17T12:00:00Z");
+    expect(permisoVoto("16-nov-2026", hoy, 0).puedeVotar).toBe(true);
+    expect(permisoVoto(null, hoy, 0).puedeVotar).toBe(true);
+    expect(permisoVoto(null, hoy, 90).puedeVotar).toBe(false);
   });
 
   it("cuenta de 30 días → 403 antiguedad", async () => {

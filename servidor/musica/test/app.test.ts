@@ -67,12 +67,13 @@ describe("rutas retiradas", () => {
 });
 
 describe("DIAS_MIN_VOTO", () => {
-  it("solo vale un entero positivo; lo demás cae a 90", () => {
+  it("solo vale un entero >= 0 (0 = sin mínimo); lo demás cae a 90", () => {
+    expect(diasMinVoto("0")).toBe(0);
     expect(diasMinVoto("90")).toBe(90);
     expect(diasMinVoto("30")).toBe(30);
     expect(diasMinVoto(" 120 ")).toBe(120);
     // Antes `Number(x) || 90` dejaba pasar negativos y fracciones (B1).
-    for (const malo of [undefined, "", "0", "-5", "2.5", "abc", "Infinity", "NaN"]) {
+    for (const malo of [undefined, "", "  ", "-5", "2.5", "abc", "Infinity", "NaN"]) {
       expect(diasMinVoto(malo), String(malo)).toBe(90);
     }
   });

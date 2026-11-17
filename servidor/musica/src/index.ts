@@ -15,10 +15,14 @@ function aleatorio(): number {
   return crypto.getRandomValues(new Uint32Array(1))[0] / 4294967296;
 }
 
-/** Días mínimos de cuenta de FC para votar: solo un entero positivo; si no, 90 (el valor del spec). */
+/**
+ * Días mínimos de cuenta de FC para votar y publicar: un entero >= 0; si no, 90 (el valor del spec).
+ * "0" = sin mínimo (dueño, 2026-11-17: el tope dejaba fuera a la gente nueva).
+ */
 export function diasMinVoto(texto: string | undefined): number {
+  if (typeof texto !== "string" || texto.trim() === "") return 90; // Number("") es 0: vacío no es "sin mínimo"
   const n = Number(texto);
-  return Number.isInteger(n) && n > 0 ? n : 90; // Number(undefined) es NaN; Number("") es 0
+  return Number.isInteger(n) && n >= 0 ? n : 90;
 }
 
 function deps(env: Env): Deps {

@@ -13,7 +13,7 @@
     }
   ],
   "triggers": { "crons": ["30 3 * * *", "*/15 * * * *"] },
-  "vars": { "DIAS_MIN_VOTO": "90", "LECTOR_EN_VPS": "false" },
+  "vars": { "DIAS_MIN_VOTO": "0", "LECTOR_EN_VPS": "false" },
   // Sin registros de peticiones: no guardamos nada que no haga falta.
   "observability": { "enabled": false }
 }

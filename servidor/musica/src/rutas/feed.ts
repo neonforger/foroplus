@@ -12,7 +12,6 @@ import {
 } from "../feed";
 import { cuerpoJson, error, json } from "../http";
 import { permitido, puedeMontarTarjeta } from "../limites";
-import { nombreAceptable } from "../palabras";
 import { semanaAnterior, semanaDe } from "../tiempo";
 
 const MAX_CUERPO = 2048;
@@ -35,7 +34,7 @@ async function publicar(c: Contexto, o: OpcionesApp): Promise<Response> {
   if (!permisoVoto(cuenta.registro, ahora, d.diasMinVoto).puedeVotar) return error("antiguedad", 403);
   const texto = crudo.trim();
   const largo = [...texto].length;
-  if (largo < 1 || largo > TEXTO_MAX || RE_ENLACE.test(texto) || !nombreAceptable(texto)) return error("texto", 422);
+  if (largo < 1 || largo > TEXTO_MAX || RE_ENLACE.test(texto)) return error("texto", 422);
   // El tope del día se MIRA (sin gastarlo) ANTES de montar la tarjeta: con el cupo agotado no se sale a
   // la red a terceros ni se guarda una canción nueva. El gasto real —atómico, contra la carrera— sigue
   // el ÚLTIMO, solo en el camino de éxito, para que un montaje fallido no gaste cupo (igual que antes).

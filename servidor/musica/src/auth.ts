@@ -78,10 +78,13 @@ export function yo(c: { cuenta: Cuenta | null }): Cuenta {
   return c.cuenta;
 }
 
-/** Días de cuenta en FC y si llega al mínimo para votar y proponer. Registro ilegible: no vota. */
+/**
+ * Días de cuenta en FC y si llega al mínimo para votar y proponer. Registro ilegible: no vota, salvo con
+ * mínimo 0, que es "sin tope de antigüedad" y no depende de poder leer la fecha de alta.
+ */
 export function permisoVoto(
   registro: string | null, ahora: Date, diasMinVoto: number,
 ): { diasCuenta: number | null; puedeVotar: boolean } {
   const diasCuenta = registro ? diasDesde(registro, ahora) : null;
-  return { diasCuenta, puedeVotar: diasCuenta !== null && diasCuenta >= diasMinVoto };
+  return { diasCuenta, puedeVotar: diasMinVoto <= 0 || (diasCuenta !== null && diasCuenta >= diasMinVoto) };
 }

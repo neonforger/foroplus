@@ -55,7 +55,7 @@ object VistaFeed {
         "token" -> "Tu sesión ha caducado. Vuelve a abrir Música."
         "baneada" -> "Tu cuenta no puede usar esto."
         "antiguedad" -> "Tu cuenta es demasiado nueva para esto todavía."
-        "texto" -> "Ese texto no vale: usa entre 1 y 100 caracteres, sin enlaces ni palabras no permitidas."
+        "texto" -> "Ese texto no vale: usa entre 1 y 100 caracteres, y sin enlaces."
         "oculta" -> "Esa publicación ya no está disponible."
         "propia" -> "No puedes dar corazón a tu propia publicación."
         "no_existe" -> "Esa publicación ya no existe."
